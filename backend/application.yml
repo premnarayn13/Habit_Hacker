@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: habit-hacker-backend
+  datasource:
+    url: \
+    username: \
+    password: \
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
