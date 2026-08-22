@@ -1,0 +1,30 @@
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Node dependencies & build output
+node_modules/
+dist/
+build/
+.output/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Java build output
+target/
+*.class
+*.jar
+*.war
+
+# Temporary files
+scratch/
+.tempmediaStorage/
