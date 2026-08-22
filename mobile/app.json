@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Habit Hacker",
+    "slug": "habit-hacker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./public/favicon.ico",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0B0F19"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.habithacker.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0F19"
+      },
+      "package": "com.habithacker.app"
+    },
+    "web": {
+      "favicon": "./public/favicon.ico"
+    }
+  }
+}
