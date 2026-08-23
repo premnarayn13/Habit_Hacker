@@ -20,7 +20,8 @@ import {
   X,
   Zap,
   Activity,
-  Ruler
+  Ruler,
+  ExternalLink
 } from 'lucide-react';
 
 export default function TaskSubtaskView({ 
@@ -563,7 +564,7 @@ export default function TaskSubtaskView({
           display: 'flex',
           alignItems: 'center',
           justify: 'center',
-          gap: '8px',
+          gap: '6px',
           flexWrap: 'nowrap',
           overflowX: 'auto',
           animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
@@ -575,8 +576,8 @@ export default function TaskSubtaskView({
             style={{
               background: '#FFFFFF',
               color: '#0F172A',
-              border: '1.5px solid #DC2626',
-              padding: '6px 12px',
+              border: '1px solid #EF4444',
+              padding: '5px 10px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: 800,
@@ -598,8 +599,8 @@ export default function TaskSubtaskView({
             style={{
               background: '#FFFFFF',
               color: '#0F172A',
-              border: '1.5px solid #DC2626',
-              padding: '6px 12px',
+              border: '1px solid #EF4444',
+              padding: '5px 10px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: 800,
@@ -621,8 +622,8 @@ export default function TaskSubtaskView({
             style={{
               background: '#FFFFFF',
               color: '#0F172A',
-              border: '1.5px solid #DC2626',
-              padding: '6px 12px',
+              border: '1px solid #EF4444',
+              padding: '5px 10px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: 800,
@@ -644,8 +645,8 @@ export default function TaskSubtaskView({
             style={{
               background: '#FFFFFF',
               color: '#0F172A',
-              border: '1.5px solid #DC2626',
-              padding: '6px 12px',
+              border: '1px solid #EF4444',
+              padding: '5px 10px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: 800,
@@ -667,14 +668,14 @@ export default function TaskSubtaskView({
             style={{
               background: '#FFFFFF',
               color: '#0F172A',
-              border: '1.5px solid #DC2626',
-              padding: '6px 10px',
+              border: '1px solid #EF4444',
+              padding: '5px 8px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: 800,
               cursor: 'pointer',
               outline: 'none',
-              height: '33px',
+              height: '31px',
               whiteSpace: 'nowrap',
               flexShrink: 0
             }}
@@ -693,8 +694,8 @@ export default function TaskSubtaskView({
             style={{
               background: '#FFFFFF',
               color: '#0F172A',
-              border: '1.5px solid #DC2626',
-              padding: '6px 12px',
+              border: '1px solid #EF4444',
+              padding: '5px 10px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: 800,
@@ -708,6 +709,29 @@ export default function TaskSubtaskView({
             }}
           >
             <Unlink size={14} color="#DC2626" /> Unmap
+          </button>
+
+          {/* 7. Open (Opens Dedicated Full Info View) */}
+          <button 
+            onClick={() => onOpenDedicatedTaskPage(selectedTaskObj)}
+            title="Open Dedicated Full Task Dashboard"
+            style={{
+              background: '#FFFFFF',
+              color: '#DC2626',
+              border: '1px solid #EF4444',
+              padding: '5px 10px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}
+          >
+            <ExternalLink size={14} color="#DC2626" /> Open
           </button>
         </div>
       )}
