@@ -341,7 +341,7 @@ export default function TaskSubtaskView({
                   cursor: 'pointer',
                   position: 'relative'
                 }}
-                title="Click to select & show action sheet at bottom. Double click for dedicated task info page."
+                title="Click to select & show action dock at bottom. Double click for dedicated task info page."
               >
                 
                 {/* Main Card Header */}
@@ -543,100 +543,168 @@ export default function TaskSubtaskView({
         )}
       </div>
 
-      {/* FIXED FLOATING BOTTOM ACTION SHEET (APPEARS ABOVE BOTTOM NAVIGATION BAR ONLY WHEN A TASK IS SELECTED!) */}
+      {/* FIXED UNIFIED SINGLE-ROW FLOATING BOTTOM ACTION DOCK */}
       {selectedTaskObj && (
         <div style={{
           position: 'fixed',
           bottom: '72px',
           left: '50%',
           transform: 'translateX(-50%)',
-          width: 'calc(100% - 24px)',
-          maxWidth: '1100px',
+          width: 'auto',
+          maxWidth: '95vw',
           zIndex: 1400,
-          background: '#FFFFFF',
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(12px)',
           border: '2px solid #DC2626',
-          boxShadow: '0 -8px 30px rgba(220, 38, 38, 0.25), 0 12px 36px rgba(15, 23, 42, 0.2)',
-          padding: '10px 16px',
-          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(220, 38, 38, 0.25), 0 4px 16px rgba(15, 23, 42, 0.15)',
+          padding: '8px 16px',
+          borderRadius: '50px',
           display: 'flex',
           alignItems: 'center',
-          justify: 'space-between',
-          flexWrap: 'wrap',
-          gap: '10px'
+          justify: 'center',
+          gap: '10px',
+          whiteSpace: 'nowrap',
+          animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 800, color: '#DC2626' }}>
-            <span style={{ background: '#FEE2E2', padding: '3px 8px', borderRadius: '6px' }}>🎯 Selected</span>
-            <span style={{ color: '#0F172A', fontWeight: 900, textDecoration: 'underline' }}>{selectedTaskObj.title}</span>
-          </div>
+          {/* 1. Edit */}
+          <button 
+            onClick={() => onEditTask(selectedTaskObj)}
+            title="Edit Selected Task"
+            style={{
+              background: '#FFFFFF',
+              color: '#DC2626',
+              border: '1.5px solid #DC2626',
+              padding: '7px 14px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.12)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Edit3 size={14} color="#DC2626" /> Edit
+          </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            {/* 1. Edit */}
-            <button 
-              onClick={() => onEditTask(selectedTaskObj)}
-              title="Edit Selected Task"
-              style={{ background: '#F8FAFC', color: '#334155', border: '1px solid #CBD5E1', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-            >
-              <Edit3 size={14} /> Edit
-            </button>
+          {/* 2. Delete */}
+          <button 
+            onClick={() => { onDeleteTask(selectedTaskObj.id); setSelectedTaskId(null); }}
+            title="Delete Selected Task"
+            style={{
+              background: '#FFFFFF',
+              color: '#DC2626',
+              border: '1.5px solid #DC2626',
+              padding: '7px 14px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.12)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Trash2 size={14} color="#DC2626" /> Delete
+          </button>
 
-            {/* 2. Delete */}
-            <button 
-              onClick={() => { onDeleteTask(selectedTaskObj.id); setSelectedTaskId(null); }}
-              title="Delete Selected Task"
-              style={{ background: '#FEE2E2', color: '#DC2626', border: '1px solid #FCA5A5', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-            >
-              <Trash2 size={14} /> Delete
-            </button>
+          {/* 3. Archive */}
+          <button 
+            onClick={() => { onArchiveTask(selectedTaskObj.id); setSelectedTaskId(null); }}
+            title="Archive Selected Task"
+            style={{
+              background: '#FFFFFF',
+              color: '#DC2626',
+              border: '1.5px solid #DC2626',
+              padding: '7px 14px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.12)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Archive size={14} color="#DC2626" /> Archive
+          </button>
 
-            {/* 3. Archive */}
-            <button 
-              onClick={() => { onArchiveTask(selectedTaskObj.id); setSelectedTaskId(null); }}
-              title="Archive Selected Task"
-              style={{ background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-            >
-              <Archive size={14} /> Archive
-            </button>
+          {/* 4. Undo */}
+          <button 
+            onClick={() => onUndoTask(selectedTaskObj.id)}
+            title="Undo Today's Completion"
+            style={{
+              background: '#FFFFFF',
+              color: '#DC2626',
+              border: '1.5px solid #DC2626',
+              padding: '7px 14px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.12)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Undo2 size={14} color="#DC2626" /> Undo
+          </button>
 
-            {/* 4. Undo */}
-            <button 
-              onClick={() => onUndoTask(selectedTaskObj.id)}
-              title="Undo Today's Completion"
-              style={{ background: '#DBEAFE', color: '#1D4ED8', border: '1px solid #93C5FD', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-            >
-              <Undo2 size={14} /> Undo
-            </button>
+          {/* 5. Map to... */}
+          <select
+            value=""
+            onChange={(e) => onMapTaskParent(selectedTaskObj.id, e.target.value)}
+            style={{
+              background: '#FFFFFF',
+              color: '#DC2626',
+              border: '1.5px solid #DC2626',
+              padding: '7px 12px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.12)',
+              outline: 'none'
+            }}
+          >
+            <option value="">Map to...</option>
+            {tasks.filter(t => t.id !== selectedTaskObj.id && !t.parentTaskId).map(p => (
+              <option key={p.id} value={p.id}>{p.title}</option>
+            ))}
+          </select>
 
-            {/* 5. Map to... */}
-            <select
-              value=""
-              onChange={(e) => onMapTaskParent(selectedTaskObj.id, e.target.value)}
-              style={{ padding: '6px 10px', fontSize: '12px', borderRadius: '8px', background: '#FFF', border: '1px solid #CBD5E1', fontWeight: 700, color: '#475569' }}
-            >
-              <option value="">Map to...</option>
-              {tasks.filter(t => t.id !== selectedTaskObj.id && !t.parentTaskId).map(p => (
-                <option key={p.id} value={p.id}>{p.title}</option>
-              ))}
-            </select>
-
-            {/* 6. Unmap */}
-            <button 
-              onClick={() => onUnmapSubtask(selectedTaskObj.id)}
-              disabled={!selectedTaskObj.parentTaskId}
-              title="Unmap Subtask"
-              style={{ background: '#FFFDF5', color: '#D97706', border: '1px solid #FDE68A', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: selectedTaskObj.parentTaskId ? 1 : 0.5 }}
-            >
-              <Unlink size={14} /> Unmap
-            </button>
-
-            {/* Close floating dock */}
-            <button
-              onClick={() => setSelectedTaskId(null)}
-              style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', color: '#475569', cursor: 'pointer', padding: '6px 10px', borderRadius: '8px', display: 'flex', alignItems: 'center', fontWeight: 800, fontSize: '12px' }}
-              title="Deselect Task"
-            >
-              <X size={14} /> Close
-            </button>
-          </div>
+          {/* 6. Unmap */}
+          <button 
+            onClick={() => onUnmapSubtask(selectedTaskObj.id)}
+            disabled={!selectedTaskObj.parentTaskId}
+            title="Unmap Subtask"
+            style={{
+              background: '#FFFFFF',
+              color: '#DC2626',
+              border: '1.5px solid #DC2626',
+              padding: '7px 14px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.12)',
+              opacity: selectedTaskObj.parentTaskId ? 1 : 0.5,
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <Unlink size={14} color="#DC2626" /> Unmap
+          </button>
         </div>
       )}
 
