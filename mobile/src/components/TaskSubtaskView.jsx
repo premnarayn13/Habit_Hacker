@@ -543,7 +543,7 @@ export default function TaskSubtaskView({
         )}
       </div>
 
-      {/* FIXED 3D RECTANGULAR ACTION DOCK SEAMLESSLY JOINED WITH BOTTOM NAVBAR */}
+      {/* FIXED CLEAN SINGLE-LINE ACTION DOCK SEAMLESSLY JOINED WITH BOTTOM NAVBAR */}
       {selectedTaskObj && (
         <div style={{
           position: 'fixed',
@@ -553,18 +553,19 @@ export default function TaskSubtaskView({
           width: '100%',
           zIndex: 1300,
           background: '#FFFFFF',
-          borderTop: '2.5px solid #DC2626',
-          borderLeft: '2.5px solid #DC2626',
-          borderRight: '2.5px solid #DC2626',
+          borderTop: '2px solid #DC2626',
+          borderLeft: 'none',
+          borderRight: 'none',
           borderBottom: 'none',
-          boxShadow: '0 -10px 30px rgba(220, 38, 38, 0.25), 0 -4px 16px rgba(15, 23, 42, 0.12)',
-          padding: '12px 18px',
-          borderRadius: '16px 16px 0 0',
+          boxShadow: '0 -4px 16px rgba(15, 23, 42, 0.08)',
+          padding: '10px 12px',
+          borderRadius: 0,
           display: 'flex',
           alignItems: 'center',
           justify: 'center',
-          gap: '12px',
-          flexWrap: 'wrap',
+          gap: '8px',
+          flexWrap: 'nowrap',
+          overflowX: 'auto',
           animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
           {/* 1. Edit */}
@@ -575,19 +576,19 @@ export default function TaskSubtaskView({
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1.5px solid #DC2626',
-              padding: '8px 16px',
+              padding: '6px 12px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 3px 8px rgba(220, 38, 38, 0.15)',
-              transition: 'all 0.2s ease'
+              gap: '4px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
-            <Edit3 size={15} color="#DC2626" /> Edit
+            <Edit3 size={14} color="#DC2626" /> Edit
           </button>
 
           {/* 2. Delete */}
@@ -598,19 +599,19 @@ export default function TaskSubtaskView({
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1.5px solid #DC2626',
-              padding: '8px 16px',
+              padding: '6px 12px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 3px 8px rgba(220, 38, 38, 0.15)',
-              transition: 'all 0.2s ease'
+              gap: '4px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
-            <Trash2 size={15} color="#DC2626" /> Delete
+            <Trash2 size={14} color="#DC2626" /> Delete
           </button>
 
           {/* 3. Archive */}
@@ -621,19 +622,19 @@ export default function TaskSubtaskView({
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1.5px solid #DC2626',
-              padding: '8px 16px',
+              padding: '6px 12px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 3px 8px rgba(220, 38, 38, 0.15)',
-              transition: 'all 0.2s ease'
+              gap: '4px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
-            <Archive size={15} color="#DC2626" /> Archive
+            <Archive size={14} color="#DC2626" /> Archive
           </button>
 
           {/* 4. Undo */}
@@ -644,19 +645,19 @@ export default function TaskSubtaskView({
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1.5px solid #DC2626',
-              padding: '8px 16px',
+              padding: '6px 12px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 3px 8px rgba(220, 38, 38, 0.15)',
-              transition: 'all 0.2s ease'
+              gap: '4px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
-            <Undo2 size={15} color="#DC2626" /> Undo
+            <Undo2 size={14} color="#DC2626" /> Undo
           </button>
 
           {/* 5. Map to... */}
@@ -667,14 +668,15 @@ export default function TaskSubtaskView({
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1.5px solid #DC2626',
-              padding: '8px 14px',
+              padding: '6px 10px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: 800,
               cursor: 'pointer',
-              boxShadow: '0 3px 8px rgba(220, 38, 38, 0.15)',
               outline: 'none',
-              height: '35px'
+              height: '33px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
             <option value="">Map to...</option>
@@ -692,20 +694,20 @@ export default function TaskSubtaskView({
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1.5px solid #DC2626',
-              padding: '8px 16px',
+              padding: '6px 12px',
               borderRadius: '8px',
               fontSize: '12px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 3px 8px rgba(220, 38, 38, 0.15)',
+              gap: '4px',
               opacity: selectedTaskObj.parentTaskId ? 1 : 0.5,
-              transition: 'all 0.2s ease'
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
-            <Unlink size={15} color="#DC2626" /> Unmap
+            <Unlink size={14} color="#DC2626" /> Unmap
           </button>
         </div>
       )}
