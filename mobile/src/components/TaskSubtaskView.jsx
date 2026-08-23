@@ -12,17 +12,15 @@ import {
   Trash2, 
   CornerDownRight,
   ArrowUpDown,
-  Users,
   Search,
-  Flame,
   Unlink,
   Edit3,
   Undo2,
+  Folder,
+  X,
   Zap,
-  Star,
-  Leaf,
-  ShieldAlert,
-  Folder
+  Activity,
+  Ruler
 } from 'lucide-react';
 
 export default function TaskSubtaskView({ 
@@ -50,11 +48,14 @@ export default function TaskSubtaskView({
   const [activeTag, setActiveTag] = useState('ALL');
   const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'PARENTS_ONLY', 'SUBTASKS_ONLY'
   const [sortBy, setSortBy] = useState('START_DATE_ASC');
-  const [showArchivedVault, setShowArchivedVault] = useState(false);
   const [expandedTasks, setExpandedTasks] = useState({});
 
-  // Currently selected task for static top control bar (set by click)
+  // Selected task state (defaults to null - floating action dock appears ONLY when a task is selected!)
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+
+  // Measure Modal Popup State for Daily Performance Measure Input
+  const [measureModalTask, setMeasureModalTask] = useState(null);
+  const [measureInputValue, setMeasureInputValue] = useState('');
 
   const toggleExpand = (taskId) => {
     setExpandedTasks(prev => ({ ...prev, [taskId]: !prev[taskId] }));
@@ -71,9 +72,8 @@ export default function TaskSubtaskView({
   };
 
   const activeParentTasks = tasks.filter(t => !t.isArchived);
-  const archivedParentTasks = tasks.filter(t => t.isArchived);
 
-  let displayedTasks = showArchivedVault ? archivedParentTasks : activeParentTasks;
+  let displayedTasks = activeParentTasks;
 
   // Filter Type: Parents vs Subtasks
   if (filterType === 'PARENTS_ONLY') {
@@ -82,7 +82,7 @@ export default function TaskSubtaskView({
     displayedTasks = displayedTasks.filter(t => t.parentTaskId);
   }
 
-  // Dynamic User Categories ONLY (Computed directly from user created tasks!)
+  // Dynamic User Categories ONLY
   const userCreatedCategories = Array.from(new Set(tasks.map(t => t.category).filter(Boolean)));
   const categoriesList = ['ALL', ...userCreatedCategories];
 
@@ -129,84 +129,82 @@ export default function TaskSubtaskView({
     return a.title.localeCompare(b.title);
   });
 
-  const selectedTaskObj = tasks.find(t => t.id === selectedTaskId) || displayedTasks[0] || null;
+  // Selected Task Object (ONLY populated if user explicitly clicked a card)
+  const selectedTaskObj = selectedTaskId ? tasks.find(t => t.id === selectedTaskId) || null : null;
 
-  // Refined visual priority renderer
+  // LIGHTNING BOLT VISUAL PRIORITY INDICATOR
   const renderPriorityVisual = (priority) => {
     const p = (priority || 'HIGH').toUpperCase();
-    if (p === 'CRITICAL') {
-      return (
-        <span style={{ background: '#FEE2E2', color: '#DC2626', border: '1px solid #FCA5A5', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-          🔴🔥 Critical
-        </span>
-      );
-    }
-    if (p === 'HIGH') {
-      return (
-        <span style={{ background: '#FFEDD5', color: '#EA580C', border: '1px solid #FDBA74', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-          🟠⚡ High
-        </span>
-      );
-    }
-    if (p === 'MEDIUM') {
-      return (
-        <span style={{ background: '#FEF9C3', color: '#CA8A04', border: '1px solid #FDE047', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-          🟡⭐ Med
-        </span>
-      );
-    }
+    const color = (p === 'CRITICAL' || p === 'HIGH') ? '#DC2626' : (p === 'MEDIUM' ? '#F59E0B' : '#16A34A');
+    const labelText = `${p} Priority`;
+
     return (
-      <span style={{ background: '#DCFCE7', color: '#16A34A', border: '1px solid #86EFAC', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-        🟢🍃 Low
-      </span>
+      <div 
+        title={labelText} 
+        style={{ 
+          display: 'inline-flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          padding: '3px 5px',
+          borderRadius: '6px',
+          background: `${color}15`,
+          border: `1px solid ${color}40`,
+          cursor: 'pointer',
+          whiteSpace: 'nowrap'
+        }}
+      >
+        <Zap size={14} color={color} fill={color} />
+      </div>
     );
   };
 
   const handleTaskCardClick = (taskId) => {
-    setSelectedTaskId(taskId);
+    if (selectedTaskId === taskId) {
+      setSelectedTaskId(null);
+    } else {
+      setSelectedTaskId(taskId);
+    }
+  };
+
+  // Intercept Task Completion for Measure Tracking
+  const handleCheckmarkClick = (e, task) => {
+    e.stopPropagation();
+    const isDone = task.isDoneToday || task.progressPercent >= 100;
+    
+    if (!isDone && task.hasMeasureTracking) {
+      // Prompt for daily performance measure input
+      setMeasureModalTask(task);
+      setMeasureInputValue(task.measureTarget || '');
+    } else {
+      onToggleTask(task.id);
+    }
+  };
+
+  const handleSaveMeasureAndComplete = () => {
+    if (measureModalTask) {
+      const val = parseFloat(measureInputValue) || 0;
+      onToggleTask(measureModalTask.id, val);
+      setMeasureModalTask(null);
+      setMeasureInputValue('');
+    }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', paddingBottom: selectedTaskObj ? '90px' : '20px' }}>
       
-      {/* Top Header Bar */}
-      <div className="glass-panel" style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <h2 style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Layers size={22} color="#DC2626" /> Task Management Hub
-          </h2>
-          <p style={{ fontSize: '13px', color: '#64748B', marginTop: '2px' }}>
-            Click any task card to target. Double click for dedicated task info page.
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button 
-            className="btn-secondary" 
-            onClick={() => setShowArchivedVault(prev => !prev)}
-            style={{ color: showArchivedVault ? '#DC2626' : '#475569', borderColor: showArchivedVault ? '#DC2626' : '#CBD5E1' }}
-          >
-            <Archive size={16} /> {showArchivedVault ? `Active Tasks (${activeParentTasks.length})` : `Archived Vault (${archivedParentTasks.length})`}
-          </button>
-
-          <button className="btn-primary" onClick={onOpenQuickAdd}>
-            <Plus size={16} /> Add Task
-          </button>
-        </div>
-      </div>
-
-      {/* FILTER & ACTION TOOLBAR (NORMAL INLINE ACTIONS WITHOUT SURROUNDING BOX) */}
-      <div className="glass-panel" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      {/* FILTER & CONTROL TOOLBAR (ALL FILTERS IN ONE COMPACT ROW) */}
+      <div className="glass-panel" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         
-        {/* UPPER ROW: Type Pills, Category Dropdown, Sort Dropdown & Normal Inline Action Buttons */}
+        {/* SINGLE UPPER ROW: Type Filter Pills (All, Parents, Subtasks), Category Dropdown & Sort Dropdown */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {/* Type Filter Pills */}
+            
+            {/* Type Filter Pills (Shortened labels: All, Parents, Subtasks) */}
             <div style={{ display: 'flex', gap: '4px' }}>
               {[
-                { label: 'All Cards', val: 'ALL' },
-                { label: 'Parent Tasks', val: 'PARENTS_ONLY' },
+                { label: 'All', val: 'ALL' },
+                { label: 'Parents', val: 'PARENTS_ONLY' },
                 { label: 'Subtasks', val: 'SUBTASKS_ONLY' }
               ].map(f => (
                 <button
@@ -216,11 +214,12 @@ export default function TaskSubtaskView({
                     background: filterType === f.val ? '#DC2626' : '#F8FAFC',
                     color: filterType === f.val ? '#FFF' : '#475569',
                     border: '1px solid #CBD5E1',
-                    padding: '5px 10px',
+                    padding: '5px 12px',
                     borderRadius: '8px',
                     fontSize: '11px',
-                    fontWeight: 700,
-                    cursor: 'pointer'
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
                   }}
                 >
                   {f.label}
@@ -244,7 +243,7 @@ export default function TaskSubtaskView({
 
             {/* Sort Dropdown */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <ArrowUpDown size={14} color="#64748B" />
+              <ArrowUpDown size={13} color="#64748B" />
               <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569' }}>Sort:</span>
               <select 
                 value={sortBy} 
@@ -260,100 +259,35 @@ export default function TaskSubtaskView({
                 <option value="PRIORITY">Priority Order</option>
               </select>
             </div>
-          </div>
 
-          {/* NORMAL INLINE ACTION BUTTONS (NO SURROUNDING BOX!) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            {/* 1. Edit */}
-            <button 
-              onClick={() => selectedTaskObj && onEditTask(selectedTaskObj)}
-              disabled={!selectedTaskObj}
-              title="Edit Selected Task"
-              style={{ background: '#FFF', color: '#475569', border: '1px solid #CBD5E1', padding: '5px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-            >
-              <Edit3 size={13} /> Edit
-            </button>
-
-            {/* 2. Delete */}
-            <button 
-              onClick={() => selectedTaskObj && onDeleteTask(selectedTaskObj.id)}
-              disabled={!selectedTaskObj}
-              title="Delete Selected Task"
-              style={{ background: '#FEE2E2', color: '#DC2626', border: '1px solid #FCA5A5', padding: '5px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-            >
-              <Trash2 size={13} /> Delete
-            </button>
-
-            {/* 3. Archive */}
-            <button 
-              onClick={() => selectedTaskObj && onArchiveTask(selectedTaskObj.id)}
-              disabled={!selectedTaskObj}
-              title="Archive Selected Task"
-              style={{ background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A', padding: '5px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-            >
-              <Archive size={14} /> Archive
-            </button>
-
-            {/* 4. Undo */}
-            <button 
-              onClick={() => selectedTaskObj && onUndoTask(selectedTaskObj.id)}
-              disabled={!selectedTaskObj}
-              title="Undo Today's Completion"
-              style={{ background: '#DBEAFE', color: '#1D4ED8', border: '1px solid #93C5FD', padding: '5px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-            >
-              <Undo2 size={13} /> Undo
-            </button>
-
-            {/* 5. Map to... */}
-            <select
-              value=""
-              onChange={(e) => selectedTaskObj && onMapTaskParent(selectedTaskObj.id, e.target.value)}
-              disabled={!selectedTaskObj}
-              style={{ padding: '5px 10px', fontSize: '11px', borderRadius: '8px', background: '#FFF', border: '1px solid #CBD5E1', fontWeight: 700, color: '#475569' }}
-            >
-              <option value="">Map to...</option>
-              {tasks.filter(t => selectedTaskObj && t.id !== selectedTaskObj.id && !t.parentTaskId).map(p => (
-                <option key={p.id} value={p.id}>{p.title}</option>
-              ))}
-            </select>
-
-            {/* 6. Unmap */}
-            <button 
-              onClick={() => selectedTaskObj && onUnmapSubtask(selectedTaskObj.id)}
-              disabled={!selectedTaskObj || !selectedTaskObj.parentTaskId}
-              title="Unmap Subtask"
-              style={{ background: '#FFFDF5', color: '#D97706', border: '1px solid #FDE68A', padding: '5px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: selectedTaskObj?.parentTaskId ? 1 : 0.5 }}
-            >
-              <Unlink size={13} /> Unmap
-            </button>
           </div>
 
         </div>
 
-        {/* SEARCH BAR POSITIONED BELOW THE UPPER FILTER & ACTION ROW */}
+        {/* SEARCH BAR POSITIONED BELOW FILTERS */}
         <div style={{ position: 'relative', width: '100%' }}>
-          <Search size={18} color="#64748B" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+          <Search size={16} color="#64748B" style={{ position: 'absolute', left: '12px', top: '11px' }} />
           <input 
             type="text"
             placeholder="Search tasks by title, category, or tags..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: '100%', paddingLeft: '40px', height: '42px', borderRadius: '10px' }}
+            style={{ width: '100%', paddingLeft: '36px', height: '38px', borderRadius: '8px', fontSize: '13px' }}
           />
         </div>
 
       </div>
 
       {/* TASK DIRECTORY CARDS */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {displayedTasks.length === 0 ? (
           <div className="glass-panel" style={{ padding: '36px', textAlign: 'center', color: '#64748B' }}>
-            <Archive size={36} color="#DC2626" style={{ margin: '0 auto 10px auto' }} />
+            <Layers size={36} color="#DC2626" style={{ margin: '0 auto 10px auto' }} />
             <div style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A' }}>
-              {showArchivedVault ? 'No Archived Tasks Found' : 'No Active Tasks Scheduled'}
+              No Active Tasks Scheduled
             </div>
             <div style={{ fontSize: '12px', marginTop: '4px' }}>
-              {showArchivedVault ? 'Tasks paused during exams will appear in this vault.' : 'Click + Add Task to create a new task.'}
+              Click + Add Task to create a new task.
             </div>
           </div>
         ) : (
@@ -363,7 +297,7 @@ export default function TaskSubtaskView({
             const isSubtaskEntity = !!task.parentTaskId;
             const parentTaskObj = isSubtaskEntity ? tasks.find(pt => pt.id === task.parentTaskId) : null;
             const isTaskDone = task.isDoneToday || task.progressPercent >= 100;
-            const isSelected = selectedTaskObj?.id === task.id;
+            const isSelected = selectedTaskId === task.id;
 
             // Optional Stripes Background Visual Pattern
             const cardBgStyle = task.isOptional 
@@ -398,67 +332,74 @@ export default function TaskSubtaskView({
                 onClick={() => handleTaskCardClick(task.id)}
                 onDoubleClick={(e) => { e.stopPropagation(); onOpenDedicatedTaskPage(task); }}
                 style={{ 
-                  padding: '18px 22px', 
+                  padding: '16px 20px', 
                   borderLeft: isSubtaskEntity ? '6px solid #D97706' : '6px solid #DC2626',
                   background: cardBgStyle,
-                  borderRadius: '16px',
-                  boxShadow: isSelected ? '0 0 0 3px #2563EB, 0 8px 24px rgba(37, 99, 235, 0.15)' : '0 4px 16px rgba(15, 23, 42, 0.04)',
+                  borderRadius: '14px',
+                  boxShadow: isSelected ? '0 0 0 3px #DC2626, 0 8px 24px rgba(220, 38, 38, 0.15)' : '0 4px 16px rgba(15, 23, 42, 0.04)',
                   transition: 'all 0.2s ease',
                   cursor: 'pointer',
                   position: 'relative'
                 }}
-                title="Click to select for top bar actions. Double click for dedicated task info page."
+                title="Click to select & show action sheet at bottom. Double click for dedicated task info page."
               >
                 
                 {/* Main Card Header */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
                   
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1, minWidth: '280px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '260px' }}>
                     
                     {!isSubtaskEntity && (
                       <button 
                         onClick={(e) => { e.stopPropagation(); toggleExpand(task.id); }}
-                        style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer' }}
+                        style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', padding: 0 }}
                       >
-                        {isExpanded ? <ChevronDown size={20} color="#DC2626" /> : <ChevronRight size={20} color="#64748B" />}
+                        {isExpanded ? <ChevronDown size={18} color="#DC2626" /> : <ChevronRight size={18} color="#64748B" />}
                       </button>
                     )}
 
                     {/* Completion Checkmark */}
                     <button 
-                      onClick={(e) => { e.stopPropagation(); onToggleTask(task.id); }}
-                      style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+                      onClick={(e) => handleCheckmarkClick(e, task)}
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
                       title={isTaskDone ? "Mark Turn Incomplete" : "Mark Turn Complete"}
                     >
                       {isTaskDone ? (
-                        <CheckCircle2 size={24} color={isSubtaskEntity ? '#D97706' : '#DC2626'} />
+                        <CheckCircle2 size={22} color={isSubtaskEntity ? '#D97706' : '#DC2626'} />
                       ) : (
-                        <Circle size={24} color="#94A3B8" />
+                        <Circle size={22} color="#94A3B8" />
                       )}
                     </button>
 
-                    {/* Task Title (NO STRIKETHROUGH & NO "DONE FOR TODAY" BADGE!), Category Badge & Parent Reference without "Child of" */}
+                    {/* Task Title, Category Badge, Parent Reference & LIGHTNING BOLT PRIORITY */}
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         
-                        <span style={{ fontSize: '16px', fontWeight: 800, color: isTaskDone ? '#475569' : '#0F172A', letterSpacing: '-0.01em' }}>
+                        <span style={{ fontSize: '15px', fontWeight: 800, color: isTaskDone ? '#475569' : '#0F172A', letterSpacing: '-0.01em' }}>
                           {task.title}
                         </span>
 
                         {/* Category Badge */}
-                        <span style={{ fontSize: '11px', color: '#475569', fontWeight: 700, background: '#F1F5F9', border: '1px solid #CBD5E1', padding: '2px 8px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontSize: '11px', color: '#475569', fontWeight: 700, background: '#F1F5F9', border: '1px solid #CBD5E1', padding: '2px 8px', borderRadius: '6px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                           <Folder size={11} color="#64748B" /> {task.category || 'General'}
                         </span>
 
-                        {/* Parent Reference Badge WITHOUT the words "Child of" */}
+                        {/* Parent Reference Badge WITHOUT "Child of" */}
                         {parentTaskObj && (
-                          <span style={{ fontSize: '11px', color: '#D97706', fontWeight: 800, background: '#FEF3C7', border: '1px solid #FDE68A', padding: '2px 8px', borderRadius: '6px' }}>
+                          <span style={{ fontSize: '11px', color: '#D97706', fontWeight: 800, background: '#FEF3C7', border: '1px solid #FDE68A', padding: '2px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>
                             ↳ {parentTaskObj.title}
                           </span>
                         )}
 
-                        {/* VISUAL PRIORITY BADGE */}
+                        {/* LIGHTNING BOLT PRIORITY INDICATOR */}
                         {renderPriorityVisual(task.priority)}
+
+                        {/* Measure Badge Indicator if task has measure tracking */}
+                        {task.hasMeasureTracking && (
+                          <span style={{ fontSize: '10px', color: '#2563EB', fontWeight: 800, background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '2px 6px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '3px' }} title={`Tracks daily measure in ${task.measureUnit || 'units'}`}>
+                            <Ruler size={11} /> {task.measureUnit || 'measure'}
+                          </span>
+                        )}
                       </div>
 
                       {/* Quick Event Log Button if Event Count Task */}
@@ -477,15 +418,15 @@ export default function TaskSubtaskView({
                   </div>
 
                   {/* DYNAMIC REAL-TIME 5-TILE HEATMAP */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#F8FAFC', padding: '6px 12px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', marginRight: '4px' }}>7-DAY:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#F8FAFC', padding: '5px 10px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', marginRight: '2px' }}>7-DAY:</span>
                     {heatmapTiles.map((tile, idx) => (
                       <div 
                         key={idx} 
                         style={{
-                          width: '14px',
-                          height: '14px',
-                          borderRadius: '4px',
+                          width: '13px',
+                          height: '13px',
+                          borderRadius: '3px',
                           background: tile.isComplete ? '#22C55E' : '#CBD5E1',
                           boxShadow: tile.isComplete ? '0 0 6px rgba(34, 197, 94, 0.4)' : 'none',
                           transition: 'all 0.2s ease'
@@ -495,23 +436,23 @@ export default function TaskSubtaskView({
                     ))}
                   </div>
 
-                  {/* RIGHT SIDE INDEPENDENT DAY-COUNT PERCENTAGE & RATIO (e.g. 2% (1/45)) */}
-                  <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '18px', fontWeight: 900, color: isSubtaskEntity ? '#D97706' : '#DC2626' }}>
+                  {/* RIGHT SIDE INDEPENDENT DAY-COUNT PERCENTAGE & RATIO */}
+                  <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '17px', fontWeight: 900, color: isSubtaskEntity ? '#D97706' : '#DC2626' }}>
                       {calculatedProgPercent}%
                     </span>
-                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#64748B' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#64748B' }}>
                       {countRatioStr}
                     </span>
                   </div>
 
                 </div>
 
-                {/* Subtasks Accordion Dropdown Section (Renders Subtask Completion Ratio & % Here!) */}
+                {/* Subtasks Accordion Dropdown Section */}
                 {!isSubtaskEntity && isExpanded && (
-                  <div style={{ marginTop: '14px', marginLeft: '32px', paddingLeft: '16px', borderLeft: '2px solid rgba(220, 38, 38, 0.3)', display: 'flex', flexDirection: 'column', gap: '10px' }} onClick={(e) => e.stopPropagation()}>
+                  <div style={{ marginTop: '12px', marginLeft: '28px', paddingLeft: '14px', borderLeft: '2px solid rgba(220, 38, 38, 0.3)', display: 'flex', flexDirection: 'column', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
                     
-                    {/* ACCORDION HEADER: CHILD SUBTASK ENTITIES (1) - 1:1 Completed (100%) */}
+                    {/* ACCORDION HEADER: CHILD SUBTASK ENTITIES */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px', flexWrap: 'wrap', gap: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontSize: '11px', fontWeight: 800, color: '#DC2626', letterSpacing: '0.05em' }}>
@@ -535,7 +476,7 @@ export default function TaskSubtaskView({
 
                     {childTasks.length === 0 ? (
                       <div style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic', background: '#F8FAFC', padding: '10px', borderRadius: '8px' }}>
-                        No child subtasks mapped yet. Select "Map to..." on top bar or click + Add Child Subtask.
+                        No child subtasks mapped yet. Click card to select & map.
                       </div>
                     ) : (
                       childTasks.map(child => {
@@ -549,31 +490,31 @@ export default function TaskSubtaskView({
                             style={{
                               background: '#FFFDF5',
                               border: '1px solid #FDE68A',
-                              borderRadius: '12px',
-                              padding: '12px 16px',
+                              borderRadius: '10px',
+                              padding: '10px 14px',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
-                              gap: '12px'
+                              gap: '10px'
                             }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <button 
-                                onClick={() => onToggleTask(child.id)}
-                                style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+                                onClick={(e) => handleCheckmarkClick(e, child)}
+                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
                               >
                                 {child.progressPercent >= 100 || child.isDoneToday ? (
-                                  <CheckCircle2 size={20} color="#D97706" />
+                                  <CheckCircle2 size={18} color="#D97706" />
                                 ) : (
-                                  <Circle size={20} color="#94A3B8" />
+                                  <Circle size={18} color="#94A3B8" />
                                 )}
                               </button>
 
                               <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <CornerDownRight size={14} color="#D97706" />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <CornerDownRight size={13} color="#D97706" />
                                   <span style={{ 
-                                    fontSize: '14px', 
+                                    fontSize: '13px', 
                                     fontWeight: 800, 
                                     color: child.progressPercent >= 100 || child.isDoneToday ? '#475569' : '#0F172A'
                                   }}>
@@ -584,8 +525,8 @@ export default function TaskSubtaskView({
                               </div>
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: '14px', fontWeight: 800, color: '#D97706' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 800, color: '#D97706' }}>
                                 {childProg}% ({childDone}/{childTarget})
                               </span>
                             </div>
@@ -601,6 +542,181 @@ export default function TaskSubtaskView({
           })
         )}
       </div>
+
+      {/* FIXED FLOATING BOTTOM ACTION SHEET (APPEARS ABOVE BOTTOM NAVIGATION BAR ONLY WHEN A TASK IS SELECTED!) */}
+      {selectedTaskObj && (
+        <div style={{
+          position: 'fixed',
+          bottom: '72px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 'calc(100% - 24px)',
+          maxWidth: '1100px',
+          zIndex: 1400,
+          background: '#FFFFFF',
+          border: '2px solid #DC2626',
+          boxShadow: '0 -8px 30px rgba(220, 38, 38, 0.25), 0 12px 36px rgba(15, 23, 42, 0.2)',
+          padding: '10px 16px',
+          borderRadius: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justify: 'space-between',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 800, color: '#DC2626' }}>
+            <span style={{ background: '#FEE2E2', padding: '3px 8px', borderRadius: '6px' }}>🎯 Selected</span>
+            <span style={{ color: '#0F172A', fontWeight: 900, textDecoration: 'underline' }}>{selectedTaskObj.title}</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {/* 1. Edit */}
+            <button 
+              onClick={() => onEditTask(selectedTaskObj)}
+              title="Edit Selected Task"
+              style={{ background: '#F8FAFC', color: '#334155', border: '1px solid #CBD5E1', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <Edit3 size={14} /> Edit
+            </button>
+
+            {/* 2. Delete */}
+            <button 
+              onClick={() => { onDeleteTask(selectedTaskObj.id); setSelectedTaskId(null); }}
+              title="Delete Selected Task"
+              style={{ background: '#FEE2E2', color: '#DC2626', border: '1px solid #FCA5A5', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <Trash2 size={14} /> Delete
+            </button>
+
+            {/* 3. Archive */}
+            <button 
+              onClick={() => { onArchiveTask(selectedTaskObj.id); setSelectedTaskId(null); }}
+              title="Archive Selected Task"
+              style={{ background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <Archive size={14} /> Archive
+            </button>
+
+            {/* 4. Undo */}
+            <button 
+              onClick={() => onUndoTask(selectedTaskObj.id)}
+              title="Undo Today's Completion"
+              style={{ background: '#DBEAFE', color: '#1D4ED8', border: '1px solid #93C5FD', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <Undo2 size={14} /> Undo
+            </button>
+
+            {/* 5. Map to... */}
+            <select
+              value=""
+              onChange={(e) => onMapTaskParent(selectedTaskObj.id, e.target.value)}
+              style={{ padding: '6px 10px', fontSize: '12px', borderRadius: '8px', background: '#FFF', border: '1px solid #CBD5E1', fontWeight: 700, color: '#475569' }}
+            >
+              <option value="">Map to...</option>
+              {tasks.filter(t => t.id !== selectedTaskObj.id && !t.parentTaskId).map(p => (
+                <option key={p.id} value={p.id}>{p.title}</option>
+              ))}
+            </select>
+
+            {/* 6. Unmap */}
+            <button 
+              onClick={() => onUnmapSubtask(selectedTaskObj.id)}
+              disabled={!selectedTaskObj.parentTaskId}
+              title="Unmap Subtask"
+              style={{ background: '#FFFDF5', color: '#D97706', border: '1px solid #FDE68A', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: selectedTaskObj.parentTaskId ? 1 : 0.5 }}
+            >
+              <Unlink size={14} /> Unmap
+            </button>
+
+            {/* Close floating dock */}
+            <button
+              onClick={() => setSelectedTaskId(null)}
+              style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', color: '#475569', cursor: 'pointer', padding: '6px 10px', borderRadius: '8px', display: 'flex', alignItems: 'center', fontWeight: 800, fontSize: '12px' }}
+              title="Deselect Task"
+            >
+              <X size={14} /> Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* DAILY PERFORMANCE MEASURE POPUP MODAL CARD */}
+      {measureModalTask && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.6)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1500,
+          padding: '20px'
+        }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '420px', padding: '24px', position: 'relative', borderRadius: '18px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            
+            <button 
+              onClick={() => setMeasureModalTask(null)}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer' }}
+            >
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Ruler size={20} color="#2563EB" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A' }}>Log Daily Measure</h3>
+                <p style={{ fontSize: '12px', color: '#64748B' }}>{measureModalTask.title}</p>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 800, color: '#475569', display: 'block', marginBottom: '6px' }}>
+                Enter today's measure ({measureModalTask.measureUnit || 'units'}):
+              </label>
+              <input 
+                type="number"
+                step="any"
+                autoFocus
+                placeholder={`e.g., ${measureModalTask.measureTarget || 10} ${measureModalTask.measureUnit || 'units'}`}
+                value={measureInputValue}
+                onChange={(e) => setMeasureInputValue(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveMeasureAndComplete(); }}
+                style={{ width: '100%', height: '42px', borderRadius: '10px', paddingLeft: '14px', fontSize: '14px', border: '1.5px solid #2563EB', fontWeight: 700 }}
+              />
+              {measureModalTask.measureTarget > 0 && (
+                <div style={{ fontSize: '11px', color: '#64748B', marginTop: '6px' }}>
+                  Target: {measureModalTask.measureTarget} {measureModalTask.measureUnit || 'units'} / day
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={handleSaveMeasureAndComplete}
+                className="btn-primary"
+                style={{ flex: 1, padding: '10px', fontSize: '13px' }}
+              >
+                Save & Complete Turn
+              </button>
+
+              <button 
+                onClick={() => { onToggleTask(measureModalTask.id); setMeasureModalTask(null); }}
+                className="btn-secondary"
+                style={{ padding: '10px', fontSize: '13px' }}
+              >
+                Skip Input
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
