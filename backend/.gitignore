@@ -1,0 +1,13 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!mvnw
+!mvnw.cmd
+.mvn/
+*.class
+.project
+.classpath
+.settings/
+.idea/
+*.h2.db
+*.log
+.env
