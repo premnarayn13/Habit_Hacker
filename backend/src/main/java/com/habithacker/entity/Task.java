@@ -81,6 +81,9 @@ public class Task {
     @Column(name = "archived_at")
     private LocalDateTime archivedAt;
 
+    @Column(name = "is_done_today")
+    private Boolean isDoneToday = false;
+
     public Task() {}
 
     // Getters and Setters
@@ -161,4 +164,7 @@ public class Task {
 
     public LocalDateTime getArchivedAt() { return archivedAt; }
     public void setArchivedAt(LocalDateTime archivedAt) { this.archivedAt = archivedAt; }
+
+    public Boolean getIsDoneToday() { return isDoneToday; }
+    public void setIsDoneToday(Boolean isDoneToday) { this.isDoneToday = isDoneToday; }
 }
