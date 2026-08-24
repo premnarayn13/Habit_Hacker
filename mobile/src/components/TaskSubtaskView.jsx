@@ -599,7 +599,7 @@ export default function TaskSubtaskView({
         )}
       </div>
 
-      {/* FIXED COMPACT 5-ACTION BOTTOM DOCK INCLUDING OPEN BUTTON (STAYS 100% INSIDE SCREEN BOUNDS - ZERO SCROLL) */}
+      {/* FIXED 5-ACTION BOTTOM DOCK INCLUDING OPEN BUTTON (SLIGHTLY INCREASED SIZE, STAYS 100% INSIDE SCREEN BOUNDS - ZERO SCROLL) */}
       {selectedTaskObj && (
         <div style={{
           position: 'fixed',
@@ -614,37 +614,39 @@ export default function TaskSubtaskView({
           borderRight: 'none',
           borderBottom: 'none',
           boxShadow: '0 -4px 16px rgba(15, 23, 42, 0.08)',
-          padding: '6px 4px',
+          padding: '8px 6px',
           borderRadius: 0,
           display: 'flex',
           alignItems: 'center',
-          justify: 'space-around',
-          gap: '3px',
+          justify: 'space-between',
+          gap: '4px',
           flexWrap: 'nowrap',
           boxSizing: 'border-box',
           animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
-          {/* 1. Open Button (Launches Dedicated Full Task Dashboard View) */}
+          {/* 1. Open Button */}
           <button 
             onClick={() => onOpenDedicatedTaskPage(selectedTaskObj)}
             title="Open Dedicated Task Page"
             style={{
+              flex: 1,
               background: '#FFFFFF',
               color: '#DC2626',
               border: '1px solid #EF4444',
-              padding: '4px 6px',
+              padding: '6px 6px',
               borderRadius: '8px',
-              fontSize: '10px',
+              fontSize: '11px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '2px',
+              justify: 'center',
+              gap: '3px',
               whiteSpace: 'nowrap',
-              flexShrink: 0
+              height: '31px'
             }}
           >
-            <ExternalLink size={12} color="#DC2626" /> Open
+            <ExternalLink size={13} color="#DC2626" /> Open
           </button>
 
           {/* 2. Archive */}
@@ -652,22 +654,24 @@ export default function TaskSubtaskView({
             onClick={() => { onArchiveTask(selectedTaskObj.id); setSelectedTaskId(null); }}
             title="Archive Selected Task"
             style={{
+              flex: 1,
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1px solid #EF4444',
-              padding: '4px 6px',
+              padding: '6px 6px',
               borderRadius: '8px',
-              fontSize: '10px',
+              fontSize: '11px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '2px',
+              justify: 'center',
+              gap: '3px',
               whiteSpace: 'nowrap',
-              flexShrink: 0
+              height: '31px'
             }}
           >
-            <Archive size={12} color="#DC2626" /> Archive
+            <Archive size={13} color="#DC2626" /> Archive
           </button>
 
           {/* 3. Undo */}
@@ -675,43 +679,44 @@ export default function TaskSubtaskView({
             onClick={() => onUndoTask(selectedTaskObj.id)}
             title="Undo Today's Completion"
             style={{
+              flex: 1,
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1px solid #EF4444',
-              padding: '4px 6px',
+              padding: '6px 6px',
               borderRadius: '8px',
-              fontSize: '10px',
+              fontSize: '11px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '2px',
+              justify: 'center',
+              gap: '3px',
               whiteSpace: 'nowrap',
-              flexShrink: 0
+              height: '31px'
             }}
           >
-            <Undo2 size={12} color="#DC2626" /> Undo
+            <Undo2 size={13} color="#DC2626" /> Undo
           </button>
 
-          {/* 4. Map to... (Compact Width to stay strictly within bounds) */}
+          {/* 4. Map to... */}
           <select
             value=""
             onChange={(e) => onMapTaskParent(selectedTaskObj.id, e.target.value)}
             style={{
+              flex: 1.1,
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1px solid #EF4444',
-              padding: '4px 2px',
+              padding: '6px 3px',
               borderRadius: '8px',
-              fontSize: '10px',
+              fontSize: '11px',
               fontWeight: 800,
               cursor: 'pointer',
               outline: 'none',
-              height: '27px',
-              width: '74px',
-              maxWidth: '74px',
+              height: '31px',
+              maxWidth: '82px',
               whiteSpace: 'nowrap',
-              flexShrink: 0,
               textOverflow: 'ellipsis'
             }}
           >
@@ -727,23 +732,25 @@ export default function TaskSubtaskView({
             disabled={!selectedTaskObj.parentTaskId}
             title="Unmap Subtask"
             style={{
+              flex: 1,
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1px solid #EF4444',
-              padding: '4px 6px',
+              padding: '6px 6px',
               borderRadius: '8px',
-              fontSize: '10px',
+              fontSize: '11px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '2px',
+              justify: 'center',
+              gap: '3px',
               opacity: selectedTaskObj.parentTaskId ? 1 : 0.5,
               whiteSpace: 'nowrap',
-              flexShrink: 0
+              height: '31px'
             }}
           >
-            <Unlink size={12} color="#DC2626" /> Unmap
+            <Unlink size={13} color="#DC2626" /> Unmap
           </button>
         </div>
       )}
