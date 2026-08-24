@@ -13,7 +13,8 @@ import {
   Grid as GridIcon,
   Plus,
   Zap,
-  User
+  User,
+  Archive
 } from 'lucide-react';
 
 export default function Header({ 
@@ -24,53 +25,57 @@ export default function Header({
   onToggleSidebar, 
   onTriggerAlertPreview,
   onOpenQuickAdd,
-  onOpenAuth
+  onOpenAuth,
+  showArchivedVault,
+  onToggleArchivedVault
 }) {
   const isOverloaded = capacityData?.isOverloaded;
 
   return (
     <>
       {/* Top Mobile-Responsive Navbar */}
-      <header className="glass-panel" style={{ padding: '10px 16px', margin: '10px 12px', borderRadius: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+      <header className="glass-panel" style={{ padding: '8px 12px', margin: '8px 8px', borderRadius: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'nowrap', gap: '6px' }}>
           
           {/* Hamburger Menu & Brand Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             <button 
               onClick={onToggleSidebar}
               style={{
                 background: '#F1F5F9',
                 border: '1px solid #CBD5E1',
-                borderRadius: '10px',
-                width: '36px',
-                height: '36px',
+                borderRadius: '8px',
+                width: '32px',
+                height: '32px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                color: '#0F172A'
+                color: '#0F172A',
+                flexShrink: 0
               }}
               title="Open Navigation Menu"
             >
-              <Menu size={18} />
+              <Menu size={16} />
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <div style={{
-                width: '34px',
-                height: '34px',
-                borderRadius: '10px',
+                width: '30px',
+                height: '30px',
+                borderRadius: '8px',
                 background: 'linear-gradient(135deg, #DC2626, #B91C1C)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: 'var(--shadow-red)'
+                boxShadow: 'var(--shadow-red)',
+                flexShrink: 0
               }}>
-                <Flame size={20} color="#FFF" />
+                <Flame size={18} color="#FFF" />
               </div>
-              <div>
-                <h1 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A' }}>HABIT HACKER</h1>
-                <p style={{ fontSize: '10px', color: '#64748B', fontWeight: 600 }}>Task & Discipline System</p>
+              <div style={{ lineHeight: 1.1 }}>
+                <h1 style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap', margin: 0 }}>HABIT HACKER</h1>
+                <p className="desktop-only-sub" style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, margin: 0 }}>Task System</p>
               </div>
             </div>
           </div>
@@ -83,18 +88,20 @@ export default function Header({
                 background: 'rgba(220, 38, 38, 0.1)',
                 border: '1px solid rgba(220, 38, 38, 0.4)',
                 color: '#DC2626',
-                padding: '4px 10px',
-                borderRadius: '20px',
-                fontSize: '11px',
+                padding: '3px 8px',
+                borderRadius: '16px',
+                fontSize: '10px',
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                cursor: 'pointer'
+                gap: '3px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}
             >
-              <AlertTriangle size={13} color="#DC2626" />
-              <span>Overplanned (+{capacityData.overloadMinutes}m)</span>
+              <AlertTriangle size={12} color="#DC2626" />
+              <span>+{capacityData.overloadMinutes}m</span>
             </div>
           )}
 
@@ -105,7 +112,7 @@ export default function Header({
               onClick={() => setActiveTab('widgets')}
               style={{ border: 'none', padding: '6px 12px', fontSize: '12px', background: activeTab === 'widgets' ? 'linear-gradient(135deg, #DC2626, #B91C1C)' : 'transparent', color: activeTab === 'widgets' ? '#FFF' : '#334155' }}
             >
-              <GridIcon size={14} /> Widgets Hub
+              <GridIcon size={14} /> Widgets
             </button>
 
             <button 
@@ -141,31 +148,36 @@ export default function Header({
             </button>
           </nav>
 
-          {/* User Auth Avatar & Quick Add Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button 
-              onClick={onOpenAuth}
-              style={{
-                background: currentUser ? '#DC2626' : '#F1F5F9',
-                color: currentUser ? '#FFF' : '#0F172A',
-                border: '1px solid #CBD5E1',
-                borderRadius: '10px',
-                padding: '6px 10px',
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
-              title="Supabase Account Login / Register"
-            >
-              <User size={14} />
-              <span>{currentUser ? (currentUser.user_metadata?.display_name || 'Profile') : 'Login'}</span>
-            </button>
+          {/* Archived Vault & Quick Add Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            {onToggleArchivedVault && (
+              <button
+                className="btn-secondary"
+                onClick={onToggleArchivedVault}
+                style={{
+                  color: showArchivedVault ? '#DC2626' : '#475569',
+                  borderColor: showArchivedVault ? '#DC2626' : '#CBD5E1',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '5px 8px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  whiteSpace: 'nowrap'
+                }}
+                title="Toggle Archived Task Vault"
+              >
+                <Archive size={13} /> Vault
+              </button>
+            )}
 
-            <button className="btn-primary" onClick={onOpenQuickAdd} style={{ padding: '6px 12px', height: '34px', minHeight: '34px', fontSize: '12px' }}>
-              <Plus size={14} /> Add Task
+            <button 
+              className="btn-primary" 
+              onClick={onOpenQuickAdd} 
+              style={{ padding: '5px 10px', height: '32px', minHeight: '32px', fontSize: '11px', fontWeight: 800, whiteSpace: 'nowrap' }}
+            >
+              <Plus size={13} /> Add Task
             </button>
           </div>
 
