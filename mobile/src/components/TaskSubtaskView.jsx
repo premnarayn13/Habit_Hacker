@@ -20,7 +20,8 @@ import {
   X,
   Zap,
   Activity,
-  Ruler
+  Ruler,
+  ExternalLink
 } from 'lucide-react';
 
 export default function TaskSubtaskView({ 
@@ -56,6 +57,10 @@ export default function TaskSubtaskView({
   // Measure Modal Popup State for Daily Performance Measure Input
   const [measureModalTask, setMeasureModalTask] = useState(null);
   const [measureInputValue, setMeasureInputValue] = useState('');
+
+  // Searchable Custom Select Dropdown Modal State ('TYPE', 'CATEGORY', 'SORT', or null)
+  const [pickerModalMode, setPickerModalMode] = useState(null);
+  const [pickerSearchQuery, setPickerSearchQuery] = useState('');
 
   const toggleExpand = (taskId) => {
     setExpandedTasks(prev => ({ ...prev, [taskId]: !prev[taskId] }));
@@ -189,73 +194,143 @@ export default function TaskSubtaskView({
     }
   };
 
+  // Options for Searchable Template Dropdown Select Modal
+  const getTypeOptions = () => [
+    { val: 'ALL', label: 'All Tasks' },
+    { val: 'PARENTS_ONLY', label: 'Parents Only' },
+    { val: 'SUBTASKS_ONLY', label: 'Subtasks Only' }
+  ];
+
+  const getSortOptions = () => [
+    { val: 'START_DATE_ASC', label: 'Start Date (Earliest)' },
+    { val: 'START_DATE_DESC', label: 'Start Date (Latest)' },
+    { val: 'END_DATE_ASC', label: 'End Date (Earliest)' },
+    { val: 'END_DATE_DESC', label: 'End Date (Furthest)' },
+    { val: 'DURATION_ASC', label: 'Duration (Shortest)' },
+    { val: 'DURATION_DESC', label: 'Duration (Longest)' },
+    { val: 'PRIORITY', label: 'Priority Order' }
+  ];
+
+  const getPickerOptions = () => {
+    let opts = [];
+    if (pickerModalMode === 'TYPE') opts = getTypeOptions();
+    else if (pickerModalMode === 'CATEGORY') opts = categoriesList.map(c => ({ val: c, label: c }));
+    else if (pickerModalMode === 'SORT') opts = getSortOptions();
+
+    if (!pickerSearchQuery.trim()) return opts;
+    const q = pickerSearchQuery.toLowerCase();
+    return opts.filter(o => o.label.toLowerCase().includes(q));
+  };
+
+  const isPickerSelected = (val) => {
+    if (pickerModalMode === 'TYPE') return filterType === val;
+    if (pickerModalMode === 'CATEGORY') return activeCategory === val;
+    if (pickerModalMode === 'SORT') return sortBy === val;
+    return false;
+  };
+
+  const handleSelectPickerOption = (val) => {
+    if (pickerModalMode === 'TYPE') setFilterType(val);
+    if (pickerModalMode === 'CATEGORY') setActiveCategory(val);
+    if (pickerModalMode === 'SORT') setSortBy(val);
+  };
+
+  const getSortLabel = () => {
+    const found = getSortOptions().find(s => s.val === sortBy);
+    return found ? found.label.split(' ')[0] : 'Sort';
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: selectedTaskObj ? '90px' : '20px' }}>
       
-      {/* FILTER & CONTROL TOOLBAR (SINGLE COMPACT ROW WITH ZERO HORIZONTAL SCROLL) */}
-      <div className="glass-panel" style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      {/* FILTER & CONTROL TOOLBAR (COMPACT 100% ZERO-SCROLL BUTTON TRIGGERS FOR SEARCHABLE DROPDOWNS) */}
+      <div className="glass-panel" style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         
-        {/* SINGLE ADAPTIVE HORIZONTAL ROW FOR FILTERS & SORT */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexWrap: 'nowrap', width: '100%' }}>
+        {/* SINGLE 100% ADAPTIVE HORIZONTAL ROW WITH SEARCHABLE DROPDOWN TRIGGERS */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px', flexWrap: 'nowrap', width: '100%' }}>
           
-          {/* Type Filter Dropdown (Replaces All, Parents, Subtasks pill buttons) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', whiteSpace: 'nowrap' }}>Type:</span>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '8px', background: '#FFF', border: '1px solid #CBD5E1', fontWeight: 800, color: '#DC2626' }}
-            >
-              <option value="ALL">All</option>
-              <option value="PARENTS_ONLY">Parents</option>
-              <option value="SUBTASKS_ONLY">Subtasks</option>
-            </select>
-          </div>
+          {/* 1. Type Dropdown Trigger Button */}
+          <button
+            onClick={() => setPickerModalMode('TYPE')}
+            style={{
+              flex: 1,
+              background: '#FFFFFF',
+              border: '1px solid #CBD5E1',
+              padding: '5px 6px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: '#DC2626',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justify: 'space-between',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <span>Type: {filterType === 'ALL' ? 'All' : (filterType === 'PARENTS_ONLY' ? 'Parents' : 'Subtasks')}</span>
+            <ChevronDown size={12} color="#DC2626" />
+          </button>
 
-          {/* Category Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', whiteSpace: 'nowrap' }}>Category:</span>
-            <select
-              value={activeCategory}
-              onChange={(e) => setActiveCategory(e.target.value)}
-              style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '8px', background: '#FFF', border: '1px solid #CBD5E1', fontWeight: 700, color: '#0F172A', maxWidth: '85px' }}
-            >
-              {categoriesList.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
+          {/* 2. Category Dropdown Trigger Button */}
+          <button
+            onClick={() => setPickerModalMode('CATEGORY')}
+            style={{
+              flex: 1,
+              background: '#FFFFFF',
+              border: '1px solid #CBD5E1',
+              padding: '5px 6px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: '#0F172A',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justify: 'space-between',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Cat: {activeCategory}</span>
+            <ChevronDown size={12} color="#64748B" />
+          </button>
 
-          {/* Sort Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
-            <ArrowUpDown size={12} color="#64748B" />
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', whiteSpace: 'nowrap' }}>Sort:</span>
-            <select 
-              value={sortBy} 
-              onChange={(e) => setSortBy(e.target.value)}
-              style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '8px', background: '#FFF', border: '1px solid #CBD5E1', fontWeight: 700, maxWidth: '105px' }}
-            >
-              <option value="START_DATE_ASC">Start Date (Earliest)</option>
-              <option value="START_DATE_DESC">Start Date (Latest)</option>
-              <option value="END_DATE_ASC">End Date (Earliest)</option>
-              <option value="END_DATE_DESC">End Date (Furthest)</option>
-              <option value="DURATION_ASC">Duration (Shortest)</option>
-              <option value="DURATION_DESC">Duration (Longest)</option>
-              <option value="PRIORITY">Priority Order</option>
-            </select>
-          </div>
+          {/* 3. Sort Dropdown Trigger Button */}
+          <button
+            onClick={() => setPickerModalMode('SORT')}
+            style={{
+              flex: 1,
+              background: '#FFFFFF',
+              border: '1px solid #CBD5E1',
+              padding: '5px 6px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: '#0F172A',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justify: 'space-between',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: '3px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <ArrowUpDown size={11} color="#64748B" /> {getSortLabel()}
+            </span>
+            <ChevronDown size={12} color="#64748B" />
+          </button>
 
         </div>
 
         {/* SEARCH BAR POSITIONED BELOW FILTERS */}
         <div style={{ position: 'relative', width: '100%' }}>
-          <Search size={15} color="#64748B" style={{ position: 'absolute', left: '12px', top: '10px' }} />
+          <Search size={14} color="#64748B" style={{ position: 'absolute', left: '10px', top: '9px' }} />
           <input 
             type="text"
             placeholder="Search tasks by title, category, or tags..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: '100%', paddingLeft: '34px', height: '36px', borderRadius: '8px', fontSize: '12px' }}
+            style={{ width: '100%', paddingLeft: '30px', height: '34px', borderRadius: '8px', fontSize: '11px' }}
           />
         </div>
 
@@ -299,8 +374,10 @@ export default function TaskSubtaskView({
             const subtaskRatioStr = `${subtaskCompletedCount}:${subtaskTotalCount} Completed`;
             const subtaskProgPercent = subtaskTotalCount > 0 ? Math.round((subtaskCompletedCount / subtaskTotalCount) * 100) : 0;
 
-            // DYNAMIC REAL-TIME 5-TILE HEATMAP LOG
+            // DYNAMIC REAL-TIME FULL 7-TILE HEATMAP LOG (-6, -5, -4, -3, -2, -1, Today)
             const heatmapTiles = [
+              { label: '-6', isComplete: false },
+              { label: '-5', isComplete: false },
               { label: '-4', isComplete: false },
               { label: '-3', isComplete: false },
               { label: '-2', isComplete: false },
@@ -400,16 +477,16 @@ export default function TaskSubtaskView({
 
                   </div>
 
-                  {/* DYNAMIC REAL-TIME 5-TILE HEATMAP */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#F8FAFC', padding: '4px 8px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', marginRight: '2px' }}>7-DAY:</span>
+                  {/* DYNAMIC REAL-TIME 7-TILE HEATMAP (7 DAYS FULL LOG) */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px', background: '#F8FAFC', padding: '4px 7px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                    <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', marginRight: '2px' }}>7-DAY:</span>
                     {heatmapTiles.map((tile, idx) => (
                       <div 
                         key={idx} 
                         style={{
-                          width: '12px',
-                          height: '12px',
-                          borderRadius: '3px',
+                          width: '11px',
+                          height: '11px',
+                          borderRadius: '2.5px',
                           background: tile.isComplete ? '#22C55E' : '#CBD5E1',
                           boxShadow: tile.isComplete ? '0 0 6px rgba(34, 197, 94, 0.4)' : 'none',
                           transition: 'all 0.2s ease'
@@ -522,7 +599,7 @@ export default function TaskSubtaskView({
         )}
       </div>
 
-      {/* FIXED COMPACT 4-ACTION BOTTOM DOCK (STAYS 100% INSIDE SCREEN BOUNDS - ZERO HORIZONTAL SCROLL) */}
+      {/* FIXED COMPACT 5-ACTION BOTTOM DOCK INCLUDING OPEN BUTTON (STAYS 100% INSIDE SCREEN BOUNDS - ZERO SCROLL) */}
       {selectedTaskObj && (
         <div style={{
           position: 'fixed',
@@ -537,17 +614,40 @@ export default function TaskSubtaskView({
           borderRight: 'none',
           borderBottom: 'none',
           boxShadow: '0 -4px 16px rgba(15, 23, 42, 0.08)',
-          padding: '8px 8px',
+          padding: '6px 4px',
           borderRadius: 0,
           display: 'flex',
           alignItems: 'center',
           justify: 'space-around',
-          gap: '4px',
+          gap: '3px',
           flexWrap: 'nowrap',
           boxSizing: 'border-box',
           animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
-          {/* 1. Archive */}
+          {/* 1. Open Button (Launches Dedicated Full Task Dashboard View) */}
+          <button 
+            onClick={() => onOpenDedicatedTaskPage(selectedTaskObj)}
+            title="Open Dedicated Task Page"
+            style={{
+              background: '#FFFFFF',
+              color: '#DC2626',
+              border: '1px solid #EF4444',
+              padding: '4px 6px',
+              borderRadius: '8px',
+              fontSize: '10px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '2px',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
+            }}
+          >
+            <ExternalLink size={12} color="#DC2626" /> Open
+          </button>
+
+          {/* 2. Archive */}
           <button 
             onClick={() => { onArchiveTask(selectedTaskObj.id); setSelectedTaskId(null); }}
             title="Archive Selected Task"
@@ -555,22 +655,22 @@ export default function TaskSubtaskView({
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1px solid #EF4444',
-              padding: '5px 8px',
+              padding: '4px 6px',
               borderRadius: '8px',
-              fontSize: '11px',
+              fontSize: '10px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '3px',
+              gap: '2px',
               whiteSpace: 'nowrap',
               flexShrink: 0
             }}
           >
-            <Archive size={13} color="#DC2626" /> Archive
+            <Archive size={12} color="#DC2626" /> Archive
           </button>
 
-          {/* 2. Undo */}
+          {/* 3. Undo */}
           <button 
             onClick={() => onUndoTask(selectedTaskObj.id)}
             title="Undo Today's Completion"
@@ -578,22 +678,22 @@ export default function TaskSubtaskView({
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1px solid #EF4444',
-              padding: '5px 8px',
+              padding: '4px 6px',
               borderRadius: '8px',
-              fontSize: '11px',
+              fontSize: '10px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '3px',
+              gap: '2px',
               whiteSpace: 'nowrap',
               flexShrink: 0
             }}
           >
-            <Undo2 size={13} color="#DC2626" /> Undo
+            <Undo2 size={12} color="#DC2626" /> Undo
           </button>
 
-          {/* 3. Map to... (Compact Width to prevent pushing Unmap) */}
+          {/* 4. Map to... (Compact Width to stay strictly within bounds) */}
           <select
             value=""
             onChange={(e) => onMapTaskParent(selectedTaskObj.id, e.target.value)}
@@ -601,15 +701,15 @@ export default function TaskSubtaskView({
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1px solid #EF4444',
-              padding: '5px 4px',
+              padding: '4px 2px',
               borderRadius: '8px',
-              fontSize: '11px',
+              fontSize: '10px',
               fontWeight: 800,
               cursor: 'pointer',
               outline: 'none',
-              height: '29px',
-              width: '84px',
-              maxWidth: '84px',
+              height: '27px',
+              width: '74px',
+              maxWidth: '74px',
               whiteSpace: 'nowrap',
               flexShrink: 0,
               textOverflow: 'ellipsis'
@@ -621,7 +721,7 @@ export default function TaskSubtaskView({
             ))}
           </select>
 
-          {/* 4. Unmap */}
+          {/* 5. Unmap */}
           <button 
             onClick={() => onUnmapSubtask(selectedTaskObj.id)}
             disabled={!selectedTaskObj.parentTaskId}
@@ -630,21 +730,102 @@ export default function TaskSubtaskView({
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1px solid #EF4444',
-              padding: '5px 8px',
+              padding: '4px 6px',
               borderRadius: '8px',
-              fontSize: '11px',
+              fontSize: '10px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '3px',
+              gap: '2px',
               opacity: selectedTaskObj.parentTaskId ? 1 : 0.5,
               whiteSpace: 'nowrap',
               flexShrink: 0
             }}
           >
-            <Unlink size={13} color="#DC2626" /> Unmap
+            <Unlink size={12} color="#DC2626" /> Unmap
           </button>
+        </div>
+      )}
+
+      {/* SEARCHABLE CUSTOM TEMPLATE DROPDOWN SELECT MODAL CARD */}
+      {pickerModalMode && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.6)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justify: 'center',
+          zIndex: 1600,
+          padding: '20px'
+        }} onClick={() => { setPickerModalMode(null); setPickerSearchQuery(''); }}>
+          
+          <div 
+            className="glass-panel" 
+            onClick={(e) => e.stopPropagation()} 
+            style={{ width: '100%', maxWidth: '380px', padding: '20px', borderRadius: '18px', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', background: '#FFF' }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                Select {pickerModalMode === 'TYPE' ? 'Task Type' : (pickerModalMode === 'CATEGORY' ? 'Category' : 'Sorting Order')}
+              </h3>
+              <button 
+                onClick={() => { setPickerModalMode(null); setPickerSearchQuery(''); }}
+                style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', padding: 0 }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Search Filter Box inside Dropdown Card */}
+            <div style={{ position: 'relative', width: '100%', marginBottom: '14px' }}>
+              <Search size={14} color="#64748B" style={{ position: 'absolute', left: '10px', top: '10px' }} />
+              <input 
+                type="text"
+                autoFocus
+                placeholder="Search options..."
+                value={pickerSearchQuery}
+                onChange={(e) => setPickerSearchQuery(e.target.value)}
+                style={{ width: '100%', paddingLeft: '32px', height: '34px', borderRadius: '8px', fontSize: '12px', border: '1px solid #CBD5E1' }}
+              />
+            </div>
+
+            {/* Options List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '240px', overflowY: 'auto' }}>
+              {getPickerOptions().map(opt => {
+                const selected = isPickerSelected(opt.val);
+                return (
+                  <button
+                    key={opt.val}
+                    onClick={() => { handleSelectPickerOption(opt.val); setPickerModalMode(null); setPickerSearchQuery(''); }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justify: 'space-between',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      background: selected ? '#FEF2F2' : '#F8FAFC',
+                      border: selected ? '1.5px solid #DC2626' : '1px solid #E2E8F0',
+                      color: selected ? '#DC2626' : '#0F172A',
+                      fontWeight: 800,
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                  >
+                    <span>{opt.label}</span>
+                    {selected && <CheckCircle2 size={16} color="#DC2626" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
@@ -660,7 +841,7 @@ export default function TaskSubtaskView({
           backdropFilter: 'blur(6px)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
+          justify: 'center',
           zIndex: 1500,
           padding: '20px'
         }}>
@@ -729,25 +910,3 @@ export default function TaskSubtaskView({
     </div>
   );
 }
-
-// Push commit iteration 4
-
-// Push commit iteration 8
-
-// Push commit iteration 9
-
-// Push commit iteration 10
-
-// Push commit iteration 11
-
-// Push commit iteration 12
-
-// Push commit iteration 13
-
-// Push commit iteration 14
-
-// Push commit iteration 15
-
-// Push commit iteration 16
-
-// Push commit iteration 21
