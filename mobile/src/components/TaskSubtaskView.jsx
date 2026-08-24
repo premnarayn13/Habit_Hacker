@@ -192,46 +192,33 @@ export default function TaskSubtaskView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: selectedTaskObj ? '90px' : '20px' }}>
       
-      {/* FILTER & CONTROL TOOLBAR (ADAPTIVE SINGLE SCROLLABLE LINE ON MOBILE) */}
+      {/* FILTER & CONTROL TOOLBAR (SINGLE COMPACT ROW WITH ZERO HORIZONTAL SCROLL) */}
       <div className="glass-panel" style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         
         {/* SINGLE ADAPTIVE HORIZONTAL ROW FOR FILTERS & SORT */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: '2px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexWrap: 'nowrap', width: '100%' }}>
           
-          {/* Type Filter Pills (Shortened labels: All, Parents, Subtasks) */}
-          <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-            {[
-              { label: 'All', val: 'ALL' },
-              { label: 'Parents', val: 'PARENTS_ONLY' },
-              { label: 'Subtasks', val: 'SUBTASKS_ONLY' }
-            ].map(f => (
-              <button
-                key={f.val}
-                onClick={() => setFilterType(f.val)}
-                style={{
-                  background: filterType === f.val ? '#DC2626' : '#F8FAFC',
-                  color: filterType === f.val ? '#FFF' : '#475569',
-                  border: '1px solid #CBD5E1',
-                  padding: '4px 10px',
-                  borderRadius: '8px',
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {f.label}
-              </button>
-            ))}
+          {/* Type Filter Dropdown (Replaces All, Parents, Subtasks pill buttons) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', whiteSpace: 'nowrap' }}>Type:</span>
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '8px', background: '#FFF', border: '1px solid #CBD5E1', fontWeight: 800, color: '#DC2626' }}
+            >
+              <option value="ALL">All</option>
+              <option value="PARENTS_ONLY">Parents</option>
+              <option value="SUBTASKS_ONLY">Subtasks</option>
+            </select>
           </div>
 
           {/* Category Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', whiteSpace: 'nowrap' }}>Category:</span>
             <select
               value={activeCategory}
               onChange={(e) => setActiveCategory(e.target.value)}
-              style={{ padding: '4px 8px', fontSize: '11px', borderRadius: '8px', background: '#FFF', border: '1px solid #CBD5E1', fontWeight: 700, color: '#0F172A' }}
+              style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '8px', background: '#FFF', border: '1px solid #CBD5E1', fontWeight: 700, color: '#0F172A', maxWidth: '85px' }}
             >
               {categoriesList.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
@@ -240,13 +227,13 @@ export default function TaskSubtaskView({
           </div>
 
           {/* Sort Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
             <ArrowUpDown size={12} color="#64748B" />
             <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', whiteSpace: 'nowrap' }}>Sort:</span>
             <select 
               value={sortBy} 
               onChange={(e) => setSortBy(e.target.value)}
-              style={{ padding: '4px 8px', fontSize: '11px', borderRadius: '8px', background: '#FFF', border: '1px solid #CBD5E1', fontWeight: 700 }}
+              style={{ padding: '4px 6px', fontSize: '11px', borderRadius: '8px', background: '#FFF', border: '1px solid #CBD5E1', fontWeight: 700, maxWidth: '105px' }}
             >
               <option value="START_DATE_ASC">Start Date (Earliest)</option>
               <option value="START_DATE_DESC">Start Date (Latest)</option>
@@ -535,7 +522,7 @@ export default function TaskSubtaskView({
         )}
       </div>
 
-      {/* FIXED CLEAN SINGLE-LINE ACTION DOCK (4 COMPACT ACTIONS - ZERO HORIZONTAL SCROLL) */}
+      {/* FIXED COMPACT 4-ACTION BOTTOM DOCK (STAYS 100% INSIDE SCREEN BOUNDS - ZERO HORIZONTAL SCROLL) */}
       {selectedTaskObj && (
         <div style={{
           position: 'fixed',
@@ -550,13 +537,14 @@ export default function TaskSubtaskView({
           borderRight: 'none',
           borderBottom: 'none',
           boxShadow: '0 -4px 16px rgba(15, 23, 42, 0.08)',
-          padding: '8px 10px',
+          padding: '8px 8px',
           borderRadius: 0,
           display: 'flex',
           alignItems: 'center',
           justify: 'space-around',
-          gap: '6px',
+          gap: '4px',
           flexWrap: 'nowrap',
+          boxSizing: 'border-box',
           animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
           {/* 1. Archive */}
@@ -567,19 +555,19 @@ export default function TaskSubtaskView({
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1px solid #EF4444',
-              padding: '6px 12px',
+              padding: '5px 8px',
               borderRadius: '8px',
-              fontSize: '12px',
+              fontSize: '11px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
+              gap: '3px',
               whiteSpace: 'nowrap',
               flexShrink: 0
             }}
           >
-            <Archive size={14} color="#DC2626" /> Archive
+            <Archive size={13} color="#DC2626" /> Archive
           </button>
 
           {/* 2. Undo */}
@@ -590,22 +578,22 @@ export default function TaskSubtaskView({
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1px solid #EF4444',
-              padding: '6px 12px',
+              padding: '5px 8px',
               borderRadius: '8px',
-              fontSize: '12px',
+              fontSize: '11px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
+              gap: '3px',
               whiteSpace: 'nowrap',
               flexShrink: 0
             }}
           >
-            <Undo2 size={14} color="#DC2626" /> Undo
+            <Undo2 size={13} color="#DC2626" /> Undo
           </button>
 
-          {/* 3. Map to... */}
+          {/* 3. Map to... (Compact Width to prevent pushing Unmap) */}
           <select
             value=""
             onChange={(e) => onMapTaskParent(selectedTaskObj.id, e.target.value)}
@@ -613,15 +601,18 @@ export default function TaskSubtaskView({
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1px solid #EF4444',
-              padding: '6px 8px',
+              padding: '5px 4px',
               borderRadius: '8px',
-              fontSize: '12px',
+              fontSize: '11px',
               fontWeight: 800,
               cursor: 'pointer',
               outline: 'none',
-              height: '31px',
+              height: '29px',
+              width: '84px',
+              maxWidth: '84px',
               whiteSpace: 'nowrap',
-              flexShrink: 0
+              flexShrink: 0,
+              textOverflow: 'ellipsis'
             }}
           >
             <option value="">Map to...</option>
@@ -639,20 +630,20 @@ export default function TaskSubtaskView({
               background: '#FFFFFF',
               color: '#0F172A',
               border: '1px solid #EF4444',
-              padding: '6px 12px',
+              padding: '5px 8px',
               borderRadius: '8px',
-              fontSize: '12px',
+              fontSize: '11px',
               fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
+              gap: '3px',
               opacity: selectedTaskObj.parentTaskId ? 1 : 0.5,
               whiteSpace: 'nowrap',
               flexShrink: 0
             }}
           >
-            <Unlink size={14} color="#DC2626" /> Unmap
+            <Unlink size={13} color="#DC2626" /> Unmap
           </button>
         </div>
       )}
