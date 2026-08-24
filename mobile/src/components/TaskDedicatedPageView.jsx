@@ -1,101 +1,76 @@
 import React, { useState } from 'react';
 import { 
   ArrowLeft, 
-  Calendar, 
-  Clock, 
-  Tag, 
-  Flag, 
-  Users, 
-  Paperclip, 
-  Target, 
+  ChevronRight, 
   CheckCircle2, 
   Circle, 
+  Plus, 
+  Calendar, 
+  Clock, 
+  Layers, 
   Edit3, 
-  Archive, 
   Trash2, 
-  CornerDownRight,
-  Bell,
-  Upload,
-  Download,
-  Flame,
-  Check,
-  X,
-  TrendingUp,
-  Activity,
-  Award,
-  Layers,
+  Archive, 
+  Award, 
+  TrendingUp, 
+  Activity, 
+  ShieldCheck, 
+  Sparkles,
   Zap,
-  BarChart3,
-  Calendar as CalendarIcon,
-  ChevronRight,
+  Filter,
   Search,
-  Filter
+  CheckSquare,
+  CornerDownRight,
+  Folder,
+  Ruler,
+  BarChart3
 } from 'lucide-react';
 
 export default function TaskDedicatedPageView({ 
   task, 
   childSubtasks = [], 
   onBack, 
-  onEditTask, 
-  onToggleTask, 
-  onArchiveTask, 
+  onEditTask,
+  onToggleTask,
+  onArchiveTask,
   onDeleteTask,
   onNavigateToSubtask
 }) {
-  const [subtaskSearchQuery, setSubtaskSearchQuery] = useState('');
-  const [subtaskFilter, setSubtaskFilter] = useState('ALL'); // 'ALL', 'REQUIRED', 'OPTIONAL'
   const [breadcrumbStack, setBreadcrumbStack] = useState([task]);
-
-  if (!task) return null;
+  const [subtaskFilter, setSubtaskFilter] = useState('ALL'); // 'ALL', 'REQUIRED', 'OPTIONAL'
+  const [subtaskSearchQuery, setSubtaskSearchQuery] = useState('');
 
   const currentTask = breadcrumbStack[breadcrumbStack.length - 1] || task;
 
   const calculateSpanDays = (start, end) => {
-    if (!start || !end) return 0;
+    if (!start || !end) return 50;
     const s = new Date(start);
     const e = new Date(end);
     const diffTime = e - s;
-    if (isNaN(diffTime)) return 0;
+    if (isNaN(diffTime)) return 50;
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
     return diffDays;
   };
 
   const totalWindowDays = calculateSpanDays(currentTask.plannedStart, currentTask.plannedEnd);
   
-  // Elapsed days calculation
-  const startDateObj = new Date(currentTask.plannedStart || Date.now());
-  const nowObj = new Date();
-  const diffTimeElapsed = nowObj - startDateObj;
-  const elapsedDays = Math.max(1, Math.floor(diffTimeElapsed / (1000 * 60 * 60 * 24)) + 1);
+  const todayDate = new Date();
+  const startDate = new Date(currentTask.plannedStart || Date.now());
+  const elapsedDays = Math.max(0, Math.min(totalWindowDays, Math.floor((todayDate - startDate) / (1000 * 60 * 60 * 24)) + 1));
   const remainingDays = Math.max(0, totalWindowDays - elapsedDays);
 
-  const targetCount = currentTask.targetCount || 50;
-  const currentCount = currentTask.currentCount || 0;
-  const isDone = currentTask.progressPercent >= 100;
+  const targetCount = currentTask.targetCount || currentTask.targetDayCount || currentTask.targetEventCount || totalWindowDays || 50;
+  const currentCount = currentTask.currentCount || currentTask.currentDayCount || currentTask.currentEventCount || 0;
 
-  // Optional Subtask Rule evaluation:
-  // Mandatory subtasks are those with isOptional !== true
-  const mandatorySubtasks = childSubtasks.filter(s => !s.isOptional);
+  // Optional Subtask Rules: If parent task has child subtasks, evaluate mandatory vs optional
+  const requiredSubtasks = childSubtasks.filter(s => !s.isOptional);
   const optionalSubtasks = childSubtasks.filter(s => s.isOptional);
 
-  const allMandatoryDone = mandatorySubtasks.length === 0 || mandatorySubtasks.every(s => s.progressPercent >= 100);
-  const isParentEvaluatedFullyComplete = isDone || allMandatoryDone;
+  const areRequiredSubtasksComplete = requiredSubtasks.length > 0
+    ? requiredSubtasks.every(s => s.progressPercent >= 100 || s.status === 'COMPLETED' || s.isDoneToday)
+    : true;
 
-  // Grace Days for count_days mode: (totalWindowDays - targetCount)
-  const graceDaysAllowed = Math.max(0, totalWindowDays - targetCount);
-  const missedDaysCount = Math.max(0, elapsedDays - currentCount);
-  const graceDaysRemaining = Math.max(0, graceDaysAllowed - missedDaysCount);
-
-  // LeetCode-style activity matrix grid data (past 60 days mock activity intensity)
-  const activityMatrixDays = Array.from({ length: 60 }, (_, idx) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (59 - idx));
-    const count = (idx % 7 === 0 || idx % 11 === 0) ? 0 : (idx % 3 === 0 ? 3 : (idx % 5 === 0 ? 5 : 1));
-    return {
-      date: d.toISOString().split('T')[0],
-      count
-    };
-  });
+  const isParentEvaluatedFullyComplete = (currentTask.progressPercent >= 100 || currentTask.isDoneToday) && areRequiredSubtasksComplete;
 
   // Filter child subtasks
   let filteredSubtasks = childSubtasks;
@@ -115,6 +90,25 @@ export default function TaskDedicatedPageView({
   const handleBreadcrumbClick = (index) => {
     setBreadcrumbStack(prev => prev.slice(0, index + 1));
   };
+
+  // Mock / Real Daily Quantitative Performance Logs (e.g. 10 rounds, 12 rounds, 8 rounds)
+  const measureUnit = currentTask.measureUnit || 'units';
+  const measureTarget = currentTask.measureTarget || 10;
+  
+  // Sample daily performance points for chart visualization
+  const sampleDailyMeasures = [
+    { day: 'Day 1', val: Math.round(measureTarget * 0.8) },
+    { day: 'Day 2', val: Math.round(measureTarget * 1.0) },
+    { day: 'Day 3', val: Math.round(measureTarget * 0.7) },
+    { day: 'Day 4', val: Math.round(measureTarget * 1.2) },
+    { day: 'Day 5', val: Math.round(measureTarget * 0.9) },
+    { day: 'Day 6', val: Math.round(measureTarget * 1.1) },
+    { day: 'Today', val: currentTask.isDoneToday ? (currentTask.lastMeasuredValue || measureTarget) : 0 }
+  ];
+
+  const maxMeasureVal = Math.max(...sampleDailyMeasures.map(d => d.val), measureTarget, 1);
+  const totalMeasuredSum = sampleDailyMeasures.reduce((sum, d) => sum + d.val, 0);
+  const avgMeasuredVal = (totalMeasuredSum / sampleDailyMeasures.filter(d => d.val > 0).length || 1).toFixed(1);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '22px', paddingBottom: '40px' }}>
@@ -159,44 +153,41 @@ export default function TaskDedicatedPageView({
           <button className="btn-secondary" onClick={() => onEditTask(currentTask)}>
             <Edit3 size={15} /> Edit Task
           </button>
-          <button className="btn-secondary" onClick={() => onArchiveTask(currentTask.id)} style={{ color: '#D97706' }}>
-            <Archive size={15} /> {currentTask.isArchived ? 'Unarchive' : 'Archive'}
+          <button className="btn-secondary" style={{ color: '#D97706', borderColor: '#FDE68A' }} onClick={() => onArchiveTask(currentTask.id)}>
+            <Archive size={15} /> Archive
           </button>
-          <button className="btn-primary" onClick={() => onDeleteTask(currentTask.id)} style={{ background: '#DC2626' }}>
+          <button className="btn-secondary" style={{ color: '#DC2626', borderColor: '#FCA5A5' }} onClick={() => onDeleteTask(currentTask.id)}>
             <Trash2 size={15} /> Delete
           </button>
         </div>
-
       </div>
 
-      {/* Main Task Hero Details & Optional Subtask Banner */}
-      <div className="glass-panel" style={{ padding: '28px', borderLeft: currentTask.parentTaskId ? '8px solid #D97706' : '8px solid #DC2626', background: currentTask.parentTaskId ? '#FFFDF5' : '#FFFFFF' }}>
+      {/* FULL TASK DETAILS PANEL */}
+      <div className="glass-panel" style={{ padding: '24px' }}>
         
-        {/* Badges */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
-          {currentTask.parentTaskId ? (
-            <span style={{ background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', padding: '4px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 900 }}>
-              GOLD CHILD SUBTASK
-            </span>
-          ) : (
-            <span style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#DC2626', border: '1px solid rgba(220, 38, 38, 0.3)', padding: '4px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 900 }}>
-              STANDALONE PARENT TASK
-            </span>
-          )}
-
-          <span className={`badge badge-${(currentTask.priority || 'HIGH').toLowerCase()}`}>{currentTask.priority} Priority</span>
-          {currentTask.isOptional && <span className="badge badge-optional">Optional Task</span>}
-
-          <span style={{ background: '#F1F5F9', color: '#475569', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700 }}>
-            Category: {currentTask.category || 'Education'}
+        {/* Title, Category & Priority Badges */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
+          <span style={{ fontSize: '12px', fontWeight: 800, color: '#475569', background: '#F1F5F9', border: '1px solid #CBD5E1', padding: '4px 10px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Folder size={13} color="#64748B" /> {currentTask.category || 'General'}
           </span>
-
-          <span style={{ background: '#F1F5F9', color: '#475569', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 700 }}>
+          <span style={{ fontSize: '12px', fontWeight: 800, color: '#D97706', background: '#FEF3C7', border: '1px solid #FDE68A', padding: '4px 10px', borderRadius: '8px' }}>
             Section: {currentTask.section || 'General'}
           </span>
+          <span style={{ fontSize: '12px', fontWeight: 800, color: '#DC2626', background: '#FEE2E2', border: '1px solid #FCA5A5', padding: '4px 10px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Zap size={14} color="#DC2626" fill="#DC2626" /> Priority: {currentTask.priority || 'HIGH'}
+          </span>
+          {currentTask.isOptional && (
+            <span style={{ fontSize: '12px', fontWeight: 800, color: '#CA8A04', background: '#FEF9C3', border: '1px solid #FDE047', padding: '4px 10px', borderRadius: '8px' }}>
+              ⚡ Optional Entity
+            </span>
+          )}
+          {currentTask.hasMeasureTracking && (
+            <span style={{ fontSize: '12px', fontWeight: 800, color: '#2563EB', background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '4px 10px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              <Ruler size={14} /> Measures in: {measureUnit}
+            </span>
+          )}
         </div>
 
-        {/* Title & Evaluation Banner */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
           <div>
             <h1 style={{ fontSize: '28px', fontWeight: 900, color: '#0F172A', lineHeight: '1.2' }}>
@@ -229,7 +220,7 @@ export default function TaskDedicatedPageView({
             }}>
               <Award size={18} />
               {isParentEvaluatedFullyComplete 
-                ? 'Parent Evaluated as 100% Fully Completed (Mandatory criteria met)'
+                ? 'Parent Evaluated as 100% Fully Completed'
                 : 'Pending Mandatory Subtasks Completion'}
             </div>
           )}
@@ -254,10 +245,63 @@ export default function TaskDedicatedPageView({
 
       </div>
 
+      {/* DAILY QUANTITATIVE PERFORMANCE MEASURE ANALYTICS BAR CHART (IF ENABLED) */}
+      {currentTask.hasMeasureTracking && (
+        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BarChart3 size={20} color="#2563EB" /> Daily Quantitative Measure Performance ({measureUnit})
+            </h3>
+
+            <div style={{ display: 'flex', gap: '12px', fontSize: '12px', fontWeight: 800, color: '#475569' }}>
+              <span>Total Logged: <strong style={{ color: '#2563EB' }}>{totalMeasuredSum} {measureUnit}</strong></span>
+              <span>Daily Avg: <strong style={{ color: '#16A34A' }}>{avgMeasuredVal} {measureUnit}/day</strong></span>
+              <span>Target: <strong style={{ color: '#DC2626' }}>{measureTarget} {measureUnit}</strong></span>
+            </div>
+          </div>
+
+          {/* Daily Measure Bar Graph */}
+          <div style={{ background: '#F8FAFC', padding: '20px', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '140px', gap: '10px', paddingBottom: '10px', borderBottom: '2px solid #E2E8F0' }}>
+              {sampleDailyMeasures.map((pt, idx) => {
+                const barHeight = Math.round((pt.val / maxMeasureVal) * 100);
+                const isTargetMet = pt.val >= measureTarget;
+
+                return (
+                  <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 800, color: pt.val > 0 ? (isTargetMet ? '#16A34A' : '#2563EB') : '#94A3B8', marginBottom: '4px' }}>
+                      {pt.val > 0 ? pt.val : '-'}
+                    </div>
+
+                    <div style={{
+                      width: '80%',
+                      maxWidth: '32px',
+                      height: `${barHeight || 4}%`,
+                      background: isTargetMet ? 'linear-gradient(180deg, #22C55E, #15803D)' : (pt.val > 0 ? 'linear-gradient(180deg, #3B82F6, #1D4ED8)' : '#E2E8F0'),
+                      borderRadius: '6px 6px 0 0',
+                      transition: 'height 0.4s ease',
+                      boxShadow: pt.val > 0 ? '0 4px 10px rgba(37, 99, 235, 0.2)' : 'none'
+                    }} title={`${pt.day}: ${pt.val} ${measureUnit}`} />
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+              {sampleDailyMeasures.map((pt, idx) => (
+                <div key={idx} style={{ flex: 1, textAlign: 'center', fontSize: '11px', fontWeight: 800, color: '#64748B' }}>
+                  {pt.day}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* HIGH-IMPACT ANALYTICS & VISUAL SUITE */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px' }}>
         
-        {/* B. Progress Gauges & Time Metrics */}
+        {/* Progress Gauges & Time Metrics */}
         <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
           <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Activity size={18} color="#DC2626" /> Progress Gauges & Time Metrics
@@ -275,7 +319,7 @@ export default function TaskDedicatedPageView({
               justifyContent: 'center',
               boxShadow: '0 4px 12px rgba(220, 38, 38, 0.2)'
             }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 900, color: '#0F172A' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#FFF', fontSize: '16px', fontWeight: 900, color: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {currentTask.progressPercent || 0}%
               </div>
             </div>
@@ -298,240 +342,142 @@ export default function TaskDedicatedPageView({
               <span>{remainingDays} Days Remaining</span>
             </div>
             <div style={{ width: '100%', height: '12px', background: '#E2E8F0', borderRadius: '6px', overflow: 'hidden', display: 'flex' }}>
-              <div style={{ width: `${Math.min(100, Math.round((elapsedDays / totalWindowDays) * 100))}%`, background: '#2563EB', height: '100%' }} title="Elapsed Days" />
+              <div style={{ width: `${Math.min(100, Math.round((elapsedDays/totalWindowDays)*100))}%`, height: '100%', background: '#DC2626' }} />
             </div>
           </div>
-
-          {/* Efficiency Ratio & Streak Counter Widgets */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div style={{ background: '#FFFDF5', border: '1px solid #FDE68A', padding: '14px', borderRadius: '12px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 800, color: '#D97706', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Zap size={14} /> STREAK COUNTER
-              </div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A', marginTop: '4px' }}>
-                7 Days 🔥
-              </div>
-              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>Longest: 14 Days</div>
-            </div>
-
-            <div style={{ background: '#F0FDF4', border: '1px solid #86EFAC', padding: '14px', borderRadius: '12px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 800, color: '#15803D', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <TrendingUp size={14} /> EFFICIENCY RATIO
-              </div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A', marginTop: '4px' }}>
-                {Math.round((currentCount / Math.max(1, elapsedDays)) * 100)}%
-              </div>
-              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>Logs per active day</div>
-            </div>
-          </div>
-
         </div>
 
-        {/* C. Dynamic Mode-Specific Charts */}
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        {/* LeetCode Activity Matrix Heatmap */}
+        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <BarChart3 size={18} color="#D97706" /> Mode Analytics: {currentTask.trackingMode || 'end_date'}
+            <Calendar size={18} color="#2563EB" /> 7-Day Activity Matrix
           </h3>
-
-          {currentTask.trackingMode === 'count_days' ? (
-            <>
-              {/* Grace Days Remaining Gauge */}
-              <div style={{ background: '#FFF', border: '1px solid #CBD5E1', padding: '16px', borderRadius: '14px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 800, color: '#64748B' }}>ALLOWED GRACE / REST DAYS</div>
-                <div style={{ fontSize: '24px', fontWeight: 900, color: graceDaysRemaining > 0 ? '#15803D' : '#DC2626', marginTop: '4px' }}>
-                  {graceDaysRemaining} Grace Days Remaining
-                </div>
-                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
-                  Total Allowed Window: {totalWindowDays} Days | Target: {targetCount} Days | Allowed Rest: {graceDaysAllowed} Days
-                </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', background: '#F8FAFC', padding: '16px', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, idx) => (
+              <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B' }}>{day}</span>
+                <div style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '6px',
+                  background: idx === 6 && (currentTask.isDoneToday || currentTask.progressPercent >= 100) ? '#22C55E' : (idx < 5 ? '#22C55E' : '#CBD5E1'),
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.05)'
+                }} title={`${day}: Activity Logged`} />
               </div>
-
-              {/* Trajectory Burn-Down Indicator */}
-              <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '16px', borderRadius: '14px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>EXPECTED VS ACTUAL BURN-DOWN TRAJECTORY</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#475569', fontWeight: 700 }}>
-                  <span>Target Days Remaining: {Math.max(0, targetCount - currentCount)}</span>
-                  <span>Days Left in Window: {remainingDays}</span>
-                </div>
-                <div style={{ marginTop: '10px', height: '8px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: `${Math.min(100, Math.round((currentCount / targetCount) * 100))}%`, background: '#DC2626', height: '100%' }} />
-                </div>
-              </div>
-            </>
-          ) : currentTask.trackingMode === 'count_event' ? (
-            <>
-              {/* Event Velocity & Peak Activity Highlight */}
-              <div style={{ background: '#FFF', border: '1px solid #CBD5E1', padding: '16px', borderRadius: '14px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 800, color: '#64748B' }}>PEAK DAILY VOLUME & VELOCITY</div>
-                <div style={{ fontSize: '24px', fontWeight: 900, color: '#2563EB', marginTop: '4px' }}>
-                  5 Units / Day (Peak Day 🔥)
-                </div>
-                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
-                  Velocity Projection: Projected Completion in {Math.ceil(Math.max(0, targetCount - currentCount) / 2)} Days
-                </div>
-              </div>
-
-              {/* Volume Distribution */}
-              <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '16px', borderRadius: '14px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>DAILY EVENT VOLUME LOGS</div>
-                <div style={{ display: 'flex', itemsAlign: 'flex-end', gap: '8px', height: '60px', borderBottom: '1px solid #CBD5E1', paddingBottom: '4px' }}>
-                  {[1, 3, 5, 2, 4, 1, 3].map((v, i) => (
-                    <div key={i} style={{ flex: 1, background: v === 5 ? '#DC2626' : '#2563EB', height: `${(v / 5) * 100}%`, borderRadius: '4px 4px 0 0' }} title={`${v} units logged`} />
-                  ))}
-                </div>
-              </div>
-            </>
-          ) : (
-            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '20px', borderRadius: '14px', textAlign: 'center', color: '#64748B' }}>
-              Standard end_date schedule mode. Tracks daily completion until {currentTask.plannedEnd}.
-            </div>
-          )}
-
-        </div>
-
-      </div>
-
-      {/* A. LEETCODE-STYLE ACTIVITY MATRIX & CALENDAR VIEW */}
-      <div className="glass-panel" style={{ padding: '24px' }}>
-        <h3 style={{ fontSize: '17px', fontWeight: 900, color: '#0F172A', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Flame size={20} color="#DC2626" /> LeetCode-Style Activity Matrix (Past 60 Days Logging Intensity)
-        </h3>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '8px', background: '#0F172A', padding: '20px', borderRadius: '16px' }}>
-          {activityMatrixDays.map((item, idx) => {
-            let bg = '#1E293B'; // 0 logs
-            if (item.count === 1) bg = '#166534'; // 1 log
-            if (item.count === 3) bg = '#15803D'; // 3 logs
-            if (item.count === 5) bg = '#DC2626'; // 5+ logs peak
-            return (
-              <div 
-                key={idx} 
-                style={{
-                  height: '24px',
-                  background: bg,
-                  borderRadius: '4px',
-                  border: '1px solid rgba(255,255,255,0.05)',
-                  cursor: 'pointer'
-                }}
-                title={`${item.date}: ${item.count} activity logs`}
-              />
-            );
-          })}
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', marginTop: '10px', fontSize: '11px', color: '#64748B', fontWeight: 700 }}>
-          <span>Less</span>
-          <span style={{ width: '12px', height: '12px', background: '#1E293B', borderRadius: '2px' }} />
-          <span style={{ width: '12px', height: '12px', background: '#166534', borderRadius: '2px' }} />
-          <span style={{ width: '12px', height: '12px', background: '#15803D', borderRadius: '2px' }} />
-          <span style={{ width: '12px', height: '12px', background: '#DC2626', borderRadius: '2px' }} />
-          <span>Peak</span>
-        </div>
-      </div>
-
-      {/* SUBTASK MANAGEMENT DIRECTORY (SEARCH, FILTER, REORDER & RECURSIVE DOUBLE CLICK) */}
-      <div className="glass-panel" style={{ padding: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
-          <div>
-            <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Layers size={20} color="#D97706" /> Subtask Directory & Management ({childSubtasks.length})
-            </h3>
-            <p style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-              Double click any subtask below to recursively navigate into its dedicated Task Info Page (`/tasks/[subtask_id]`).
-            </p>
-          </div>
-
-          {/* Subtask Filter Pills */}
-          <div style={{ display: 'flex', gap: '6px' }}>
-            {[
-              { label: 'All Subtasks', val: 'ALL' },
-              { label: 'Mandatory Required', val: 'REQUIRED' },
-              { label: 'Optional', val: 'OPTIONAL' }
-            ].map(f => (
-              <button
-                key={f.val}
-                onClick={() => setSubtaskFilter(f.val)}
-                style={{
-                  background: subtaskFilter === f.val ? '#D97706' : '#F8FAFC',
-                  color: subtaskFilter === f.val ? '#FFF' : '#475569',
-                  border: '1px solid #CBD5E1',
-                  padding: '4px 10px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                {f.label}
-              </button>
             ))}
           </div>
         </div>
 
-        {/* Subtask Search Bar */}
-        <div style={{ position: 'relative', width: '100%', marginBottom: '16px' }}>
-          <Search size={16} color="#64748B" style={{ position: 'absolute', left: '12px', top: '12px' }} />
-          <input 
-            type="text"
-            placeholder="Search subtasks..."
-            value={subtaskSearchQuery}
-            onChange={(e) => setSubtaskSearchQuery(e.target.value)}
-            style={{ width: '100%', paddingLeft: '38px', height: '38px' }}
-          />
-        </div>
+      </div>
 
-        {/* Subtasks List */}
-        {filteredSubtasks.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '24px', color: '#64748B', fontSize: '13px', fontStyle: 'italic', background: '#F8FAFC', borderRadius: '12px' }}>
-            No subtasks match the criteria.
+      {/* SUBTASK MANAGEMENT SECTION */}
+      {childSubtasks.length > 0 && (
+        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Layers size={20} color="#DC2626" /> Child Subtask Performance Hub ({childSubtasks.length})
+            </h3>
+
+            {/* Filter Pills */}
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {['ALL', 'REQUIRED', 'OPTIONAL'].map(f => (
+                <button
+                  key={f}
+                  onClick={() => setSubtaskFilter(f)}
+                  style={{
+                    background: subtaskFilter === f ? '#DC2626' : '#F1F5F9',
+                    color: subtaskFilter === f ? '#FFF' : '#475569',
+                    border: '1px solid #CBD5E1',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
           </div>
-        ) : (
+
+          {/* Subtask Search Input */}
+          <div style={{ position: 'relative', width: '100%' }}>
+            <Search size={16} color="#64748B" style={{ position: 'absolute', left: '12px', top: '11px' }} />
+            <input 
+              type="text"
+              placeholder="Filter child subtasks..."
+              value={subtaskSearchQuery}
+              onChange={(e) => setSubtaskSearchQuery(e.target.value)}
+              style={{ width: '100%', paddingLeft: '36px', height: '38px', borderRadius: '8px', fontSize: '12px' }}
+            />
+          </div>
+
+          {/* Subtasks List */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {filteredSubtasks.map(sub => (
-              <div
-                key={sub.id}
-                onDoubleClick={() => handleSubtaskClick(sub)}
-                style={{
-                  background: '#FFFDF5',
-                  border: '1px solid #FDE68A',
-                  padding: '14px 18px',
-                  borderRadius: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                title="Double click to open subtask info page"
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <CornerDownRight size={16} color="#D97706" />
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A' }}>{sub.title}</span>
-                      {sub.isOptional ? (
-                        <span className="badge badge-optional">Optional Subtask</span>
-                      ) : (
-                        <span style={{ background: '#FEE2E2', color: '#991B1B', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 800 }}>Mandatory</span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
-                      📅 Start: {sub.plannedStart} | End: {sub.plannedEnd} | {sub.estimatedMinutes}m
+            {filteredSubtasks.map(sub => {
+              const isSubDone = sub.progressPercent >= 100 || sub.status === 'COMPLETED' || sub.isDoneToday;
+
+              return (
+                <div 
+                  key={sub.id}
+                  onClick={() => handleSubtaskClick(sub)}
+                  style={{
+                    background: sub.isOptional ? '#FFFDF5' : '#FFF',
+                    border: sub.isOptional ? '1px solid #FDE68A' : '1px solid #CBD5E1',
+                    padding: '14px 18px',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  title="Click to recursively view subtask detail dashboard"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {isSubDone ? (
+                      <CheckCircle2 size={20} color="#16A34A" />
+                    ) : (
+                      <Circle size={20} color="#94A3B8" />
+                    )}
+
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <CornerDownRight size={14} color="#D97706" />
+                        <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>
+                          {sub.title}
+                        </span>
+
+                        {sub.isOptional ? (
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#CA8A04', background: '#FEF9C3', padding: '2px 6px', borderRadius: '4px' }}>
+                            Optional Subtask
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#DC2626', background: '#FEE2E2', padding: '2px 6px', borderRadius: '4px' }}>
+                            Mandatory Criteria
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '16px', fontWeight: 900, color: '#D97706' }}>{sub.progressPercent}%</span>
-                  <ChevronRight size={18} color="#D97706" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 900, color: '#DC2626' }}>
+                      {sub.progressPercent || 0}%
+                    </span>
+                    <ChevronRight size={16} color="#64748B" />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        )}
 
-      </div>
+        </div>
+      )}
 
     </div>
   );
