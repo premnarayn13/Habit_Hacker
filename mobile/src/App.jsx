@@ -33,6 +33,9 @@ const INITIAL_DEFAULT_TASKS = [
     collab: 'Dev Team',
     priority: 'HIGH',
     isOptional: false,
+    hasMeasureTracking: false,
+    measureUnit: 'units',
+    measureTarget: 0,
     progressPercent: 0,
     plannedStart: '2026-08-22',
     plannedEnd: '2026-10-10',
@@ -56,22 +59,25 @@ const INITIAL_DEFAULT_TASKS = [
   {
     id: 't-default-2',
     user_id: 'default-user',
-    title: 'Reading Book',
-    description: 'Read 20 pages of technical architecture books daily.',
+    title: 'Morning Jogging',
+    description: 'Daily jogging routine with custom rounds performance measure tracking.',
     collab: '',
     priority: 'HIGH',
     isOptional: false,
+    hasMeasureTracking: true,
+    measureUnit: 'rounds',
+    measureTarget: 10,
     progressPercent: 0,
     plannedStart: '2026-08-22',
     plannedEnd: '2026-10-10',
     deadline: '2026-10-10',
     estimatedMinutes: 30,
-    reminderTime: '08:30 PM',
+    reminderTime: '06:30 AM',
     actualMinutes: 0,
-    category: 'Education',
-    section: 'Self Improvement',
-    trackingMode: 'count_event',
-    targetCount: 110,
+    category: 'Health',
+    section: 'Fitness',
+    trackingMode: 'count_days',
+    targetCount: 30,
     currentCount: 0,
     repeatRule: 'DAILY',
     parentTaskId: '',
@@ -89,6 +95,9 @@ const INITIAL_DEFAULT_TASKS = [
     collab: '',
     priority: 'HIGH',
     isOptional: true,
+    hasMeasureTracking: false,
+    measureUnit: 'pages',
+    measureTarget: 5,
     progressPercent: 0,
     plannedStart: '2026-08-22',
     plannedEnd: '2026-10-10',
@@ -124,6 +133,7 @@ export default function App() {
   const [selectedDetailItem, setSelectedDetailItem] = useState(null);
   const [selectedEditItem, setSelectedEditItem] = useState(null);
   const [dedicatedTaskPageItem, setDedicatedTaskPageItem] = useState(null);
+  const [showArchivedVault, setShowArchivedVault] = useState(false);
 
   const [availableCapacityMinutes, setAvailableCapacityMinutes] = useState(480);
 
@@ -175,8 +185,6 @@ export default function App() {
     });
 
     // 2. Automated Parent Completion Driven by Child Subtasks
-    // When ALL child subtasks are completed for today, parent task gets marked as completed for today,
-    // and its target count gets incremented by 1 turn (e.g. 1/45 -> 2%), without corrupting its targetMax!
     updatedTasks = updatedTasks.map(task => {
       const childSubtasks = updatedTasks.filter(t => t.parentTaskId === task.id);
       if (childSubtasks.length > 0) {
@@ -252,6 +260,9 @@ export default function App() {
           collab: t.collab || '',
           priority: t.priority || 'MEDIUM',
           isOptional: t.is_optional || false,
+          hasMeasureTracking: t.has_measure_tracking || false,
+          measureUnit: t.measure_unit || 'units',
+          measureTarget: t.measure_target || 0,
           progressPercent: t.progress_percent || 0,
           plannedStart: t.start_date || t.planned_start || '2026-08-22',
           plannedEnd: t.end_date || t.planned_end || '2026-10-10',
@@ -269,7 +280,7 @@ export default function App() {
           isArchived: t.is_archived || false,
           archivedAt: t.archived_at || null,
           isDoneToday: t.is_done_today || false,
-          skipReason: t.skip_reason || ''
+          skipReason: ''
         }));
 
         const combined = [...mapped];
@@ -431,7 +442,7 @@ export default function App() {
     planAdherenceRate: 100
   };
 
-  const handleToggleTask = async (taskId) => {
+  const handleToggleTask = async (taskId, customMeasureValue = null) => {
     let updatedTask = null;
 
     const newTasks = tasks.map(t => {
@@ -458,7 +469,8 @@ export default function App() {
           currentDayCount: nextCount,
           currentEventCount: nextCount,
           progressPercent: nextProg,
-          isDoneToday: nextIsDone
+          isDoneToday: nextIsDone,
+          lastMeasuredValue: customMeasureValue !== null ? customMeasureValue : t.lastMeasuredValue
         };
         return updatedTask;
       }
@@ -478,7 +490,8 @@ export default function App() {
           task_id: taskId,
           user_id: currentUser.id,
           logged_at: new Date().toISOString(),
-          increment_value: 1
+          increment_value: 1,
+          measured_value: customMeasureValue !== null ? customMeasureValue : 0
         }]);
       }
     }
@@ -586,6 +599,9 @@ export default function App() {
       collab: newTaskData.collab || '',
       priority: newTaskData.priority || 'MEDIUM',
       isOptional: newTaskData.isOptional || false,
+      hasMeasureTracking: newTaskData.hasMeasureTracking || false,
+      measureUnit: newTaskData.measureUnit || 'units',
+      measureTarget: newTaskData.measureTarget || 0,
       progressPercent: 0,
       plannedStart: newTaskData.startDate || '2026-08-22',
       plannedEnd: newTaskData.endDate || '2026-10-10',
@@ -623,6 +639,9 @@ export default function App() {
         collab: newTask.collab,
         priority: newTask.priority,
         is_optional: newTask.isOptional,
+        has_measure_tracking: newTask.hasMeasureTracking,
+        measure_unit: newTask.measureUnit,
+        measure_target: newTask.measureTarget,
         start_date: newTask.plannedStart,
         end_date: newTask.plannedEnd,
         planned_start: newTask.plannedStart,
@@ -654,6 +673,9 @@ export default function App() {
         category: updatedData.category,
         priority: updatedData.priority,
         is_optional: updatedData.isOptional,
+        has_measure_tracking: updatedData.hasMeasureTracking,
+        measure_unit: updatedData.measureUnit,
+        measure_target: updatedData.measureTarget,
         estimated_minutes: updatedData.estimatedMinutes,
         start_date: updatedData.plannedStart,
         end_date: updatedData.plannedEnd,
@@ -697,6 +719,8 @@ export default function App() {
         onTriggerAlertPreview={() => setIsReminderOpen(true)}
         onOpenQuickAdd={handleOpenGeneralQuickAdd}
         onOpenAuth={() => handleTabSwitch('settings')}
+        showArchivedVault={showArchivedVault}
+        onToggleArchivedVault={() => setShowArchivedVault(prev => !prev)}
       />
 
       {/* Sidebar Drawer */}
