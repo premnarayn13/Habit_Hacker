@@ -37,7 +37,13 @@ import {
   AlertCircle,
   Gauge,
   User,
-  GitCommit
+  GitCommit,
+  PieChart,
+  Sun,
+  Moon,
+  Sunset,
+  Compass,
+  Trophy
 } from 'lucide-react';
 
 export default function TaskDedicatedPageView({ 
@@ -93,14 +99,13 @@ export default function TaskDedicatedPageView({
   const isFeasible = trackingMode === 'count_days' ? (remainingDays >= remainingTargetCount) : true;
   const graceDaysRemaining = Math.max(0, remainingDays - remainingTargetCount);
 
-  // Daily Pace Engine (No technical "velocity" jargon)
+  // Daily Pace Engine
   const requiredDailyPace = remainingDays > 0 ? (remainingTargetCount / remainingDays).toFixed(1) : 0;
   const currentDailyPace = elapsedDays > 0 ? (currentCount / elapsedDays).toFixed(1) : 0;
   const paceDifference = (parseFloat(currentDailyPace) - parseFloat(requiredDailyPace)).toFixed(1);
 
   // Child Subtask Analytics & Most Missed Subtask Highlight
   const directChildSubtasks = (childSubtasks.length > 0 ? childSubtasks : allTasks.filter(t => t.parentTaskId === currentTask.id));
-  const subtaskCompletedCount = directChildSubtasks.filter(s => s.isDoneToday || s.progressPercent >= 100).length;
 
   const subtaskFailureStats = directChildSubtasks.map(s => ({
     subtask: s,
@@ -117,7 +122,7 @@ export default function TaskDedicatedPageView({
   const missedDaysCount = Math.max(0, elapsedDays - currentCount);
   const missRatePercent = elapsedDays > 0 ? Math.round((missedDaysCount / elapsedDays) * 100) : 0;
 
-  // Color Palette for Subtasks (Grouped by Subtask Contribution - Image 2 Style)
+  // Color Palette for Subtasks (Grouped by Subtask Contribution)
   const subtaskColors = ['#4338CA', '#F59E0B', '#10B981', '#EF4444', '#06B6D4', '#8B5CF6', '#EC4899'];
 
   // Calculate Daily Performance Bar Chart Data with UNMEASURED SUBTASK AVERAGE LOGIC
@@ -164,15 +169,21 @@ export default function TaskDedicatedPageView({
     };
   });
 
-  // Mode B Histogram Bins
-  const eventHistogramBins = [
-    { range: '1-2 units', count: 4 },
-    { range: '3-4 units', count: 8 },
-    { range: '5-6 units', count: 12 },
-    { range: '7-8 units', count: 6 },
-    { range: '9-10+ units', count: 3 }
+  // NEW GRAPH 1: Grouped Pair Bar Chart (Image 3 Reference: Target vs Actual Monthly Comparison)
+  const monthlyComparisonData = [
+    { month: 'Jun', target: 30, actual: 28 },
+    { month: 'Jul', target: 35, actual: 32 },
+    { month: 'Aug', target: 40, actual: 42 },
+    { month: 'Sep', target: 45, actual: 38 }
   ];
-  const maxHistogramCount = Math.max(...eventHistogramBins.map(b => b.count), 1);
+
+  // NEW GRAPH 2: Time of Day Log Distribution (Morning, Afternoon, Evening)
+  const timeOfDayDistribution = [
+    { period: 'Morning (6 AM - 12 PM)', count: 18, icon: Sun, color: '#F59E0B' },
+    { period: 'Afternoon (12 PM - 6 PM)', count: 10, icon: Sunset, color: '#3B82F6' },
+    { period: 'Evening (6 PM - 12 AM)', count: 14, icon: Moon, color: '#8B5CF6' }
+  ];
+  const totalTimeLogs = timeOfDayDistribution.reduce((a, b) => a + b.count, 0);
 
   // LeetCode 365-Day Activity Grid Matrix (7 rows x 52 weeks = 364 days)
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -247,7 +258,7 @@ export default function TaskDedicatedPageView({
           ))}
         </div>
 
-        {/* Action Buttons ONLY: Edit Metadata, Archive, Delete Task */}
+        {/* Action Buttons ONLY */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <button 
             onClick={() => onArchiveTask(currentTask.id)}
@@ -276,7 +287,7 @@ export default function TaskDedicatedPageView({
 
       </div>
 
-      {/* FEASIBILITY STATUS BANNER (MODE C) */}
+      {/* FEASIBILITY BANNER */}
       <div style={{
         background: isFeasible ? 'linear-gradient(135deg, #F0FDF4, #DCFCE7)' : 'linear-gradient(135deg, #FEF2F2, #FEE2E2)',
         border: isFeasible ? '2px solid #16A34A' : '2px solid #DC2626',
@@ -304,7 +315,7 @@ export default function TaskDedicatedPageView({
         </div>
       </div>
 
-      {/* PARENT TASK SECTION (IF THIS TASK IS A CHILD SUBTASK) */}
+      {/* PARENT TASK SECTION */}
       {parentTask && (
         <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: '14px', borderLeft: '5px solid #2563EB', background: '#EFF6FF' }}>
           <span style={{ fontSize: '10px', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Parent Task Link</span>
@@ -351,7 +362,7 @@ export default function TaskDedicatedPageView({
             </span>
           </div>
 
-          {/* Full Markdown Description Box */}
+          {/* Full Description */}
           <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '10px', border: '1px solid #E2E8F0', marginTop: '8px' }}>
             <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>Full Markdown Task Description</span>
             <p style={{ fontSize: '13px', color: '#334155', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-line' }}>
@@ -360,7 +371,7 @@ export default function TaskDedicatedPageView({
           </div>
         </div>
 
-        {/* Categorized Property Cards Grid */}
+        {/* 20+ Property Cards Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px' }}>
           
           <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '10px', border: '1px solid #E2E8F0', borderLeft: '4px solid #64748B' }}>
@@ -445,7 +456,7 @@ export default function TaskDedicatedPageView({
         </div>
       </div>
 
-      {/* 3. STACKED SUBTASK CONTRIBUTION COLUMN CHART (EXACT REFERENCE TO IMAGE 2) */}
+      {/* 3. STACKED SUBTASK CONTRIBUTION COLUMN CHART (IMAGE 2 REFERENCE) */}
       {(trackingMode === 'end_date' || trackingMode === 'count_days') && (
         <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
@@ -461,10 +472,9 @@ export default function TaskDedicatedPageView({
 
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
             
-            {/* Chart Area with Vertical Y-Axis Scale & Stacked Rounded Bars (Image 2 Model) */}
+            {/* Chart Area with Vertical Y-Axis Scale */}
             <div style={{ flex: 1, minWidth: '280px', display: 'flex', gap: '12px' }}>
               
-              {/* Y-Axis Label Scale */}
               <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '220px', paddingBottom: '24px', fontSize: '10px', fontWeight: 800, color: '#64748B' }}>
                 <span>25</span>
                 <span>20</span>
@@ -474,18 +484,15 @@ export default function TaskDedicatedPageView({
                 <span>0</span>
               </div>
 
-              {/* Stacked Bars Row */}
               <div style={{ flex: 1, height: '220px', display: 'flex', alignItems: 'flex-end', gap: '12px', borderBottom: '2px solid #E2E8F0', paddingBottom: '4px' }}>
                 {sampleDailyMeasures.map((d, i) => (
                   <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
                     
-                    {/* Value & Percentage Label Above Column (e.g. 17 (32.7%)) */}
                     <div style={{ textAlign: 'center', marginBottom: '4px' }}>
                       <span style={{ fontSize: '10px', fontWeight: 900, color: '#0F172A', display: 'block' }}>{d.totalColumnVal}</span>
                       <span style={{ fontSize: '8px', fontWeight: 800, color: '#64748B', display: 'block' }}>{d.columnPercentage}%</span>
                     </div>
 
-                    {/* Stacked Segmented Column */}
                     <div style={{ width: '100%', maxWidth: '34px', borderRadius: '10px', overflow: 'hidden', display: 'flex', flexDirection: 'column-reverse', background: '#E2E8F0', height: `${Math.min(100, (d.totalColumnVal / 25) * 80)}%`, minHeight: '12px' }}>
                       {d.subtaskContributions.map((sc, scIdx) => (
                         <div 
@@ -497,12 +504,11 @@ export default function TaskDedicatedPageView({
                             transition: 'all 0.3s ease',
                             borderBottom: scIdx > 0 ? '1px solid rgba(255,255,255,0.3)' : 'none'
                           }}
-                          title={`${sc.title}: ${sc.val} ${measureUnit} ${sc.isMeasured ? '(Measured)' : '(Avg Assigned)'}`}
+                          title={`${sc.title}: ${sc.val} ${measureUnit}`}
                         />
                       ))}
                     </div>
 
-                    {/* X-Axis Day Label */}
                     <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569', marginTop: '6px' }}>
                       {d.dayLabel}
                     </span>
@@ -511,7 +517,7 @@ export default function TaskDedicatedPageView({
               </div>
             </div>
 
-            {/* Right-Hand Legend Box (Ref: Image 2) */}
+            {/* Right Legend Box */}
             <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', width: '220px', flexShrink: 0 }}>
               <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block', marginBottom: '8px', borderBottom: '1px solid #CBD5E1', paddingBottom: '4px' }}>
                 Subtask Key
@@ -530,42 +536,129 @@ export default function TaskDedicatedPageView({
         </div>
       )}
 
-      {/* MODE B: EVENT FREQUENCY HISTOGRAM */}
-      {trackingMode === 'count_event' && (
-        <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', margin: '0 0 2px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Activity size={16} color="#2563EB" /> Event Intensity Frequency Histogram
-          </h3>
-          <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 14px 0' }}>
-            Distribution density plotting logging session volume (frequency of 1-2 unit days vs 5-6 unit days).
-          </p>
+      {/* NEW GRAPH 1: MONTHLY COMPARISON GROUPED BAR CHART (EXACT REFERENCE TO IMAGE 3) */}
+      <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#1E293B', margin: '0 0 4px 0', textAlign: 'center' }}>
+          Monthly Target vs Actual Performance Comparison
+        </h3>
+        <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 16px 0', textAlign: 'center' }}>
+          Paired bar chart comparing planned monthly output targets against actual completed units.
+        </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-            {eventHistogramBins.map((bin, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', width: '80px', flexShrink: 0 }}>
-                  {bin.range}
-                </span>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', height: '220px', padding: '10px 20px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', fontSize: '10px', fontWeight: 800, color: '#64748B' }}>
+            <span>50</span>
+            <span>40</span>
+            <span>30</span>
+            <span>20</span>
+            <span>10</span>
+            <span>0</span>
+          </div>
 
-                <div style={{ flex: 1, height: '22px', background: '#E2E8F0', borderRadius: '5px', overflow: 'hidden', position: 'relative' }}>
-                  <div 
-                    style={{ 
-                      width: `${(bin.count / maxHistogramCount) * 100}%`, 
-                      height: '100%', 
-                      background: 'linear-gradient(90deg, #2563EB, #3B82F6)',
-                      borderRadius: '5px',
-                      transition: 'width 0.4s ease'
-                    }} 
-                  />
-                  <span style={{ position: 'absolute', right: '8px', top: '2px', fontSize: '10px', fontWeight: 900, color: '#0F172A' }}>
-                    {bin.count} sessions
-                  </span>
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', height: '100%', borderBottom: '2px solid #E2E8F0', paddingBottom: '4px' }}>
+            {monthlyComparisonData.map((m, idx) => (
+              <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end', height: '160px' }}>
+                  
+                  {/* Target Bar (Yellow) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                    <span style={{ fontSize: '9px', fontWeight: 900, color: '#D97706', marginBottom: '2px' }}>{m.target}</span>
+                    <div style={{ width: '22px', height: `${(m.target / 50) * 100}%`, background: '#F59E0B', borderRadius: '4px 4px 0 0' }} />
+                  </div>
+
+                  {/* Actual Bar (Green) */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                    <span style={{ fontSize: '9px', fontWeight: 900, color: '#16A34A', marginBottom: '2px' }}>{m.actual}</span>
+                    <div style={{ width: '22px', height: `${(m.actual / 50) * 100}%`, background: '#10B981', borderRadius: '4px 4px 0 0' }} />
+                  </div>
+
                 </div>
+
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569' }}>
+                  {m.month}
+                </span>
               </div>
             ))}
           </div>
+
+          {/* Pair Legend */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '10px', fontWeight: 800 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#D97706' }}>
+              <div style={{ width: '12px', height: '12px', background: '#F59E0B', borderRadius: '3px' }} />
+              <span>Target Units</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#16A34A' }}>
+              <div style={{ width: '12px', height: '12px', background: '#10B981', borderRadius: '3px' }} />
+              <span>Actual Logged</span>
+            </div>
+          </div>
+
         </div>
-      )}
+      </div>
+
+      {/* NEW GRAPH 2: TIME OF DAY LOG DISTRIBUTION & STREAK MILESTONES */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+        
+        {/* Time of Day Distribution */}
+        <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Compass size={16} color="#8B5CF6" /> Time-of-Day Logging Habits
+          </h3>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {timeOfDayDistribution.map((t, idx) => {
+              const Icon = t.icon;
+              const pct = Math.round((t.count / totalTimeLogs) * 100);
+
+              return (
+                <div key={idx} style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Icon size={14} color={t.color} /> {t.period}
+                    </span>
+                    <span style={{ fontSize: '11px', fontWeight: 900, color: t.color }}>{pct}% ({t.count} logs)</span>
+                  </div>
+
+                  <div style={{ height: '6px', width: '100%', background: '#E2E8F0', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: t.color }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Streak & Consistency Milestones */}
+        <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Trophy size={16} color="#F59E0B" /> Streak & Discipline Milestones
+          </h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            
+            <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', padding: '12px', borderRadius: '10px', textAlign: 'center' }}>
+              <span style={{ fontSize: '9px', fontWeight: 800, color: '#D97706', textTransform: 'uppercase' }}>Current Active Streak</span>
+              <div style={{ fontSize: '20px', fontWeight: 900, color: '#B45309', marginTop: '2px' }}>
+                7 Days 🔥
+              </div>
+            </div>
+
+            <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '12px', borderRadius: '10px', textAlign: 'center' }}>
+              <span style={{ fontSize: '9px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase' }}>Longest Record Streak</span>
+              <div style={{ fontSize: '20px', fontWeight: 900, color: '#15803D', marginTop: '2px' }}>
+                14 Days 🏆
+              </div>
+            </div>
+
+          </div>
+
+          <div style={{ background: '#F8FAFC', padding: '10px 12px', borderRadius: '10px', border: '1px solid #E2E8F0', marginTop: '10px', textAlign: 'center' }}>
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B' }}>Overall Discipline Score: <strong>88% Consistency</strong></span>
+          </div>
+        </div>
+
+      </div>
 
       {/* 4. PICTORIAL ANALYTICS SUITE */}
 
@@ -716,13 +809,13 @@ export default function TaskDedicatedPageView({
         <div style={{ height: '160px', background: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0', position: 'relative', display: 'flex', alignItems: 'flex-end' }}>
           <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
             <defs>
-              <linearGradient id="blueGradientPlotFull" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="blueGradientPlotFull2" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#2563EB" stopOpacity="0.35" />
                 <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
               </linearGradient>
             </defs>
             {/* Area fill under actual line */}
-            <polygon fill="url(#blueGradientPlotFull)" points="0,130 70,110 140,80 210,40 280,20 280,140 0,140" />
+            <polygon fill="url(#blueGradientPlotFull2)" points="0,130 70,110 140,80 210,40 280,20 280,140 0,140" />
             {/* Ideal Velocity Line */}
             <polyline 
               fill="none" 
@@ -740,75 +833,6 @@ export default function TaskDedicatedPageView({
             />
           </svg>
         </div>
-      </div>
-
-      {/* D. COMPREHENSIVE SUMMARY ANALYTICAL REPORTS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-        
-        {/* Radial Completion Percentage Ring */}
-        <div className="glass-panel" style={{ padding: '18px', borderRadius: '14px', textAlign: 'center' }}>
-          <h4 style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', margin: '0 0 10px 0' }}>
-            Overall Goal Completion Ring
-          </h4>
-
-          <div style={{ position: 'relative', width: '96px', height: '96px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="96" height="96" viewBox="0 0 36 36">
-              <path stroke="#E2E8F0" strokeWidth="3.8" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-              <path stroke="#DC2626" strokeDasharray={`${completionPercent}, 100`} strokeWidth="3.8" fill="none" strokeLinecap="round" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-            </svg>
-            <span style={{ position: 'absolute', fontSize: '18px', fontWeight: 900, color: '#0F172A' }}>
-              {completionPercent}%
-            </span>
-          </div>
-
-          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700, marginTop: '6px' }}>
-            {currentCount} of {targetCount} {trackingMode === 'count_event' ? measureUnit : 'Days'} Completed
-          </div>
-        </div>
-
-        {/* Success vs Failure Split Bar */}
-        <div className="glass-panel" style={{ padding: '18px', borderRadius: '14px' }}>
-          <h4 style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', margin: '0 0 8px 0' }}>
-            Success vs Failure Ratio
-          </h4>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, marginBottom: '4px' }}>
-            <span style={{ color: '#16A34A' }}>Success: {currentCount}d</span>
-            <span style={{ color: '#DC2626' }}>Missed: {missedDaysCount}d</span>
-          </div>
-
-          <div style={{ height: '14px', width: '100%', background: '#E2E8F0', borderRadius: '6px', overflow: 'hidden', display: 'flex' }}>
-            <div style={{ width: `${completionPercent}%`, background: '#16A34A', height: '100%' }} />
-            <div style={{ width: `${100 - completionPercent}%`, background: '#DC2626', height: '100%' }} />
-          </div>
-
-          <div style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, marginTop: '6px' }}>
-            Miss Rate: <strong>{missRatePercent}%</strong> of active schedule days
-          </div>
-        </div>
-
-        {/* Most Missed Subtask Highlight Card */}
-        <div className="glass-panel" style={{ padding: '18px', borderRadius: '14px' }}>
-          <h4 style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <AlertCircle size={14} color="#DC2626" /> Most Missed Subtask Highlight
-          </h4>
-
-          {mostMissedSubtaskItem ? (
-            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: '10px', borderRadius: '8px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 900, color: '#991B1B' }}>
-                {mostMissedSubtaskItem.subtask.title}
-              </div>
-              <div style={{ fontSize: '10px', color: '#7F1D1D', fontWeight: 700, marginTop: '2px' }}>
-                Failed / Missed <strong>{mostMissedSubtaskItem.missedCount} times</strong> across historical logs.
-              </div>
-            </div>
-          ) : (
-            <div style={{ fontSize: '11px', color: '#64748B', fontStyle: 'italic' }}>
-              No missed subtasks recorded! Excellent consistency.
-            </div>
-          )}
-        </div>
-
       </div>
 
       {/* CHILD SUBTASKS SEPARATE ELEMENT SECTION */}
