@@ -1,10 +1,10 @@
 -- ============================================================================
--- HABIT HACKER: SUPABASE COMPLETE SELF-CONTAINED SEED SCRIPT (TASK_LOGS COLUMNS FIX)
--- Paste and run this ENTIRE script directly into Supabase SQL Editor.
--- Automatically ensures all columns exist on public.tasks AND public.task_logs tables.
+-- HABIT HACKER: SUPABASE SEED TEST DATA (TAILORED TO DATABASE SCHEMA)
+-- Execute this SQL script in your Supabase SQL Editor to populate Test1, Test2, and Test3
+-- with full child subtasks, history logs, and archive logs.
 -- ============================================================================
 
--- 1. ENSURE public.tasks TABLE HAS ALL REQUIRED COLUMNS
+-- 1. ENSURE ALL REQUIRED COLUMNS EXIST ON public.tasks TABLE
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General';
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'MEDIUM';
@@ -28,28 +28,8 @@ ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS paused_days INT DEFAULT 0;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS recurrence_pattern TEXT DEFAULT 'Daily';
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS parent_task_id TEXT;
 
--- 2. ENSURE public.task_logs TABLE EXISTS AND HAS ALL REQUIRED COLUMNS
-CREATE TABLE IF NOT EXISTS public.task_logs (
-    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    task_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    log_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    is_completed BOOLEAN DEFAULT TRUE,
-    measured_value NUMERIC(10, 2) DEFAULT 0,
-    tracking_mode TEXT DEFAULT 'end_date',
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-ALTER TABLE public.task_logs ADD COLUMN IF NOT EXISTS log_date DATE DEFAULT CURRENT_DATE;
-ALTER TABLE public.task_logs ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT TRUE;
-ALTER TABLE public.task_logs ADD COLUMN IF NOT EXISTS measured_value NUMERIC(10, 2) DEFAULT 0;
-ALTER TABLE public.task_logs ADD COLUMN IF NOT EXISTS tracking_mode TEXT DEFAULT 'end_date';
-
--- 3. DROP & RECREATE ANALYTICS TABLES WITH FLEXIBLE TEXT TYPES
-DROP TABLE IF EXISTS public.subtask_logs CASCADE;
-DROP TABLE IF EXISTS public.task_archive_logs CASCADE;
-
-CREATE TABLE public.task_archive_logs (
+-- 2. CREATE REQUIRED LOGGING TABLES
+CREATE TABLE IF NOT EXISTS public.task_archive_logs (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     task_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
@@ -60,7 +40,7 @@ CREATE TABLE public.task_archive_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE public.subtask_logs (
+CREATE TABLE IF NOT EXISTS public.subtask_logs (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     subtask_id TEXT NOT NULL,
     parent_task_id TEXT NOT NULL,
@@ -73,17 +53,24 @@ CREATE TABLE public.subtask_logs (
     CONSTRAINT subtask_logs_subtask_date_key UNIQUE(subtask_id, log_date)
 );
 
-CREATE INDEX IF NOT EXISTS idx_task_archive_logs_task ON public.task_archive_logs(task_id);
-CREATE INDEX IF NOT EXISTS idx_subtask_logs_parent ON public.subtask_logs(parent_task_id);
-CREATE INDEX IF NOT EXISTS idx_subtask_logs_subtask ON public.subtask_logs(subtask_id);
+CREATE TABLE IF NOT EXISTS public.task_logs (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    task_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    log_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    is_completed BOOLEAN DEFAULT TRUE,
+    measured_value NUMERIC(10, 2) DEFAULT 0,
+    tracking_mode TEXT DEFAULT 'end_date',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- 4. CLEANUP PREVIOUS TEST TASKS
-DELETE FROM public.task_logs WHERE task_id IN (SELECT id::text FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3') OR parent_task_id IN (SELECT id::text FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3')));
-DELETE FROM public.subtask_logs WHERE parent_task_id IN (SELECT id::text FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3'));
-DELETE FROM public.task_archive_logs WHERE task_id IN (SELECT id::text FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3'));
-DELETE FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3') OR parent_task_id IN (SELECT id::text FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3'));
+-- 3. CLEANUP PREVIOUS TEST TASKS
+DELETE FROM public.task_logs WHERE task_id IN ('11111111-1111-4111-a111-111111111111', '22222222-2222-4222-a222-222222222222', '33333333-3333-4333-a333-333333333333');
+DELETE FROM public.subtask_logs WHERE parent_task_id IN ('11111111-1111-4111-a111-111111111111', '22222222-2222-4222-a222-222222222222', '33333333-3333-4333-a333-333333333333');
+DELETE FROM public.task_archive_logs WHERE task_id IN ('11111111-1111-4111-a111-111111111111', '22222222-2222-4222-a222-222222222222', '33333333-3333-4333-a333-333333333333');
+DELETE FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3') OR parent_task_id IN ('11111111-1111-4111-a111-111111111111', '22222222-2222-4222-a222-222222222222', '33333333-3333-4333-a333-333333333333');
 
--- 5. INSERT TEST TASK 1: END_DATE MODE ("Test1 - Java Masterclass")
+-- 4. INSERT TEST TASK 1: END_DATE MODE ("Test1 - Java Masterclass")
 WITH new_parent1 AS (
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -172,7 +159,7 @@ SELECT
 FROM generate_series(0, 14) AS i;
 
 
--- 6. INSERT TEST TASK 2: COUNT_DAYS MODE ("Test2 - Morning Cardio Running")
+-- 5. INSERT TEST TASK 2: COUNT_DAYS MODE ("Test2 - Morning Cardio Running")
 WITH new_parent2 AS (
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -237,7 +224,7 @@ SELECT
 FROM generate_series(0, 9) AS i;
 
 
--- 7. INSERT TEST TASK 3: COUNT_EVENT MODE ("Test3 - 100 Coding Submissions")
+-- 6. INSERT TEST TASK 3: COUNT_EVENT MODE ("Test3 - 100 Coding Submissions")
 WITH new_parent3 AS (
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -273,18 +260,9 @@ INSERT INTO public.tasks (
 FROM new_parent3
 UNION ALL
 SELECT 
-    '33333333-3333-4333-a333-333333333335',
-    user_id, id::text,
-    'Child 3.2 - Graph Algorithms & DFS/BFS (Mandatory, Measured)',
-    'Education', 'CRITICAL', 'count_event',
-    (CURRENT_DATE - INTERVAL '20 days')::date, (CURRENT_DATE + INTERVAL '10 days')::date,
-    30, 22, 73, TRUE, 'Problems', 2.0, FALSE, FALSE
-FROM new_parent3
-UNION ALL
-SELECT 
     '33333333-3333-4333-a333-333333333336',
     user_id, id::text,
-    'Child 3.3 - Optional Mock Code Review Notes (Optional, Standard)',
+    'Child 3.2 - Optional Mock Code Review Notes (Optional, Standard)',
     'Education', 'LOW', 'count_event',
     (CURRENT_DATE - INTERVAL '10 days')::date, (CURRENT_DATE + INTERVAL '10 days')::date,
     30, 15, 50, FALSE, 'Reviews', 1.0, TRUE, FALSE
@@ -302,5 +280,5 @@ SELECT
 FROM generate_series(0, 19) AS i;
 
 -- ============================================================================
--- SUCCESS: Test1, Test2, and Test3 seeded cleanly with task_logs columns guarantee!
+-- SEEDING COMPLETE FOR Test1, Test2, and Test3!
 -- ============================================================================

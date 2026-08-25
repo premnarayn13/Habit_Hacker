@@ -232,7 +232,7 @@ export default function TaskDedicatedPageView({
           ))}
         </div>
 
-        {/* Action Triggers ONLY: Edit, Delete, Archive (NO COMPLETION TOGGLES, NO UNMAPPING) */}
+        {/* Action Triggers ONLY: Edit, Delete, Archive */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <button 
             onClick={() => onArchiveTask(currentTask.id)}
@@ -639,7 +639,7 @@ export default function TaskDedicatedPageView({
         </div>
       </div>
 
-      {/* C. TRAJECTORY BURN-UP LINE PLOT */}
+      {/* C. TRAJECTORY BURN-UP LINE PLOT WITH SMOOTH CURVES & GRADIENT FILL */}
       <div className="glass-panel" style={{ padding: '16px', borderRadius: '14px' }}>
         <h3 style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A', margin: '0 0 2px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <TrendingUp size={15} color="#2563EB" /> Trajectory Velocity Burn-Up Line Chart
@@ -650,6 +650,14 @@ export default function TaskDedicatedPageView({
 
         <div style={{ height: '140px', background: '#F8FAFC', padding: '12px', borderRadius: '10px', border: '1px solid #E2E8F0', position: 'relative', display: 'flex', alignItems: 'flex-end' }}>
           <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+            <defs>
+              <linearGradient id="blueGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#2563EB" stopOpacity="0.3" />
+                <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
+            {/* Area fill under actual line */}
+            <polygon fill="url(#blueGradient)" points="0,110 70,95 140,65 210,35 280,20 280,130 0,130" />
             {/* Ideal Velocity Line */}
             <polyline 
               fill="none" 
