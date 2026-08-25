@@ -1,16 +1,37 @@
 -- ============================================================================
--- HABIT HACKER: SUPABASE COMPLETE SELF-CONTAINED SEED SCRIPT (BULLETPROOF VERSION)
+-- HABIT HACKER: SUPABASE COMPLETE SELF-CONTAINED SEED SCRIPT (ULTIMATE BULLETPROOF)
 -- Paste and run this ENTIRE script directly into Supabase SQL Editor.
--- Compatible with all column types (TEXT, VARCHAR, UUID).
--- Automatically creates required tables and populates Test1, Test2, and Test3
--- with diverse combinations of child subtasks, history logs, and archive logs.
+-- Automatically adds any missing columns to public.tasks table and populates Test1, Test2, and Test3.
 -- ============================================================================
 
--- 1. DROP EXISTING CONFLICTING TABLES IF ANY (TO RESOLVE TYPE MISMATCHES)
+-- 1. AUTOMATICALLY ADD ANY MISSING COLUMNS TO public.tasks TABLE
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'MEDIUM';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS tracking_mode TEXT DEFAULT 'end_date';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS planned_start TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS planned_end TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS target_count INT DEFAULT 30;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS current_count INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS target_day_count INT DEFAULT 30;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS current_day_count INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS target_event_count INT DEFAULT 30;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS current_event_count INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS progress_percent INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS has_measure_tracking BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS measure_unit TEXT DEFAULT 'units';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS measure_target NUMERIC(10, 2) DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS is_optional BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS archive_count INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS paused_days INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS recurrence_pattern TEXT DEFAULT 'Daily';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS parent_task_id TEXT;
+
+-- 2. DROP & RECREATE ANALYTICS TABLES WITH FLEXIBLE TEXT TYPES
 DROP TABLE IF EXISTS public.subtask_logs CASCADE;
 DROP TABLE IF EXISTS public.task_archive_logs CASCADE;
 
--- 2. CREATE ANALYTICS TABLES WITH FLEXIBLE TEXT TYPES (COMPATIBLE WITH UUID & VARCHAR)
 CREATE TABLE public.task_archive_logs (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     task_id TEXT NOT NULL,
@@ -35,7 +56,6 @@ CREATE TABLE public.subtask_logs (
     CONSTRAINT subtask_logs_subtask_date_key UNIQUE(subtask_id, log_date)
 );
 
--- Index creation for ultra-fast query performance
 CREATE INDEX IF NOT EXISTS idx_task_archive_logs_task ON public.task_archive_logs(task_id);
 CREATE INDEX IF NOT EXISTS idx_subtask_logs_parent ON public.subtask_logs(parent_task_id);
 CREATE INDEX IF NOT EXISTS idx_subtask_logs_subtask ON public.subtask_logs(subtask_id);
@@ -47,7 +67,6 @@ DELETE FROM public.task_archive_logs WHERE task_id IN (SELECT id::text FROM publ
 DELETE FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3') OR parent_task_id IN (SELECT id::text FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3'));
 
 -- 4. INSERT TEST TASK 1: END_DATE MODE ("Test1 - Java Masterclass")
--- Features: Fixed 45-day window, daily measure tracking (12 Pages/day), archive history log (2x paused 4d), 4 diverse child subtasks.
 WITH new_parent1 AS (
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -78,7 +97,6 @@ WITH new_parent1 AS (
         NOW() - INTERVAL '15 days'
     ) RETURNING id, user_id
 )
--- Diverse Combination Child Subtasks for Test1
 INSERT INTO public.tasks (
     id, user_id, parent_task_id, title, category, priority, tracking_mode,
     planned_start, planned_end, target_count, current_count, progress_percent,
@@ -138,7 +156,6 @@ FROM generate_series(0, 14) AS i;
 
 
 -- 5. INSERT TEST TASK 2: COUNT_DAYS MODE ("Test2 - Morning Cardio Running")
--- Features: Target 30 successful days within 40 calendar days window, Feasibility Check, diverse subtasks.
 WITH new_parent2 AS (
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -160,7 +177,6 @@ WITH new_parent2 AS (
         1, 3, 'Daily', NOW() - INTERVAL '10 days'
     ) RETURNING id, user_id
 )
--- Diverse Combination Child Subtasks for Test2
 INSERT INTO public.tasks (
     id, user_id, parent_task_id, title, category, priority, tracking_mode,
     planned_start, planned_end, target_count, current_count, progress_percent,
@@ -205,7 +221,6 @@ FROM generate_series(0, 9) AS i;
 
 
 -- 6. INSERT TEST TASK 3: COUNT_EVENT MODE ("Test3 - 100 Coding Submissions")
--- Features: Target 100 event repetitions, Daily Pace Velocity calculator, diverse child subtasks.
 WITH new_parent3 AS (
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -227,7 +242,6 @@ WITH new_parent3 AS (
         0, 0, 'Daily', NOW() - INTERVAL '20 days'
     ) RETURNING id, user_id
 )
--- Diverse Combination Child Subtasks for Test3
 INSERT INTO public.tasks (
     id, user_id, parent_task_id, title, category, priority, tracking_mode,
     planned_start, planned_end, target_count, current_count, progress_percent,
@@ -271,5 +285,5 @@ SELECT
 FROM generate_series(0, 19) AS i;
 
 -- ============================================================================
--- SUCCESS: Test1, Test2, and Test3 seeded cleanly with 100% type compatibility!
+-- SUCCESS: Test1, Test2, and Test3 seeded cleanly with automatic column creation!
 -- ============================================================================

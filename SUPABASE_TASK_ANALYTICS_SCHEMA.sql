@@ -4,7 +4,31 @@
 -- Compatible with all column types (TEXT, VARCHAR, UUID).
 -- ============================================================================
 
--- 1. TASK ARCHIVE HISTORY LOGS TABLE
+-- 1. ENSURE ALL REQUIRED COLUMNS EXIST ON public.tasks TABLE
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'MEDIUM';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS tracking_mode TEXT DEFAULT 'end_date';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS planned_start TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS planned_end TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS target_count INT DEFAULT 30;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS current_count INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS target_day_count INT DEFAULT 30;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS current_day_count INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS target_event_count INT DEFAULT 30;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS current_event_count INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS progress_percent INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS has_measure_tracking BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS measure_unit TEXT DEFAULT 'units';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS measure_target NUMERIC(10, 2) DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS is_optional BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS archive_count INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS paused_days INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS recurrence_pattern TEXT DEFAULT 'Daily';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS parent_task_id TEXT;
+
+-- 2. TASK ARCHIVE HISTORY LOGS TABLE
 CREATE TABLE IF NOT EXISTS public.task_archive_logs (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     task_id TEXT NOT NULL,
@@ -16,7 +40,7 @@ CREATE TABLE IF NOT EXISTS public.task_archive_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. GRANULAR DAILY SUBTASK PERFORMANCE LOGS TABLE
+-- 3. GRANULAR DAILY SUBTASK PERFORMANCE LOGS TABLE
 CREATE TABLE IF NOT EXISTS public.subtask_logs (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     subtask_id TEXT NOT NULL,
@@ -35,7 +59,7 @@ CREATE INDEX IF NOT EXISTS idx_task_archive_logs_task ON public.task_archive_log
 CREATE INDEX IF NOT EXISTS idx_subtask_logs_parent ON public.subtask_logs(parent_task_id);
 CREATE INDEX IF NOT EXISTS idx_subtask_logs_subtask ON public.subtask_logs(subtask_id);
 
--- 3. AUTOMATIC DATE EXTENSION TRIGGER ON TASK UNARCHIVE
+-- 4. AUTOMATIC DATE EXTENSION TRIGGER ON TASK UNARCHIVE
 CREATE OR REPLACE FUNCTION public.handle_task_unarchive_extension()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -79,7 +103,7 @@ FOR EACH ROW
 WHEN (OLD.is_archived IS DISTINCT FROM NEW.is_archived)
 EXECUTE FUNCTION public.handle_task_unarchive_extension();
 
--- 4. VIEW FOR MOST MISSED SUBTASK HIGHLIGHT ANALYTICS
+-- 5. VIEW FOR MOST MISSED SUBTASK HIGHLIGHT ANALYTICS
 CREATE OR REPLACE VIEW public.v_subtask_failure_summary AS
 SELECT 
     parent_task_id,
