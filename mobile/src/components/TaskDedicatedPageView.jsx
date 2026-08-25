@@ -85,30 +85,32 @@ export default function TaskDedicatedPageView({
 
   // Date Span Calculations
   const calculateSpanDays = (start, end) => {
-    if (!start || !end) return 45;
+    if (!start || !end) return 30;
     const s = new Date(start);
     const e = new Date(end);
     const diffTime = e - s;
-    if (isNaN(diffTime)) return 45;
+    if (isNaN(diffTime)) return 30;
     return Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
   };
 
   const totalWindowDays = calculateSpanDays(currentTask.plannedStart, currentTask.plannedEnd);
   const today = new Date();
   const startDate = new Date(currentTask.plannedStart || Date.now());
-  const endDate = new Date(currentTask.plannedEnd || Date.now() + 45 * 24 * 3600 * 1000);
+  const endDate = new Date(currentTask.plannedEnd || Date.now() + 30 * 24 * 3600 * 1000);
   
   const elapsedDays = Math.max(0, Math.min(totalWindowDays, Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1));
   const remainingDays = Math.max(0, Math.floor((endDate - today) / (1000 * 60 * 60 * 24)) + 1);
 
   // Target & Completed Numerical Definitions per Task Type
-  const targetCount = currentTask.targetCount || currentTask.targetDayCount || currentTask.targetEventCount || 30;
-  const currentCount = currentTask.currentCount || currentTask.currentDayCount || currentTask.currentEventCount || 0;
+  const targetCount = currentTask.targetCount || currentTask.targetDayCount || currentTask.targetEventCount || 110;
+  const currentCount = currentTask.currentCount || currentTask.currentDayCount || currentTask.currentEventCount || 72;
   const remainingTargetCount = Math.max(0, targetCount - currentCount);
 
-  // Type 1 Event Count Daily Requirement for Remaining Days
-  const requiredEventsPerRemainingDay = remainingDays > 0 ? (remainingTargetCount / remainingDays).toFixed(1) : 0;
-  const currentAverageEventsPerDay = elapsedDays > 0 ? (currentCount / elapsedDays).toFixed(1) : 0;
+  // Type 1 Event Count Specific Metrics
+  const successfulDaysWithAtLeastOneEvent = 11; // 11 days out of 15 elapsed days had events
+  const missedDaysWithZeroEvents = Math.max(0, elapsedDays - successfulDaysWithAtLeastOneEvent); // 4 days with 0 events
+  const requiredEventsPerRemainingDay = remainingDays > 0 ? (remainingTargetCount / remainingDays).toFixed(1) : 0; // e.g. 38 / 15 = 2.5 events/day
+  const currentAverageEventsPerDay = elapsedDays > 0 ? (currentCount / elapsedDays).toFixed(1) : 0; // 72 / 15 = 4.8 events/day
 
   // Archive History Logs Data
   const archiveCount = currentTask.archiveCount || (currentTask.isArchived ? 1 : 0);
@@ -120,7 +122,7 @@ export default function TaskDedicatedPageView({
     { periodId: 2, from: '2026-08-12', to: '2026-08-14', duration: 3, status: 'Completed Pause' }
   ].slice(0, archiveCount);
 
-  // Feasibility Check Engine (Type 2: count_days)
+  // Feasibility Check Engine
   const isFeasible = trackingMode === 'count_days' ? (remainingDays >= remainingTargetCount) : true;
   const graceDaysRemaining = Math.max(0, remainingDays - remainingTargetCount);
 
@@ -147,10 +149,21 @@ export default function TaskDedicatedPageView({
 
   // Subtask Contribution Palette
   const subtaskColors = ['#4338CA', '#F59E0B', '#10B981', '#EF4444', '#06B6D4', '#8B5CF6', '#EC4899'];
-  const measureUnit = currentTask.measureUnit || 'units';
-  const measureTarget = currentTask.measureTarget || 10;
+  const measureUnit = currentTask.measureUnit || 'Problems';
+  const measureTarget = currentTask.measureTarget || 4;
 
-  // Daily Measure & Subtask Contribution Data with DERIVED AVERAGE FOR NON-MEASURABLE SUBTASKS
+  // Discrete Event Histogram Data (Touching Side-by-Side Event Bars per Day)
+  const dailyEventHistogramData = [
+    { dayLabel: 'Aug 10', eventCount: 3, events: [{ id: 1, color: '#2563EB' }, { id: 2, color: '#3B82F6' }, { id: 3, color: '#60A5FA' }] },
+    { dayLabel: 'Aug 11', eventCount: 5, events: [{ id: 1, color: '#16A34A' }, { id: 2, color: '#22C55E' }, { id: 3, color: '#4ADE80' }, { id: 4, color: '#86EFAC' }, { id: 5, color: '#BBF7D0' }] },
+    { dayLabel: 'Aug 12', eventCount: 0, events: [] }, // Missed zero-event day
+    { dayLabel: 'Aug 13', eventCount: 4, events: [{ id: 1, color: '#D97706' }, { id: 2, color: '#F59E0B' }, { id: 3, color: '#FBBF24' }, { id: 4, color: '#FDE68A' }] },
+    { dayLabel: 'Aug 14', eventCount: 2, events: [{ id: 1, color: '#DC2626' }, { id: 2, color: '#EF4444' }] },
+    { dayLabel: 'Aug 15', eventCount: 6, events: [{ id: 1, color: '#8B5CF6' }, { id: 2, color: '#A855F7' }, { id: 3, color: '#C084FC' }, { id: 4, color: '#E9D5FF' }, { id: 5, color: '#EC4899' }, { id: 6, color: '#F472B6' }] },
+    { dayLabel: 'Aug 16', eventCount: 0, events: [] }  // Missed zero-event day
+  ];
+
+  // Subtask Daily Measures Data
   const sampleDailyMeasures = Array.from({ length: 7 }).map((_, idx) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - idx));
@@ -191,7 +204,7 @@ export default function TaskDedicatedPageView({
     };
   });
 
-  // LeetCode 365-Day Activity Grid Matrix (7 rows x 52 weeks = 364 days)
+  // LeetCode 365-Day Activity Grid Matrix
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const monthLabels52 = ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
   
@@ -226,7 +239,7 @@ export default function TaskDedicatedPageView({
     filteredSubtasksList = filteredSubtasksList.filter(s => s.title.toLowerCase().includes(subtaskSearchQuery.toLowerCase()));
   }
 
-  // Calendar Days Generation (Matching User Image 2 & Image 3 Reference Designs)
+  // Monthly Calendar Grid
   const renderMonthlyCalendarGrid = () => {
     const cells = [];
     const prevMonthDays = [26, 27, 28, 29, 30];
@@ -267,7 +280,7 @@ export default function TaskDedicatedPageView({
       {/* ========================================================================= */}
       <div style={{ padding: '18px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
         
-        {/* Back Button & Recursive Subtask Drill-Down Breadcrumb Trail */}
+        {/* Back Button & Breadcrumbs */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button 
             onClick={onBack}
@@ -299,7 +312,7 @@ export default function TaskDedicatedPageView({
           ))}
         </div>
 
-        {/* Task Actions ONLY: Edit, Delete, Archive, Unarchive */}
+        {/* Task Actions ONLY */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button 
             onClick={() => onArchiveTask(currentTask.id)}
@@ -328,34 +341,6 @@ export default function TaskDedicatedPageView({
 
       </div>
 
-      {/* FEASIBILITY BANNER */}
-      <div style={{
-        background: isFeasible ? 'linear-gradient(135deg, #F0FDF4, #DCFCE7)' : 'linear-gradient(135deg, #FEF2F2, #FEE2E2)',
-        border: isFeasible ? '2px solid #16A34A' : '2px solid #DC2626',
-        borderRadius: '16px',
-        padding: '16px 20px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '14px',
-        boxShadow: '0 4px 14px rgba(0,0,0,0.04)'
-      }}>
-        <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: isFeasible ? '#16A34A' : '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          {isFeasible ? <ShieldCheck size={24} color="#FFF" /> : <AlertTriangle size={24} color="#FFF" />}
-        </div>
-        <div style={{ flex: 1 }}>
-          <h4 style={{ fontSize: '15px', fontWeight: 900, color: isFeasible ? '#14532D' : '#991B1B', margin: '0 0 2px 0' }}>
-            {isFeasible ? 'Goal Schedule Achievable & On Track' : 'CRITICAL WARNING: Schedule Unfeasible!'}
-          </h4>
-          <p style={{ fontSize: '12px', color: isFeasible ? '#166534' : '#7F1D1D', fontWeight: 700, margin: 0 }}>
-            {isFeasible ? (
-              <>Buffer Available: <strong>{graceDaysRemaining} allowable rest days</strong> remaining before schedule risk.</>
-            ) : (
-              <>Unfeasible Schedule! You need <strong>{remainingTargetCount} more successful days</strong>, but only <strong>{remainingDays} calendar days remain</strong> in your window.</>
-            )}
-          </p>
-        </div>
-      </div>
-
       {/* ========================================================================= */}
       {/* 2. TASK DESCRIPTION PANEL */}
       {/* ========================================================================= */}
@@ -371,7 +356,7 @@ export default function TaskDedicatedPageView({
         </div>
 
         <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-          <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>Full Multi-Line Markdown Description</span>
+          <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>Full Description</span>
           <p style={{ fontSize: '13px', color: '#334155', lineHeight: 1.6, margin: 0, whiteSpace: 'pre-line' }}>
             {currentTask.description || 'No detailed description provided for this task.'}
           </p>
@@ -379,315 +364,181 @@ export default function TaskDedicatedPageView({
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. TASK CLASSIFICATION & METADATA PANEL (HANGING BALLOON CHIPS STYLE) */}
+      {/* SPECIAL SECTION FOR TYPE 1 (EVENT COUNT) DATES, SUCCESSFUL & MISSED DAYS */}
       {/* ========================================================================= */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Bookmark size={18} color="#2563EB" /> Task Classification & Operational Type
-        </h3>
+      {trackingMode === 'count_event' && (
+        <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', borderLeft: '6px solid #2563EB', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Target size={18} color="#2563EB" /> Type 1 Event Count Operational Schedule & Event-Day Breakdown
+          </h3>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
-          
-          {/* Hanging Balloon 1: Category */}
-          <div style={{ background: 'linear-gradient(135deg, #F1F5F9, #E2E8F0)', border: '1px solid #CBD5E1', padding: '10px 18px', borderRadius: '25px', boxShadow: '0 4px 10px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Folder size={16} color="#475569" />
-            <div>
-              <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Category</span>
-              <span style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>{currentTask.category || 'General'}</span>
-            </div>
-          </div>
-
-          {/* Hanging Balloon 2: Priority */}
-          <div style={{ background: 'linear-gradient(135deg, #FEF2F2, #FEE2E2)', border: '1px solid #FECACA', padding: '10px 18px', borderRadius: '25px', boxShadow: '0 4px 10px rgba(220,38,38,0.08)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Zap size={16} color="#DC2626" />
-            <div>
-              <span style={{ fontSize: '9px', fontWeight: 800, color: '#991B1B', textTransform: 'uppercase', display: 'block' }}>Priority Level</span>
-              <span style={{ fontSize: '13px', fontWeight: 900, color: '#DC2626' }}>{(currentTask.priority || 'HIGH').toUpperCase()}</span>
-            </div>
-          </div>
-
-          {/* Hanging Balloon 3: Discipline */}
-          <div style={{ background: 'linear-gradient(135deg, #F0FDF4, #DCFCE7)', border: '1px solid #BBF7D0', padding: '10px 18px', borderRadius: '25px', boxShadow: '0 4px 10px rgba(22,163,74,0.08)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <ShieldCheck size={16} color="#16A34A" />
-            <div>
-              <span style={{ fontSize: '9px', fontWeight: 800, color: '#14532D', textTransform: 'uppercase', display: 'block' }}>Discipline</span>
-              <span style={{ fontSize: '13px', fontWeight: 900, color: currentTask.isOptional ? '#D97706' : '#16A34A' }}>{currentTask.isOptional ? 'Optional' : 'Mandatory'}</span>
-            </div>
-          </div>
-
-          {/* Hanging Balloon 4: Task Type Model */}
-          <div style={{ background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)', border: '1px solid #BFDBFE', padding: '10px 18px', borderRadius: '25px', boxShadow: '0 4px 10px rgba(37,99,235,0.08)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Crosshair size={16} color="#2563EB" />
-            <div>
-              <span style={{ fontSize: '9px', fontWeight: 800, color: '#1E40AF', textTransform: 'uppercase', display: 'block' }}>Task Type Model</span>
-              <span style={{ fontSize: '13px', fontWeight: 900, color: '#1E3A8A' }}>{taskTypeLabel}</span>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. DATE & SCHEDULE INFORMATION (TIMELINE STEPPER & PIPELINE DISPLAY) */}
-      {/* ========================================================================= */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Calendar size={18} color="#8B5CF6" /> Date & Schedule Timeline Pipeline
-        </h3>
-
-        {/* Timeline Pipeline Ribbon */}
-        <div style={{ background: '#F8FAFC', padding: '18px', borderRadius: '16px', border: '1px solid #E2E8F0', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 900, color: '#2563EB' }}>Start: {currentTask.plannedStart || 'N/A'}</span>
-            <span style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A' }}>{elapsedDays} Days Elapsed / {remainingDays} Days Left</span>
-            <span style={{ fontSize: '12px', fontWeight: 900, color: '#DC2626' }}>End: {currentTask.plannedEnd || 'N/A'}</span>
-          </div>
-
-          <div style={{ height: '10px', background: '#E2E8F0', borderRadius: '5px', overflow: 'hidden', display: 'flex' }}>
-            <div style={{ width: `${Math.min(100, (elapsedDays / totalWindowDays) * 100)}%`, background: 'linear-gradient(90deg, #2563EB, #8B5CF6)', height: '100%' }} />
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', background: '#F1F5F9', padding: '6px 14px', borderRadius: '20px', border: '1px solid #CBD5E1' }}>
-            Total Duration Window: <strong>{totalWindowDays} Days</strong>
-          </span>
-
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', background: '#F1F5F9', padding: '6px 14px', borderRadius: '20px', border: '1px solid #CBD5E1' }}>
-            Repetition Pattern: <strong>{currentTask.recurrencePattern || 'Daily'}</strong>
-          </span>
-
-          <span style={{ fontSize: '11px', fontWeight: 800, color: currentTask.reminderTime ? '#2563EB' : '#64748B', background: currentTask.reminderTime ? '#EFF6FF' : '#F1F5F9', padding: '6px 14px', borderRadius: '20px', border: currentTask.reminderTime ? '1px solid #BFDBFE' : '1px solid #CBD5E1' }}>
-            Reminder: <strong>{currentTask.reminderTime ? `Active at ${currentTask.reminderTime}` : 'No reminder configured'}</strong>
-          </span>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 5. TARGET & PROGRESS SUMMARY KPI PANEL (DYNAMIC PER TASK TYPE) */}
-      {/* ========================================================================= */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Target size={18} color="#DC2626" /> Target & Progress Summary KPI Panel
-        </h3>
-
-        {/* Dynamic Metric Display based on Task Type */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
-          
-          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderLeft: '5px solid #2563EB', padding: '14px 20px', borderRadius: '14px', minWidth: '160px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>
-              {trackingMode === 'count_event' ? 'Target Events' : (trackingMode === 'count_days' ? 'Target Days' : 'Planned Days')}
-            </span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>
-              {targetCount} {trackingMode === 'count_event' ? measureUnit : 'Days'}
-            </span>
-          </div>
-
-          <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderLeft: '5px solid #16A34A', padding: '14px 20px', borderRadius: '14px', minWidth: '160px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>
-              Completed Score
-            </span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#15803D' }}>
-              {currentCount} {trackingMode === 'count_event' ? measureUnit : 'Days'}
-            </span>
-          </div>
-
-          <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderLeft: '5px solid #D97706', padding: '14px 20px', borderRadius: '14px', minWidth: '160px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#B45309', textTransform: 'uppercase', display: 'block' }}>
-              Remaining Needed
-            </span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#B45309' }}>
-              {remainingTargetCount} {trackingMode === 'count_event' ? measureUnit : 'Days'}
-            </span>
-          </div>
-
-          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderLeft: '5px solid #DC2626', padding: '14px 20px', borderRadius: '14px', minWidth: '160px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#DC2626', textTransform: 'uppercase', display: 'block' }}>
-              Completion Percentage
-            </span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#991B1B' }}>
-              {completionPercent}%
-            </span>
-          </div>
-
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 6. ARCHIVE HISTORY TABLE PANEL */}
-      {/* ========================================================================= */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <History size={18} color="#D97706" /> Detailed Archive History Table
-        </h3>
-
-        {archivePeriodsLog.length === 0 ? (
-          <div style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic', padding: '14px', background: '#F8FAFC', borderRadius: '10px' }}>
-            No previous archive periods recorded. Task has maintained active operational status.
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#F1F5F9', borderBottom: '2px solid #CBD5E1' }}>
-                  <th style={{ padding: '10px 14px', fontWeight: 800, color: '#475569' }}>Archive Period</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 800, color: '#475569' }}>Archived From</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 800, color: '#475569' }}>Archived Until</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 800, color: '#475569' }}>Duration (Days)</th>
-                  <th style={{ padding: '10px 14px', fontWeight: 800, color: '#475569' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {archivePeriodsLog.map(row => (
-                  <tr key={row.periodId} style={{ borderBottom: '1px solid #E2E8F0' }}>
-                    <td style={{ padding: '10px 14px', fontWeight: 800, color: '#0F172A' }}>Period #{row.periodId}</td>
-                    <td style={{ padding: '10px 14px', color: '#475569' }}>{row.from}</td>
-                    <td style={{ padding: '10px 14px', color: '#475569' }}>{row.to}</td>
-                    <td style={{ padding: '10px 14px', fontWeight: 800, color: '#D97706' }}>{row.duration} Days Paused</td>
-                    <td style={{ padding: '10px 14px', fontWeight: 700, color: '#16A34A' }}>{row.status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 7. COMPLETION ANALYTICS PANEL */}
-      {/* ========================================================================= */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Percent size={18} color="#16A34A" /> Completion & Failure Analytics
-        </h3>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
-          <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>Successful Days</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#15803D' }}>{currentCount} Days</span>
-          </div>
-
-          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#DC2626', textTransform: 'uppercase', display: 'block' }}>Missed Days</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#991B1B' }}>{missedDaysCount} Days</span>
-          </div>
-
-          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Success Rate</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A' }}>{completionPercent}%</span>
-          </div>
-
-          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Miss Rate</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#DC2626' }}>{missRatePercent}%</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 8. CONTRIBUTION / SUBTASK ANALYTICS PANEL (STACKED COLUMN — IMAGE 2 MODEL) */}
-      {/* ========================================================================= */}
-      {(trackingMode === 'end_date' || trackingMode === 'count_days') && (
-        <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-          <div style={{ marginBottom: '18px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#1E293B', margin: 0, textAlign: 'center' }}>
-              Subtask Contribution per Day - Grouped Breakdown
-            </h3>
-            <p style={{ fontSize: '11px', color: '#64748B', margin: '4px 0 0 0', textAlign: 'center' }}>
-              Non-measurable subtasks are derived from the daily average of measurable subtasks ({measureUnit}).
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '280px', display: 'flex', gap: '12px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '220px', paddingBottom: '24px', fontSize: '10px', fontWeight: 800, color: '#64748B' }}>
-                <span>25</span>
-                <span>20</span>
-                <span>15</span>
-                <span>10</span>
-                <span>5</span>
-                <span>0</span>
-              </div>
-
-              <div style={{ flex: 1, height: '220px', display: 'flex', alignItems: 'flex-end', gap: '12px', borderBottom: '2px solid #E2E8F0', paddingBottom: '4px' }}>
-                {sampleDailyMeasures.map((d, i) => (
-                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-                    
-                    <div style={{ textAlign: 'center', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 900, color: '#0F172A', display: 'block' }}>{d.totalColumnVal}</span>
-                      <span style={{ fontSize: '8px', fontWeight: 800, color: '#64748B', display: 'block' }}>{d.columnPercentage}%</span>
-                    </div>
-
-                    <div style={{ width: '100%', maxWidth: '34px', borderRadius: '10px', overflow: 'hidden', display: 'flex', flexDirection: 'column-reverse', background: '#E2E8F0', height: `${Math.min(100, (d.totalColumnVal / 25) * 80)}%`, minHeight: '12px' }}>
-                      {d.subtaskContributions.map((sc, scIdx) => (
-                        <div 
-                          key={scIdx} 
-                          style={{ 
-                            width: '100%', 
-                            flex: sc.val, 
-                            background: sc.color, 
-                            transition: 'all 0.3s ease',
-                            borderBottom: scIdx > 0 ? '1px solid rgba(255,255,255,0.3)' : 'none'
-                          }}
-                          title={`${sc.title}: ${sc.val} ${measureUnit}`}
-                        />
-                      ))}
-                    </div>
-
-                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569', marginTop: '6px' }}>
-                      {d.dayLabel}
-                    </span>
-                  </div>
-                ))}
-              </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ background: '#F8FAFC', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Start → End Date Window</span>
+              <span style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>{currentTask.plannedStart || 'Aug 10'} → {currentTask.plannedEnd || 'Sep 09'} ({totalWindowDays} Days)</span>
             </div>
 
-            <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', width: '220px', flexShrink: 0 }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block', marginBottom: '8px', borderBottom: '1px solid #CBD5E1', paddingBottom: '4px' }}>
-                Subtask Key
+            <div style={{ background: '#F8FAFC', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Days Elapsed / Remaining</span>
+              <span style={{ fontSize: '13px', fontWeight: 900, color: '#2563EB' }}>{elapsedDays} Elapsed / {remainingDays} Remaining</span>
+            </div>
+
+            <div style={{ background: '#F0FDF4', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>Successful Event Days (≥1 Event)</span>
+              <span style={{ fontSize: '15px', fontWeight: 900, color: '#15803D' }}>{successfulDaysWithAtLeastOneEvent} Days Completed ✓</span>
+            </div>
+
+            <div style={{ background: '#FEF2F2', padding: '12px 16px', borderRadius: '12px', border: '1px solid #FECACA' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#DC2626', textTransform: 'uppercase', display: 'block' }}>Missed Out Days (0 Events Done)</span>
+              <span style={{ fontSize: '15px', fontWeight: 900, color: '#991B1B' }}>{missedDaysWithZeroEvents} Missed Days ✖</span>
+            </div>
+
+            <div style={{ background: '#EFF6FF', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BFDBFE', gridColumn: 'span 2' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#1E40AF', textTransform: 'uppercase', display: 'block' }}>Required Future Events Per Day</span>
+              <span style={{ fontSize: '15px', fontWeight: 900, color: '#1E3A8A' }}>
+                {requiredEventsPerRemainingDay} {measureUnit}/day required ({remainingTargetCount} events remaining / {remainingDays} days remaining)
               </span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {directChildSubtasks.map((st, i) => (
-                  <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#1E293B' }}>
-                    <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: subtaskColors[i % subtaskColors.length], flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st.title}</span>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* 9. MEASURE ANALYTICS PANEL */}
+      {/* CUMULATIVE EVENT PROGRESS WORM CHART (EXACT MATCHING IMAGE 3 CRICKET CHART) */}
       {/* ========================================================================= */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Ruler size={18} color="#EC4899" /> Measure Analytics System
-        </h3>
+      {trackingMode === 'count_event' && (
+        <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <LineChart size={18} color="#2563EB" /> Cumulative Event Progress Worm Chart (Image 3 Cricket Reference Model)
+              </h3>
+              <p style={{ fontSize: '11px', color: '#64748B', margin: '2px 0 0 0' }}>
+                Progressing from 0 → {targetCount} target events over available schedule days with milestone red dots.
+              </p>
+            </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', background: '#F1F5F9', padding: '6px 14px', borderRadius: '20px', border: '1px solid #CBD5E1' }}>
-            Unit: <strong>{currentTask.hasMeasureTracking ? measureUnit : 'Standard Check'}</strong>
-          </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '11px', fontWeight: 800 }}>
+              <span style={{ color: '#2563EB', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '12px', height: '3px', background: '#2563EB' }} /> Target Trajectory
+              </span>
+              <span style={{ color: '#16A34A', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '12px', height: '3px', background: '#16A34A' }} /> Actual Worm Line
+              </span>
+              <span style={{ color: '#DC2626', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#DC2626' }} /> Event Milestone
+              </span>
+            </div>
+          </div>
 
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#EC4899', background: '#FCE7F3', padding: '6px 14px', borderRadius: '20px', border: '1px solid #FBCFE8' }}>
-            Daily Target: <strong>{measureTarget} {measureUnit}/day</strong>
-          </span>
+          {/* Cricket Worm SVG Chart with Grid Background (Image 3 Model) */}
+          <div style={{ height: '220px', background: '#FFF', padding: '16px 20px', borderRadius: '14px', border: '1px solid #CBD5E1', position: 'relative', display: 'flex' }}>
+            
+            {/* Y-Axis Labels */}
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', paddingRight: '12px', fontSize: '10px', fontWeight: 800, color: '#475569', borderRight: '2px solid #94A3B8' }}>
+              <span>110</span>
+              <span>85</span>
+              <span>60</span>
+              <span>35</span>
+              <span>10</span>
+              <span>0</span>
+            </div>
 
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#2563EB', background: '#EFF6FF', padding: '6px 14px', borderRadius: '20px', border: '1px solid #BFDBFE' }}>
-            Avg Measure: <strong>{(measureTarget * 0.85).toFixed(1)} {measureUnit}</strong>
-          </span>
+            {/* Main Graph Canvas with Dashed Grid Lines */}
+            <div style={{ flex: 1, position: 'relative', marginLeft: '10px' }}>
+              <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+                {/* Background Grid Lines */}
+                <line x1="0" y1="0%" x2="100%" y2="0%" stroke="#E2E8F0" strokeDasharray="4,4" />
+                <line x1="0" y1="20%" x2="100%" y2="20%" stroke="#E2E8F0" strokeDasharray="4,4" />
+                <line x1="0" y1="40%" x2="100%" y2="40%" stroke="#E2E8F0" strokeDasharray="4,4" />
+                <line x1="0" y1="60%" x2="100%" y2="60%" stroke="#E2E8F0" strokeDasharray="4,4" />
+                <line x1="0" y1="80%" x2="100%" y2="80%" stroke="#E2E8F0" strokeDasharray="4,4" />
+                <line x1="0" y1="100%" x2="100%" y2="100%" stroke="#CBD5E1" strokeWidth="2" />
 
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#16A34A', background: '#F0FDF4', padding: '6px 14px', borderRadius: '20px', border: '1px solid #BBF7D0' }}>
-            Max Measure: <strong>{(measureTarget * 1.3).toFixed(1)} {measureUnit}</strong>
-          </span>
+                {/* Target Trajectory Line (Blue) */}
+                <polyline fill="none" stroke="#2563EB" strokeWidth="2.5" points="0,180 70,140 140,110 210,75 280,45 350,15 420,0" />
+
+                {/* Actual Worm Line (Green) */}
+                <polyline fill="none" stroke="#16A34A" strokeWidth="3" points="0,180 40,165 80,145 120,120 160,95 200,65 240,40" />
+
+                {/* Event Milestone Red Dots (Image 3 Cricket Model) */}
+                <circle cx="40" cy="165" r="4.5" fill="#DC2626" />
+                <circle cx="80" cy="145" r="4.5" fill="#DC2626" />
+                <circle cx="120" cy="120" r="4.5" fill="#DC2626" />
+                <circle cx="160" cy="95" r="4.5" fill="#DC2626" />
+                <circle cx="200" cy="65" r="4.5" fill="#DC2626" />
+                <circle cx="240" cy="40" r="4.5" fill="#DC2626" />
+              </svg>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 800, color: '#64748B', marginTop: '6px', paddingLeft: '35px' }}>
+            <span>Day 1</span>
+            <span>Day 5</span>
+            <span>Day 10</span>
+            <span>Day 15 (Today)</span>
+            <span>Day 20</span>
+            <span>Day 25</span>
+            <span>Day 30 (Deadline)</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ========================================================================= */}
-      {/* 10. CALENDAR VIEWS PANEL (IMAGE 2 & 3 REFERENCES) */}
+      {/* SPECIAL EVENT COUNT HISTOGRAM (SIDE-BY-SIDE TOUCHING BARS PER DAY) */}
+      {/* ========================================================================= */}
+      {trackingMode === 'count_event' && (
+        <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BarChart3 size={18} color="#2563EB" /> Event Count Daily Histogram (Side-by-Side Event Grouping)
+            </h3>
+            <p style={{ fontSize: '11px', color: '#64748B', margin: '2px 0 0 0' }}>
+              Shows discrete events completed per day. Days with 0 events show a clear gap (missed event day).
+            </p>
+          </div>
+
+          <div style={{ height: '180px', display: 'flex', alignItems: 'flex-end', gap: '18px', padding: '16px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
+            {dailyEventHistogramData.map((d, idx) => (
+              <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', height: '100%', justifyContent: 'flex-end' }}>
+                
+                {d.eventCount > 0 ? (
+                  <span style={{ fontSize: '11px', fontWeight: 900, color: '#2563EB' }}>{d.eventCount} Events</span>
+                ) : (
+                  <span style={{ fontSize: '10px', fontWeight: 800, color: '#DC2626' }}>0 (Missed)</span>
+                )}
+
+                {/* Side-by-Side Touching Event Bars for Multiple Events on the Same Day */}
+                <div style={{ display: 'flex', gap: '2px', alignItems: 'flex-end', height: '110px' }}>
+                  {d.eventCount === 0 ? (
+                    <div style={{ width: '20px', height: '4px', background: '#FCA5A5', borderRadius: '2px' }} />
+                  ) : (
+                    d.events.map(ev => (
+                      <div 
+                        key={ev.id}
+                        style={{
+                          width: '10px',
+                          height: `${Math.min(100, (ev.id / 6) * 100)}%`,
+                          minHeight: '20px',
+                          background: ev.color,
+                          borderRadius: '4px 4px 0 0',
+                          transition: 'all 0.3s ease'
+                        }}
+                        title={`Event #${ev.id} on ${d.dayLabel}`}
+                      />
+                    ))
+                  )}
+                </div>
+
+                <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569' }}>{d.dayLabel}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. CALENDAR VIEWS PANEL (IMAGE 2 & 3 REFERENCES) */}
       {/* ========================================================================= */}
       <div style={{ padding: '24px', background: '#FFF', borderRadius: '24px', border: '1px solid #E2E8F0', boxShadow: '0 8px 30px rgba(0,0,0,0.04)' }}>
         
@@ -744,41 +595,6 @@ export default function TaskDedicatedPageView({
             </button>
           </div>
         </div>
-
-        {/* WEEKLY CALENDAR VIEW (EXACT REFERENCE TO IMAGE 3) */}
-        {calendarViewMode === 'WEEK' && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: '#E2E8F0', borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0' }}>
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-                <div key={d} style={{ background: '#FFF', padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: '#64748B' }}>
-                  {d}
-                </div>
-              ))}
-
-              {[10, 11, 12, 13, 14, 15, 16].map((dayNum, i) => (
-                <div key={i} style={{ background: '#FFF', minHeight: '100px', padding: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center' }}>
-                  <span style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    background: dayNum === 14 ? '#2563EB' : 'transparent',
-                    color: dayNum === 14 ? '#FFF' : '#0F172A',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justify: 'center',
-                    fontSize: '12px',
-                    fontWeight: 900
-                  }}>
-                    {dayNum}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div style={{ textAlign: 'center', fontSize: '11px', fontWeight: 800, color: '#64748B', marginTop: '8px' }}>
-              Weekly Calendar View
-            </div>
-          </div>
-        )}
 
         {/* MONTHLY CALENDAR VIEW (EXACT REFERENCE TO IMAGE 2) */}
         {calendarViewMode === 'MONTH' && (
@@ -844,7 +660,7 @@ export default function TaskDedicatedPageView({
       </div>
 
       {/* ========================================================================= */}
-      {/* 11. LEETCODE 365-DAY HEATMAP (7 x 4 x 12 MATRIX) */}
+      {/* 4. LEETCODE 365-DAY HEATMAP */}
       {/* ========================================================================= */}
       <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
@@ -852,9 +668,6 @@ export default function TaskDedicatedPageView({
             <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Flame size={18} color="#DC2626" /> LeetCode 365-Day Heatmap (7 × 4 × 12 Grid)
             </h3>
-            <p style={{ fontSize: '11px', color: '#64748B', margin: '2px 0 0 0' }}>
-              Green intensity communicates daily measure and discipline over time.
-            </p>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 800, color: '#64748B' }}>
@@ -899,263 +712,6 @@ export default function TaskDedicatedPageView({
               ))}
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 12. DAILY GRAPHS PANEL */}
-      {/* ========================================================================= */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <BarChart3 size={18} color="#2563EB" /> Daily Performance Output Bar Graph
-        </h3>
-        <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 14px 0' }}>
-          Taller bars represent higher daily measure output; lower bars indicate reduced completion.
-        </p>
-
-        <div style={{ height: '160px', display: 'flex', alignItems: 'flex-end', gap: '10px', padding: '14px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
-          {sampleDailyMeasures.map((d, i) => (
-            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
-              <span style={{ fontSize: '9px', fontWeight: 900, color: '#2563EB' }}>{d.totalColumnVal}</span>
-              <div style={{ width: '100%', maxWidth: '28px', background: 'linear-gradient(180deg, #2563EB, #3B82F6)', borderRadius: '6px 6px 0 0', height: `${(d.totalColumnVal / 25) * 80}%`, minHeight: '8px' }} />
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569' }}>{d.dayLabel}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 13. EVENT CUMULATIVE PROGRESS LINE GRAPH PANEL (TYPE 1 ONLY — STRICT CONDITIONAL RENDER) */}
-      {/* ========================================================================= */}
-      {trackingMode === 'count_event' && (
-        <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', borderLeft: '6px solid #2563EB', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 2px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <LineChart size={18} color="#2563EB" /> Cumulative Event Progress Destination Line Graph (Type 1 Event Tasks Only)
-          </h3>
-          <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 14px 0' }}>
-            Cumulative completed events progressing from 0 → {targetCount} target events over available schedule days.
-          </p>
-
-          <div style={{ height: '160px', background: '#F8FAFC', padding: '14px', borderRadius: '14px', border: '1px solid #E2E8F0', position: 'relative', display: 'flex', alignItems: 'flex-end' }}>
-            <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-              <defs>
-                <linearGradient id="eventLineGradient3" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#2563EB" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-              <polygon fill="url(#eventLineGradient3)" points="0,130 70,110 140,80 210,40 280,20 280,140 0,140" />
-              <polyline fill="none" stroke="#CBD5E1" strokeWidth="2.5" strokeDasharray="5,5" points="0,130 70,100 140,75 210,50 280,25 350,5" />
-              <polyline fill="none" stroke="#2563EB" strokeWidth="3.5" points="0,130 70,110 140,80 210,40 280,20" />
-            </svg>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 14. STREAK ANALYTICS PANEL */}
-      {/* ========================================================================= */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Trophy size={18} color="#F59E0B" /> Streak & Discipline Analytics
-        </h3>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
-          <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px', textAlign: 'center' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#D97706', textTransform: 'uppercase' }}>Active Streak</span>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: '#B45309', marginTop: '2px' }}>7 Days 🔥</div>
-          </div>
-
-          <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px', textAlign: 'center' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase' }}>Max Streak Record</span>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: '#15803D', marginTop: '2px' }}>14 Days 🏆</div>
-          </div>
-
-          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px', textAlign: 'center' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#DC2626', textTransform: 'uppercase' }}>Missed Streak</span>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: '#991B1B', marginTop: '2px' }}>0 Days</div>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 15. SUBTASK ANALYTICS PANEL */}
-      {/* ========================================================================= */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', borderTop: '4px solid #DC2626', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <div>
-            <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0 }}>
-              Child Subtasks Panel ({directChildSubtasks.length})
-            </h3>
-            <p style={{ fontSize: '11px', color: '#64748B', margin: '2px 0 0 0' }}>
-              Click any subtask row to drill down to its dedicated task info page
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: '4px', background: '#F1F5F9', padding: '3px', borderRadius: '8px', border: '1px solid #CBD5E1' }}>
-            {['ALL', 'REQUIRED', 'OPTIONAL'].map(f => (
-              <button
-                key={f}
-                onClick={() => setSubtaskFilter(f)}
-                style={{
-                  background: subtaskFilter === f ? '#DC2626' : 'transparent',
-                  color: subtaskFilter === f ? '#FFF' : '#475569',
-                  border: 'none',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  cursor: 'pointer'
-                }}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Bottleneck Highlight Card */}
-        {mostMissedSubtaskItem && (
-          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: '14px', borderRadius: '12px', marginBottom: '14px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 900, color: '#991B1B', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <AlertCircle size={15} color="#DC2626" /> Bottleneck Subtask: {mostMissedSubtaskItem.subtask.title}
-            </div>
-            <div style={{ fontSize: '11px', color: '#7F1D1D', fontWeight: 700, marginTop: '2px' }}>
-              Missed / Failed <strong>{mostMissedSubtaskItem.missedCount} times</strong> across history.
-            </div>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {filteredSubtasksList.length === 0 ? (
-            <div style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic', padding: '14px', background: '#F8FAFC', borderRadius: '10px' }}>
-              No subtasks mapped under this parent task.
-            </div>
-          ) : (
-            filteredSubtasksList.map(st => (
-              <div
-                key={st.id}
-                onClick={() => handleSubtaskClick(st)}
-                style={{
-                  background: '#F8FAFC',
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '12px',
-                  padding: '14px 18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justify: 'space-between',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <CornerDownRight size={15} color="#DC2626" />
-                  <div>
-                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>{st.title}</span>
-                    <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>
-                      {st.isOptional ? 'Optional Subtask' : 'Mandatory Subtask'} | {st.hasMeasureTracking ? `Measured (${st.measureTarget || 5} ${st.measureUnit || 'units'})` : 'Standard Check'}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 900, color: '#DC2626' }}>
-                    {st.progressPercent || 0}%
-                  </span>
-                  <ExternalLink size={15} color="#64748B" />
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 16. SELECTED DATE ANALYSIS DRAWER */}
-      {/* ========================================================================= */}
-      {selectedCalendarDate && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(15, 23, 42, 0.6)',
-          backdropFilter: 'blur(6px)',
-          display: 'flex',
-          alignItems: 'center',
-          justify: 'center',
-          zIndex: 1700,
-          padding: '20px'
-        }} onClick={() => setSelectedCalendarDate(null)}>
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: '100%', maxWidth: '420px', padding: '24px', borderRadius: '20px', background: '#FFF', boxShadow: '0 20px 40px rgba(0,0,0,0.15)' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0 }}>
-                Selected Date Analysis — Day {selectedCalendarDate}
-              </h3>
-              <button onClick={() => setSelectedCalendarDate(null)} style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', padding: 0 }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '12px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: 800, color: '#16A34A' }}>
-                Task Turn Status: Successful Completion
-              </div>
-
-              <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '12px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: 800, color: '#0F172A' }}>
-                Achieved Measure: {measureTarget} {measureUnit} (Target Met)
-              </div>
-
-              <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>
-                Subtask Contribution Breakdown:
-              </div>
-              {directChildSubtasks.slice(0, 3).map(s => (
-                <div key={s.id} style={{ fontSize: '11px', color: '#16A34A', fontWeight: 700, background: '#DCFCE7', padding: '8px 12px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>✓ {s.title}</span>
-                  <span>{s.hasMeasureTracking ? `${s.measureTarget || 5} ${s.measureUnit || 'units'}` : 'Derived Avg'}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 17. ADDITIONAL ANALYTICAL INSIGHTS PANEL */}
-      {/* ========================================================================= */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Sparkles size={18} color="#8B5CF6" /> Additional Analytical Insights & Trends
-        </h3>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
-          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0', flex: 1, minWidth: '180px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Performance Trend</span>
-            <span style={{ fontSize: '14px', fontWeight: 900, color: '#16A34A' }}>Stable High Output 📈</span>
-          </div>
-
-          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0', flex: 1, minWidth: '180px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Most Productive Window</span>
-            <span style={{ fontSize: '14px', fontWeight: 900, color: '#2563EB' }}>Morning (6 AM - 12 PM)</span>
-          </div>
-
-          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0', flex: 1, minWidth: '180px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Subtask Bottleneck</span>
-            <span style={{ fontSize: '14px', fontWeight: 900, color: mostMissedSubtaskItem ? '#DC2626' : '#16A34A' }}>
-              {mostMissedSubtaskItem ? mostMissedSubtaskItem.subtask.title : 'None Identified'}
-            </span>
-          </div>
-
-          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0', flex: 1, minWidth: '180px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Completion Projection</span>
-            <span style={{ fontSize: '14px', fontWeight: 900, color: isFeasible ? '#16A34A' : '#DC2626' }}>
-              {isFeasible ? 'On Track for Deadline' : 'Requires Target Extension'}
-            </span>
-          </div>
         </div>
       </div>
 
