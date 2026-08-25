@@ -752,16 +752,18 @@ export default function App() {
         /* Main View Switcher */
         <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 12px' }}>
           
-          {/* DEDICATED FULL-SCREEN TASK PAGE ON DOUBLE CLICK */}
+          {/* DEDICATED FULL-SCREEN TASK PAGE ON DOUBLE CLICK OR OPEN */}
           {dedicatedTaskPageItem ? (
             <TaskDedicatedPageView 
               task={dedicatedTaskPageItem}
               childSubtasks={tasks.filter(t => t.parentTaskId === dedicatedTaskPageItem.id)}
+              parentTask={tasks.find(t => t.id === dedicatedTaskPageItem.parentTaskId)}
+              allTasks={tasks}
               onBack={() => setDedicatedTaskPageItem(null)}
               onEditTask={(t) => setSelectedEditItem(t)}
-              onToggleTask={handleToggleTask}
               onArchiveTask={handleArchiveTask}
               onDeleteTask={(id) => { handleDeleteTask(id); setDedicatedTaskPageItem(null); }}
+              onNavigateToSubtask={(subtaskItem) => setDedicatedTaskPageItem(subtaskItem)}
             />
           ) : (
             <>
