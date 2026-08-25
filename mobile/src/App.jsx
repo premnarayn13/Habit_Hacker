@@ -26,7 +26,7 @@ import { Flame } from 'lucide-react';
 
 const INITIAL_DEFAULT_TASKS = [
   {
-    id: 't-10000000-0000-4000-a000-111111111111',
+    id: '10000000-0000-4000-a000-111111111111',
     user_id: 'default-user',
     title: 'task_1_EndDate',
     description: 'Daily Full Stack Software Architecture Review and Microservice Optimization over a 45-day window.',
@@ -59,7 +59,7 @@ const INITIAL_DEFAULT_TASKS = [
     pausedDays: 4
   },
   {
-    id: 't-10000000-0000-4000-a000-111111111112',
+    id: '10000000-0000-4000-a000-111111111112',
     user_id: 'default-user',
     title: 'Child 1.1 — System Architecture Diagrams (Mandatory, Measured)',
     description: 'System diagrams',
@@ -82,7 +82,7 @@ const INITIAL_DEFAULT_TASKS = [
     targetCount: 35,
     currentCount: 15,
     repeatRule: 'DAILY',
-    parentTaskId: 't-10000000-0000-4000-a000-111111111111',
+    parentTaskId: '10000000-0000-4000-a000-111111111111',
     attachmentName: '',
     isArchived: false,
     archivedAt: null,
@@ -90,7 +90,7 @@ const INITIAL_DEFAULT_TASKS = [
     skipReason: ''
   },
   {
-    id: 't-10000000-0000-4000-a000-111111111113',
+    id: '10000000-0000-4000-a000-111111111113',
     user_id: 'default-user',
     title: 'Child 1.2 — Redis Caching Profiling (Mandatory, Measured)',
     description: 'Redis caching notes',
