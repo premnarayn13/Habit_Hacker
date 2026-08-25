@@ -1,7 +1,8 @@
 -- ============================================================================
--- HABIT HACKER: SUPABASE SEED SCRIPT FOR 3 NEW ADVANCED TASKS & SUBTASKS
+-- HABIT HACKER: SUPABASE MASTER FULL SEED & SCHEMA SCRIPT FOR 3 NEW TASKS
 -- Tasks: task_1_EndDate, task_2_Daycount, task_3_Eventcount
--- Includes 5-6 diverse child subtasks per master task with full daily history logs.
+-- Includes 5 diverse child subtasks per master task with full daily history logs.
+-- COPY AND PASTE THIS ENTIRE FILE INTO YOUR SUPABASE SQL EDITOR AND RUN!
 -- ============================================================================
 
 -- 1. ENSURE ALL REQUIRED COLUMNS EXIST ON public.tasks TABLE
@@ -64,14 +65,14 @@ CREATE TABLE IF NOT EXISTS public.task_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. CLEANUP OLD TEST DATA
+-- 3. CLEANUP PREVIOUS DATA FOR THESE TASKS
 DELETE FROM public.task_logs WHERE task_id IN ('t-10000000-0000-4000-a000-111111111111', 't-20000000-0000-4000-a000-222222222222', 't-30000000-0000-4000-a000-333333333333');
 DELETE FROM public.subtask_logs WHERE parent_task_id IN ('t-10000000-0000-4000-a000-111111111111', 't-20000000-0000-4000-a000-222222222222', 't-30000000-0000-4000-a000-333333333333');
 DELETE FROM public.task_archive_logs WHERE task_id IN ('t-10000000-0000-4000-a000-111111111111', 't-20000000-0000-4000-a000-222222222222', 't-30000000-0000-4000-a000-333333333333');
 DELETE FROM public.tasks WHERE title IN ('task_1_EndDate', 'task_2_Daycount', 'task_3_Eventcount') OR parent_task_id IN ('t-10000000-0000-4000-a000-111111111111', 't-20000000-0000-4000-a000-222222222222', 't-30000000-0000-4000-a000-333333333333');
 
 -- ============================================================================
--- TASK 1: task_1_EndDate (TYPE 3 — START/END DAILY PLAN)
+-- TASK 1: task_1_EndDate (TYPE 3 — START/END DAILY PLAN: 45-DAY WINDOW)
 -- ============================================================================
 WITH t1 AS (
     INSERT INTO public.tasks (
