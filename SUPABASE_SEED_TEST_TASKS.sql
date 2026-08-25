@@ -1,17 +1,43 @@
 -- ============================================================================
--- HABIT HACKER: SUPABASE SEED TEST DATA FOR DEEP ANALYTICS PAGE
--- Execute this SQL script in your Supabase SQL Editor to populate Test1, Test2, and Test3
--- with full child subtasks, 365-day history logs, archive logs, and daily measure logs.
+-- HABIT HACKER: SUPABASE COMPLETE SELF-CONTAINED SEED SCRIPT
+-- Paste and run this ENTIRE script directly into Supabase SQL Editor.
+-- Automatically creates required tables (task_archive_logs, subtask_logs) and populates
+-- Test1, Test2, and Test3 with diverse combinations of child subtasks, history logs, and archive logs.
 -- ============================================================================
 
--- 1. CLEANUP PREVIOUS TEST TASKS (IF APPLICABLE)
+-- 1. ENSURE TABLES EXIST (SELF-CONTAINED INITIALIZATION)
+CREATE TABLE IF NOT EXISTS public.task_archive_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    archived_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    unarchived_at TIMESTAMPTZ,
+    paused_days INT DEFAULT 0,
+    extension_applied_days INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.subtask_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    subtask_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
+    parent_task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    log_date DATE NOT NULL,
+    is_completed BOOLEAN DEFAULT FALSE,
+    measured_value NUMERIC(10, 2) DEFAULT 0,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(subtask_id, log_date)
+);
+
+-- 2. CLEANUP PREVIOUS TEST TASKS
 DELETE FROM public.task_logs WHERE task_id IN (SELECT id FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3') OR parent_task_id IN (SELECT id FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3')));
 DELETE FROM public.subtask_logs WHERE parent_task_id IN (SELECT id FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3'));
 DELETE FROM public.task_archive_logs WHERE task_id IN (SELECT id FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3'));
 DELETE FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3') OR parent_task_id IN (SELECT id FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3'));
 
--- 2. INSERT TEST TASK 1: END_DATE MODE ("Test1 - Java Masterclass")
--- Features: Fixed start & end date window, daily measure tracking (10 pages/day), archive history log, child subtasks.
+-- 3. INSERT TEST TASK 1: END_DATE MODE ("Test1 - Java Masterclass")
+-- Features: Fixed 45-day window, daily measure tracking (12 Pages/day), archive history log (2x paused 4d), diverse child subtasks.
 WITH new_parent1 AS (
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -42,49 +68,45 @@ WITH new_parent1 AS (
         NOW() - INTERVAL '15 days'
     ) RETURNING id, user_id
 )
--- Child Subtasks for Test1
+-- Diverse Combination Child Subtasks for Test1
 INSERT INTO public.tasks (
     id, user_id, parent_task_id, title, category, priority, tracking_mode,
     planned_start, planned_end, target_count, current_count, progress_percent,
     has_measure_tracking, measure_unit, measure_target, is_optional, is_archived
 ) SELECT 
     '11111111-1111-4111-a111-111111111112',
-    user_id,
-    id,
-    'Child 1.1 - Complete Spring Data JPA Exercises',
-    'Coding',
-    'HIGH',
-    'end_date',
-    CURRENT_DATE - INTERVAL '15 days',
-    CURRENT_DATE + INTERVAL '10 days',
-    25,
-    12,
-    48,
-    TRUE,
-    'Exercises',
-    5.0,
-    FALSE,
-    FALSE
+    user_id, id,
+    'Child 1.1 - Spring Data JPA Exercises (Mandatory, Measured)',
+    'Coding', 'HIGH', 'end_date',
+    CURRENT_DATE - INTERVAL '15 days', CURRENT_DATE + INTERVAL '10 days',
+    25, 12, 48, TRUE, 'Exercises', 5.0, FALSE, FALSE
 FROM new_parent1
 UNION ALL
 SELECT 
     '11111111-1111-4111-a111-111111111113',
-    user_id,
-    id,
-    'Child 1.2 - Optional JDBC Optimization Reading',
-    'Coding',
-    'MEDIUM',
-    'end_date',
-    CURRENT_DATE - INTERVAL '10 days',
-    CURRENT_DATE + INTERVAL '20 days',
-    30,
-    8,
-    26,
-    FALSE,
-    'Pages',
-    10.0,
-    TRUE,
-    FALSE
+    user_id, id,
+    'Child 1.2 - JDBC Optimization Reading (Optional, Measured)',
+    'Coding', 'MEDIUM', 'end_date',
+    CURRENT_DATE - INTERVAL '10 days', CURRENT_DATE + INTERVAL '20 days',
+    30, 8, 26, TRUE, 'Pages', 10.0, TRUE, FALSE
+FROM new_parent1
+UNION ALL
+SELECT 
+    '11111111-1111-4111-a111-111111111114',
+    user_id, id,
+    'Child 1.3 - Build REST Controllers (Mandatory, Standard Check)',
+    'Coding', 'CRITICAL', 'end_date',
+    CURRENT_DATE - INTERVAL '15 days', CURRENT_DATE + INTERVAL '15 days',
+    30, 15, 50, FALSE, 'Units', 1.0, FALSE, FALSE
+FROM new_parent1
+UNION ALL
+SELECT 
+    '11111111-1111-4111-a111-111111111115',
+    user_id, id,
+    'Child 1.4 - Optional Security JWT Review (Optional, Standard Check)',
+    'Coding', 'LOW', 'end_date',
+    CURRENT_DATE - INTERVAL '5 days', CURRENT_DATE + INTERVAL '25 days',
+    30, 5, 16, FALSE, 'Units', 1.0, TRUE, FALSE
 FROM new_parent1;
 
 -- Archive Logs for Test1
@@ -105,8 +127,8 @@ SELECT
 FROM generate_series(0, 14) AS i;
 
 
--- 3. INSERT TEST TASK 2: COUNT_DAYS MODE ("Test2 - Morning Running Discipline")
--- Features: Requires 30 successful days within 40 calendar days window. Feasibility Warning check.
+-- 4. INSERT TEST TASK 2: COUNT_DAYS MODE ("Test2 - Morning Cardio Running")
+-- Features: Target 30 successful days within 40 calendar days window, Feasibility Check, diverse subtasks.
 WITH new_parent2 AS (
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -123,45 +145,41 @@ WITH new_parent2 AS (
         'count_days',
         CURRENT_DATE - INTERVAL '10 days',
         CURRENT_DATE + INTERVAL '20 days',
-        30,
-        30,
-        18,
-        18,
-        60,
-        TRUE,
-        'Km',
-        5.0,
-        FALSE,
-        FALSE,
-        1,
-        3,
-        'Daily',
-        NOW() - INTERVAL '10 days'
+        30, 30, 18, 18,
+        60, TRUE, 'Km', 5.0, FALSE, FALSE,
+        1, 3, 'Daily', NOW() - INTERVAL '10 days'
     ) RETURNING id, user_id
 )
--- Child Subtasks for Test2
+-- Diverse Combination Child Subtasks for Test2
 INSERT INTO public.tasks (
     id, user_id, parent_task_id, title, category, priority, tracking_mode,
     planned_start, planned_end, target_count, current_count, progress_percent,
     has_measure_tracking, measure_unit, measure_target, is_optional, is_archived
 ) SELECT 
     '22222222-2222-4222-a222-222222222223',
-    user_id,
-    id,
-    'Child 2.1 - Warmup Stretches (10 mins)',
-    'Health',
-    'MEDIUM',
-    'count_days',
-    CURRENT_DATE - INTERVAL '10 days',
-    CURRENT_DATE + INTERVAL '20 days',
-    30,
-    18,
-    60,
-    FALSE,
-    'Mins',
-    10.0,
-    FALSE,
-    FALSE
+    user_id, id,
+    'Child 2.1 - Warmup Stretches (Mandatory, Measured in Mins)',
+    'Health', 'MEDIUM', 'count_days',
+    CURRENT_DATE - INTERVAL '10 days', CURRENT_DATE + INTERVAL '20 days',
+    30, 18, 60, TRUE, 'Mins', 10.0, FALSE, FALSE
+FROM new_parent2
+UNION ALL
+SELECT 
+    '22222222-2222-4222-a222-222222222224',
+    user_id, id,
+    'Child 2.2 - Hydration & Electrolytes (Mandatory, Standard Check)',
+    'Health', 'HIGH', 'count_days',
+    CURRENT_DATE - INTERVAL '10 days', CURRENT_DATE + INTERVAL '20 days',
+    30, 18, 60, FALSE, 'Litres', 2.0, FALSE, FALSE
+FROM new_parent2
+UNION ALL
+SELECT 
+    '22222222-2222-4222-a222-222222222225',
+    user_id, id,
+    'Child 2.3 - Post-run Foam Rolling (Optional, Measured)',
+    'Health', 'LOW', 'count_days',
+    CURRENT_DATE - INTERVAL '10 days', CURRENT_DATE + INTERVAL '20 days',
+    30, 10, 33, TRUE, 'Mins', 15.0, TRUE, FALSE
 FROM new_parent2;
 
 -- Historical Daily Task Logs for Test2
@@ -176,8 +194,8 @@ SELECT
 FROM generate_series(0, 9) AS i;
 
 
--- 4. INSERT TEST TASK 3: COUNT_EVENT MODE ("Test3 - 100 Coding Submissions")
--- Features: Target event repetitions quantity (100 problems). Pace Velocity Engine (Required pace vs actual pace).
+-- 5. INSERT TEST TASK 3: COUNT_EVENT MODE ("Test3 - 100 Coding Submissions")
+-- Features: Target 100 event repetitions, Daily Pace Velocity calculator, diverse child subtasks.
 WITH new_parent3 AS (
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -194,45 +212,41 @@ WITH new_parent3 AS (
         'count_event',
         CURRENT_DATE - INTERVAL '20 days',
         CURRENT_DATE + INTERVAL '10 days',
-        100,
-        100,
-        65,
-        65,
-        65,
-        TRUE,
-        'Problems',
-        3.0,
-        FALSE,
-        FALSE,
-        0,
-        0,
-        'Daily',
-        NOW() - INTERVAL '20 days'
+        100, 100, 65, 65,
+        65, TRUE, 'Problems', 3.0, FALSE, FALSE,
+        0, 0, 'Daily', NOW() - INTERVAL '20 days'
     ) RETURNING id, user_id
 )
--- Child Subtasks for Test3
+-- Diverse Combination Child Subtasks for Test3
 INSERT INTO public.tasks (
     id, user_id, parent_task_id, title, category, priority, tracking_mode,
     planned_start, planned_end, target_count, current_count, progress_percent,
     has_measure_tracking, measure_unit, measure_target, is_optional, is_archived
 ) SELECT 
     '33333333-3333-4333-a333-333333333334',
-    user_id,
-    id,
-    'Child 3.1 - Dynamic Programming Practice',
-    'Education',
-    'HIGH',
-    'count_event',
-    CURRENT_DATE - INTERVAL '20 days',
-    CURRENT_DATE + INTERVAL '10 days',
-    40,
-    28,
-    70,
-    TRUE,
-    'Problems',
-    2.0,
-    FALSE,
-    FALSE
+    user_id, id,
+    'Child 3.1 - Dynamic Programming Practice (Mandatory, Measured)',
+    'Education', 'HIGH', 'count_event',
+    CURRENT_DATE - INTERVAL '20 days', CURRENT_DATE + INTERVAL '10 days',
+    40, 28, 70, TRUE, 'Problems', 2.0, FALSE, FALSE
+FROM new_parent3
+UNION ALL
+SELECT 
+    '33333333-3333-4333-a333-333333333335',
+    user_id, id,
+    'Child 3.2 - Graph Algorithms & DFS/BFS (Mandatory, Measured)',
+    'Education', 'CRITICAL', 'count_event',
+    CURRENT_DATE - INTERVAL '20 days', CURRENT_DATE + INTERVAL '10 days',
+    30, 22, 73, TRUE, 'Problems', 2.0, FALSE, FALSE
+FROM new_parent3
+UNION ALL
+SELECT 
+    '33333333-3333-4333-a333-333333333336',
+    user_id, id,
+    'Child 3.3 - Optional Mock Code Review Notes (Optional, Standard)',
+    'Education', 'LOW', 'count_event',
+    CURRENT_DATE - INTERVAL '10 days', CURRENT_DATE + INTERVAL '10 days',
+    30, 15, 50, FALSE, 'Reviews', 1.0, TRUE, FALSE
 FROM new_parent3;
 
 -- Historical Daily Task Logs for Test3
@@ -247,6 +261,5 @@ SELECT
 FROM generate_series(0, 19) AS i;
 
 -- ============================================================================
--- SEEDING COMPLETE FOR Test1, Test2, Test3!
--- You can now view Test1, Test2, or Test3 on the Mobile UI to inspect complete analytics.
+-- SUCCESS: Test1, Test2, and Test3 seeded cleanly with diverse subtask combinations!
 -- ============================================================================
