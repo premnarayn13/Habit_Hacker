@@ -1,10 +1,10 @@
 -- ============================================================================
--- HABIT HACKER: SUPABASE COMPLETE SELF-CONTAINED SEED SCRIPT (DATE TYPE FIX)
+-- HABIT HACKER: SUPABASE COMPLETE SELF-CONTAINED SEED SCRIPT (TASK_LOGS COLUMNS FIX)
 -- Paste and run this ENTIRE script directly into Supabase SQL Editor.
--- Fixes DATE casting for planned_start and planned_end.
+-- Automatically ensures all columns exist on public.tasks AND public.task_logs tables.
 -- ============================================================================
 
--- 1. AUTOMATICALLY ADD ANY MISSING COLUMNS TO public.tasks TABLE
+-- 1. ENSURE public.tasks TABLE HAS ALL REQUIRED COLUMNS
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General';
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'MEDIUM';
@@ -28,7 +28,24 @@ ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS paused_days INT DEFAULT 0;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS recurrence_pattern TEXT DEFAULT 'Daily';
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS parent_task_id TEXT;
 
--- 2. DROP & RECREATE ANALYTICS TABLES WITH FLEXIBLE TEXT TYPES
+-- 2. ENSURE public.task_logs TABLE EXISTS AND HAS ALL REQUIRED COLUMNS
+CREATE TABLE IF NOT EXISTS public.task_logs (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    task_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    log_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    is_completed BOOLEAN DEFAULT TRUE,
+    measured_value NUMERIC(10, 2) DEFAULT 0,
+    tracking_mode TEXT DEFAULT 'end_date',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.task_logs ADD COLUMN IF NOT EXISTS log_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE public.task_logs ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT TRUE;
+ALTER TABLE public.task_logs ADD COLUMN IF NOT EXISTS measured_value NUMERIC(10, 2) DEFAULT 0;
+ALTER TABLE public.task_logs ADD COLUMN IF NOT EXISTS tracking_mode TEXT DEFAULT 'end_date';
+
+-- 3. DROP & RECREATE ANALYTICS TABLES WITH FLEXIBLE TEXT TYPES
 DROP TABLE IF EXISTS public.subtask_logs CASCADE;
 DROP TABLE IF EXISTS public.task_archive_logs CASCADE;
 
@@ -60,13 +77,13 @@ CREATE INDEX IF NOT EXISTS idx_task_archive_logs_task ON public.task_archive_log
 CREATE INDEX IF NOT EXISTS idx_subtask_logs_parent ON public.subtask_logs(parent_task_id);
 CREATE INDEX IF NOT EXISTS idx_subtask_logs_subtask ON public.subtask_logs(subtask_id);
 
--- 3. CLEANUP PREVIOUS TEST TASKS
+-- 4. CLEANUP PREVIOUS TEST TASKS
 DELETE FROM public.task_logs WHERE task_id IN (SELECT id::text FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3') OR parent_task_id IN (SELECT id::text FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3')));
 DELETE FROM public.subtask_logs WHERE parent_task_id IN (SELECT id::text FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3'));
 DELETE FROM public.task_archive_logs WHERE task_id IN (SELECT id::text FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3'));
 DELETE FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3') OR parent_task_id IN (SELECT id::text FROM public.tasks WHERE title IN ('Test1', 'Test2', 'Test3'));
 
--- 4. INSERT TEST TASK 1: END_DATE MODE ("Test1 - Java Masterclass")
+-- 5. INSERT TEST TASK 1: END_DATE MODE ("Test1 - Java Masterclass")
 WITH new_parent1 AS (
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -155,7 +172,7 @@ SELECT
 FROM generate_series(0, 14) AS i;
 
 
--- 5. INSERT TEST TASK 2: COUNT_DAYS MODE ("Test2 - Morning Cardio Running")
+-- 6. INSERT TEST TASK 2: COUNT_DAYS MODE ("Test2 - Morning Cardio Running")
 WITH new_parent2 AS (
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -220,7 +237,7 @@ SELECT
 FROM generate_series(0, 9) AS i;
 
 
--- 6. INSERT TEST TASK 3: COUNT_EVENT MODE ("Test3 - 100 Coding Submissions")
+-- 7. INSERT TEST TASK 3: COUNT_EVENT MODE ("Test3 - 100 Coding Submissions")
 WITH new_parent3 AS (
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -285,5 +302,5 @@ SELECT
 FROM generate_series(0, 19) AS i;
 
 -- ============================================================================
--- SUCCESS: Test1, Test2, and Test3 seeded cleanly with DATE type compatibility!
+-- SUCCESS: Test1, Test2, and Test3 seeded cleanly with task_logs columns guarantee!
 -- ============================================================================
