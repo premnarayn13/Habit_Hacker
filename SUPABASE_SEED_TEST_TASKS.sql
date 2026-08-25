@@ -1,7 +1,7 @@
 -- ============================================================================
--- HABIT HACKER: SUPABASE COMPLETE SELF-CONTAINED SEED SCRIPT (ULTIMATE BULLETPROOF)
+-- HABIT HACKER: SUPABASE COMPLETE SELF-CONTAINED SEED SCRIPT (DATE TYPE FIX)
 -- Paste and run this ENTIRE script directly into Supabase SQL Editor.
--- Automatically adds any missing columns to public.tasks table and populates Test1, Test2, and Test3.
+-- Fixes DATE casting for planned_start and planned_end.
 -- ============================================================================
 
 -- 1. AUTOMATICALLY ADD ANY MISSING COLUMNS TO public.tasks TABLE
@@ -9,8 +9,8 @@ ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General';
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'MEDIUM';
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS tracking_mode TEXT DEFAULT 'end_date';
-ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS planned_start TEXT;
-ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS planned_end TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS planned_start DATE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS planned_end DATE;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS target_count INT DEFAULT 30;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS current_count INT DEFAULT 0;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS target_day_count INT DEFAULT 30;
@@ -81,8 +81,8 @@ WITH new_parent1 AS (
         'Coding',
         'CRITICAL',
         'end_date',
-        (CURRENT_DATE - INTERVAL '15 days')::text,
-        (CURRENT_DATE + INTERVAL '30 days')::text,
+        (CURRENT_DATE - INTERVAL '15 days')::date,
+        (CURRENT_DATE + INTERVAL '30 days')::date,
         45,
         15,
         33,
@@ -106,7 +106,7 @@ INSERT INTO public.tasks (
     user_id, id::text,
     'Child 1.1 - Spring Data JPA Exercises (Mandatory, Measured)',
     'Coding', 'HIGH', 'end_date',
-    (CURRENT_DATE - INTERVAL '15 days')::text, (CURRENT_DATE + INTERVAL '10 days')::text,
+    (CURRENT_DATE - INTERVAL '15 days')::date, (CURRENT_DATE + INTERVAL '10 days')::date,
     25, 12, 48, TRUE, 'Exercises', 5.0, FALSE, FALSE
 FROM new_parent1
 UNION ALL
@@ -115,7 +115,7 @@ SELECT
     user_id, id::text,
     'Child 1.2 - JDBC Optimization Reading (Optional, Measured)',
     'Coding', 'MEDIUM', 'end_date',
-    (CURRENT_DATE - INTERVAL '10 days')::text, (CURRENT_DATE + INTERVAL '20 days')::text,
+    (CURRENT_DATE - INTERVAL '10 days')::date, (CURRENT_DATE + INTERVAL '20 days')::date,
     30, 8, 26, TRUE, 'Pages', 10.0, TRUE, FALSE
 FROM new_parent1
 UNION ALL
@@ -124,7 +124,7 @@ SELECT
     user_id, id::text,
     'Child 1.3 - Build REST Controllers (Mandatory, Standard Check)',
     'Coding', 'CRITICAL', 'end_date',
-    (CURRENT_DATE - INTERVAL '15 days')::text, (CURRENT_DATE + INTERVAL '15 days')::text,
+    (CURRENT_DATE - INTERVAL '15 days')::date, (CURRENT_DATE + INTERVAL '15 days')::date,
     30, 15, 50, FALSE, 'Units', 1.0, FALSE, FALSE
 FROM new_parent1
 UNION ALL
@@ -133,7 +133,7 @@ SELECT
     user_id, id::text,
     'Child 1.4 - Optional Security JWT Review (Optional, Standard Check)',
     'Coding', 'LOW', 'end_date',
-    (CURRENT_DATE - INTERVAL '5 days')::text, (CURRENT_DATE + INTERVAL '25 days')::text,
+    (CURRENT_DATE - INTERVAL '5 days')::date, (CURRENT_DATE + INTERVAL '25 days')::date,
     30, 5, 16, FALSE, 'Units', 1.0, TRUE, FALSE
 FROM new_parent1;
 
@@ -170,8 +170,8 @@ WITH new_parent2 AS (
         'Health',
         'HIGH',
         'count_days',
-        (CURRENT_DATE - INTERVAL '10 days')::text,
-        (CURRENT_DATE + INTERVAL '20 days')::text,
+        (CURRENT_DATE - INTERVAL '10 days')::date,
+        (CURRENT_DATE + INTERVAL '20 days')::date,
         30, 30, 18, 18,
         60, TRUE, 'Km', 5.0, FALSE, FALSE,
         1, 3, 'Daily', NOW() - INTERVAL '10 days'
@@ -186,7 +186,7 @@ INSERT INTO public.tasks (
     user_id, id::text,
     'Child 2.1 - Warmup Stretches (Mandatory, Measured in Mins)',
     'Health', 'MEDIUM', 'count_days',
-    (CURRENT_DATE - INTERVAL '10 days')::text, (CURRENT_DATE + INTERVAL '20 days')::text,
+    (CURRENT_DATE - INTERVAL '10 days')::date, (CURRENT_DATE + INTERVAL '20 days')::date,
     30, 18, 60, TRUE, 'Mins', 10.0, FALSE, FALSE
 FROM new_parent2
 UNION ALL
@@ -195,7 +195,7 @@ SELECT
     user_id, id::text,
     'Child 2.2 - Hydration & Electrolytes (Mandatory, Standard Check)',
     'Health', 'HIGH', 'count_days',
-    (CURRENT_DATE - INTERVAL '10 days')::text, (CURRENT_DATE + INTERVAL '20 days')::text,
+    (CURRENT_DATE - INTERVAL '10 days')::date, (CURRENT_DATE + INTERVAL '20 days')::date,
     30, 18, 60, FALSE, 'Litres', 2.0, FALSE, FALSE
 FROM new_parent2
 UNION ALL
@@ -204,7 +204,7 @@ SELECT
     user_id, id::text,
     'Child 2.3 - Post-run Foam Rolling (Optional, Measured)',
     'Health', 'LOW', 'count_days',
-    (CURRENT_DATE - INTERVAL '10 days')::text, (CURRENT_DATE + INTERVAL '20 days')::text,
+    (CURRENT_DATE - INTERVAL '10 days')::date, (CURRENT_DATE + INTERVAL '20 days')::date,
     30, 10, 33, TRUE, 'Mins', 15.0, TRUE, FALSE
 FROM new_parent2;
 
@@ -235,8 +235,8 @@ WITH new_parent3 AS (
         'Education',
         'CRITICAL',
         'count_event',
-        (CURRENT_DATE - INTERVAL '20 days')::text,
-        (CURRENT_DATE + INTERVAL '10 days')::text,
+        (CURRENT_DATE - INTERVAL '20 days')::date,
+        (CURRENT_DATE + INTERVAL '10 days')::date,
         100, 100, 65, 65,
         65, TRUE, 'Problems', 3.0, FALSE, FALSE,
         0, 0, 'Daily', NOW() - INTERVAL '20 days'
@@ -251,7 +251,7 @@ INSERT INTO public.tasks (
     user_id, id::text,
     'Child 3.1 - Dynamic Programming Practice (Mandatory, Measured)',
     'Education', 'HIGH', 'count_event',
-    (CURRENT_DATE - INTERVAL '20 days')::text, (CURRENT_DATE + INTERVAL '10 days')::text,
+    (CURRENT_DATE - INTERVAL '20 days')::date, (CURRENT_DATE + INTERVAL '10 days')::date,
     40, 28, 70, TRUE, 'Problems', 2.0, FALSE, FALSE
 FROM new_parent3
 UNION ALL
@@ -260,7 +260,7 @@ SELECT
     user_id, id::text,
     'Child 3.2 - Graph Algorithms & DFS/BFS (Mandatory, Measured)',
     'Education', 'CRITICAL', 'count_event',
-    (CURRENT_DATE - INTERVAL '20 days')::text, (CURRENT_DATE + INTERVAL '10 days')::text,
+    (CURRENT_DATE - INTERVAL '20 days')::date, (CURRENT_DATE + INTERVAL '10 days')::date,
     30, 22, 73, TRUE, 'Problems', 2.0, FALSE, FALSE
 FROM new_parent3
 UNION ALL
@@ -269,7 +269,7 @@ SELECT
     user_id, id::text,
     'Child 3.3 - Optional Mock Code Review Notes (Optional, Standard)',
     'Education', 'LOW', 'count_event',
-    (CURRENT_DATE - INTERVAL '10 days')::text, (CURRENT_DATE + INTERVAL '10 days')::text,
+    (CURRENT_DATE - INTERVAL '10 days')::date, (CURRENT_DATE + INTERVAL '10 days')::date,
     30, 15, 50, FALSE, 'Reviews', 1.0, TRUE, FALSE
 FROM new_parent3;
 
@@ -285,5 +285,5 @@ SELECT
 FROM generate_series(0, 19) AS i;
 
 -- ============================================================================
--- SUCCESS: Test1, Test2, and Test3 seeded cleanly with automatic column creation!
+-- SUCCESS: Test1, Test2, and Test3 seeded cleanly with DATE type compatibility!
 -- ============================================================================

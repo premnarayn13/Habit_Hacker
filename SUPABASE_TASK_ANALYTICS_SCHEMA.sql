@@ -1,7 +1,7 @@
 -- ============================================================================
 -- HABIT HACKER: MASTER SUPABASE TASK ANALYTICS SCHEMA & DDL
 -- Execute this SQL script in Supabase SQL Editor to support the Task Info & Analytics Page.
--- Compatible with all column types (TEXT, VARCHAR, UUID).
+-- Compatible with DATE column types for planned_start and planned_end.
 -- ============================================================================
 
 -- 1. ENSURE ALL REQUIRED COLUMNS EXIST ON public.tasks TABLE
@@ -9,8 +9,8 @@ ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General';
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'MEDIUM';
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS tracking_mode TEXT DEFAULT 'end_date';
-ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS planned_start TEXT;
-ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS planned_end TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS planned_start DATE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS planned_end DATE;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS target_count INT DEFAULT 30;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS current_count INT DEFAULT 0;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS target_day_count INT DEFAULT 30;
@@ -86,7 +86,7 @@ BEGIN
             WHERE id = active_archive_log_id;
 
             IF NEW.planned_end IS NOT NULL AND paused_duration_days > 0 THEN
-                NEW.planned_end := (NEW.planned_end::DATE + (paused_duration_days || ' days')::INTERVAL)::DATE::text;
+                NEW.planned_end := (NEW.planned_end::DATE + (paused_duration_days || ' days')::INTERVAL)::DATE;
             END IF;
             NEW.paused_days := COALESCE(OLD.paused_days, 0) + paused_duration_days;
         END IF;
