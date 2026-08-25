@@ -60,6 +60,17 @@ export default function TaskDedicatedPageView({
   const currentTask = breadcrumbStack[breadcrumbStack.length - 1] || task;
   const isSubtask = !!currentTask.parentTaskId;
 
+  // Backend Spring Boot REST API integration state
+  const [backendAnalytics, setBackendAnalytics] = useState(null);
+
+  React.useEffect(() => {
+    if (!currentTask?.id) return;
+    fetch(`/api/tasks/${currentTask.id}/analytics`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setBackendAnalytics(data); })
+      .catch(err => console.log('Backend offline, using client computed analytics:', err));
+  }, [currentTask?.id]);
+
   // Calculate total window duration days
   const calculateSpanDays = (start, end) => {
     if (!start || !end) return 30;
