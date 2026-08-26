@@ -167,4 +167,11 @@ public class Task {
 
     public Boolean getIsDoneToday() { return isDoneToday; }
     public void setIsDoneToday(Boolean isDoneToday) { this.isDoneToday = isDoneToday; }
+
+    public String getPlannedStart() { return startDate != null ? startDate.toString() : ""; }
+    public String getPlannedEnd() { return endDate != null ? endDate.toString() : ""; }
+    public Integer getTargetDayCount() { return targetCount; }
+    public Integer getCurrentDayCount() { return currentCount; }
+    public Integer getTargetEventCount() { return targetCount; }
+    public Integer getCurrentEventCount() { return currentCount; }
 }

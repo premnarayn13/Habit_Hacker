@@ -103,7 +103,7 @@ public class TaskAnalyticsService {
         List<Task> childSubtasks = taskRepository.findByParentTaskId(taskId);
         dto.setTotalSubtasksCount(childSubtasks.size());
 
-        long completedSubtasksCount = childSubtasks.stream().filter(s => Boolean.TRUE.equals(s.getIsDoneToday()) || (s.getProgressPercent() != null && s.getProgressPercent() >= 100)).count();
+        long completedSubtasksCount = childSubtasks.stream().filter(s -> Boolean.TRUE.equals(s.getIsDoneToday()) || (s.getProgressPercent() != null && s.getProgressPercent() >= 100)).count();
         dto.setSubtasksCompletedCount((int) completedSubtasksCount);
 
         if (!childSubtasks.isEmpty()) {
