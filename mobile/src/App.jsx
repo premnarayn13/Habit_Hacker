@@ -384,6 +384,21 @@ export default function App() {
       return task;
     });
 
+    // 3. Automated 5-Day Blank Auto-Archive for Un-extended Completed / Expired Tasks
+    const todayMs = Date.now();
+    updatedTasks = updatedTasks.map(task => {
+      if (task.isArchived) return task;
+      const isDoneOrExpired = task.progressPercent >= 100 || (task.plannedEnd && task.plannedEnd < todayStr);
+      if (isDoneOrExpired && task.plannedEnd) {
+        const endDateMs = new Date(task.plannedEnd).getTime();
+        const daysPast = Math.floor((todayMs - endDateMs) / (1000 * 60 * 60 * 24));
+        if (daysPast >= 5) {
+          return { ...task, isArchived: true, archiveReason: 'Passed Archive (5 Days Un-extended)' };
+        }
+      }
+      return task;
+    });
+
     return updatedTasks;
   };
 
@@ -857,6 +872,32 @@ export default function App() {
     }
   };
 
+  const handleExtendTask = async (taskId, newEndDate) => {
+    const updated = tasks.map(t => {
+      if (t.id === taskId) {
+        return {
+          ...t,
+          plannedEnd: newEndDate,
+          deadline: newEndDate,
+          isArchived: false,
+          isDoneToday: false,
+          progressPercent: Math.min(99, t.progressPercent || 0)
+        };
+      }
+      return t;
+    });
+    updateTasksState(updated);
+
+    if (currentUser) {
+      await supabase.from('tasks').update({
+        end_date: newEndDate,
+        planned_end: newEndDate,
+        deadline: newEndDate,
+        is_archived: false
+      }).eq('id', taskId);
+    }
+  };
+
   const handleLogSkipReason = (taskId, reason) => {
     const newTasks = tasks.map(t => t.id === taskId ? { ...t, skipReason: reason } : t);
     updateTasksState(newTasks);
@@ -982,6 +1023,7 @@ export default function App() {
                   onUnmapSubtask={handleUnmapSubtask}
                   onOpenDedicatedTaskPage={(task) => setDedicatedTaskPageItem(task)}
                   onEditTask={(task) => setSelectedEditItem(task)}
+                  onExtendTask={handleExtendTask}
                 />
               )}
 

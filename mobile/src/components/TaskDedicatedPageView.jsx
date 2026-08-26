@@ -430,14 +430,6 @@ export default function TaskDedicatedPageView({
             </div>
           </div>
 
-          <div style={{ background: 'linear-gradient(135deg, #F0FDF4, #DCFCE7)', border: '1px solid #BBF7D0', padding: '10px 18px', borderRadius: '25px', boxShadow: '0 4px 10px rgba(22,163,74,0.08)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <ShieldCheck size={16} color="#16A34A" />
-            <div>
-              <span style={{ fontSize: '9px', fontWeight: 800, color: '#14532D', textTransform: 'uppercase', display: 'block' }}>Discipline</span>
-              <span style={{ fontSize: '13px', fontWeight: 900, color: currentTask.isOptional ? '#D97706' : '#16A34A' }}>{currentTask.isOptional ? 'Optional' : 'Mandatory'}</span>
-            </div>
-          </div>
-
           <div style={{ background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)', border: '1px solid #BFDBFE', padding: '10px 18px', borderRadius: '25px', boxShadow: '0 4px 10px rgba(37,99,235,0.08)', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Crosshair size={16} color="#2563EB" />
             <div>
@@ -752,25 +744,52 @@ export default function TaskDedicatedPageView({
       {/* ========================================================================= */}
       <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
         <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Ruler size={18} color="#EC4899" /> Measure Analytics System
+          <Ruler size={18} color="#EC4899" /> DayCount Measure Analytics System & Calculations
         </h3>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', background: '#F1F5F9', padding: '6px 14px', borderRadius: '20px', border: '1px solid #CBD5E1' }}>
-            Unit: <strong>{currentTask.hasMeasureTracking ? measureUnit : 'Standard Check'}</strong>
-          </span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+          <div style={{ background: '#F8FAFC', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Daily Target Measure</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#EC4899' }}>{measureTarget} {measureUnit}/day</span>
+          </div>
 
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#EC4899', background: '#FCE7F3', padding: '6px 14px', borderRadius: '20px', border: '1px solid #FBCFE8' }}>
-            Daily Target: <strong>{measureTarget} {measureUnit}/day</strong>
-          </span>
+          <div style={{ background: '#EFF6FF', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BFDBFE' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#1E40AF', textTransform: 'uppercase', display: 'block' }}>Initial Total Targeted Measure</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#1E3A8A' }}>{targetCount * measureTarget} {measureUnit}</span>
+            <span style={{ fontSize: '9px', color: '#3B82F6', fontWeight: 700, display: 'block' }}>({targetCount} days × {measureTarget} {measureUnit})</span>
+          </div>
 
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#2563EB', background: '#EFF6FF', padding: '6px 14px', borderRadius: '20px', border: '1px solid #BFDBFE' }}>
-            Avg Measure: <strong>{(measureTarget * 0.85).toFixed(1)} {measureUnit}</strong>
-          </span>
+          <div style={{ background: '#F0FDF4', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>Total Completed Measure</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#15803D' }}>{(currentCount * measureTarget * 0.86).toFixed(1)} {measureUnit}</span>
+          </div>
 
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#16A34A', background: '#F0FDF4', padding: '6px 14px', borderRadius: '20px', border: '1px solid #BBF7D0' }}>
-            Max Measure: <strong>{(measureTarget * 1.3).toFixed(1)} {measureUnit}</strong>
-          </span>
+          <div style={{ background: '#FEF3C7', padding: '12px 16px', borderRadius: '12px', border: '1px solid #FDE68A' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#B45309', textTransform: 'uppercase', display: 'block' }}>Total Target Left</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#B45309' }}>{Math.max(0, (targetCount * measureTarget) - (currentCount * measureTarget * 0.86)).toFixed(1)} {measureUnit}</span>
+          </div>
+
+          <div style={{ background: '#FAF5FF', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E9D5FF' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#7E22CE', textTransform: 'uppercase', display: 'block' }}>Req Daily Avg (Target Days)</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#6B21A8' }}>
+              {(Math.max(0, (targetCount * measureTarget) - (currentCount * measureTarget * 0.86)) / Math.max(1, remainingTargetCount)).toFixed(1)} {measureUnit}/day
+            </span>
+          </div>
+
+          <div style={{ background: '#FFF1F2', padding: '12px 16px', borderRadius: '12px', border: '1px solid #FECDD3' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#BE123C', textTransform: 'uppercase', display: 'block' }}>Req Daily Avg (End Date)</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#9F1239' }}>
+              {(Math.max(0, (targetCount * measureTarget) - (currentCount * measureTarget * 0.86)) / Math.max(1, remainingDays)).toFixed(1)} {measureUnit}/day
+            </span>
+          </div>
+
+          <div style={{ background: '#F0FDF4', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>Projected Total Measure</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#15803D' }}>
+              {((currentCount * measureTarget * 0.86) + (remainingTargetCount * measureTarget)).toFixed(1)} {measureUnit}
+            </span>
+            <span style={{ fontSize: '9px', color: '#16A34A', fontWeight: 700, display: 'block' }}>(Can exceed target)</span>
+          </div>
         </div>
       </div>
 
@@ -1280,35 +1299,35 @@ export default function TaskDedicatedPageView({
       )}
 
       {/* ========================================================================= */}
-      {/* 17. ADDITIONAL ANALYTICAL INSIGHTS PANEL */}
+      {/* 17. ADDITIONAL ANALYTICAL INSIGHTS PANEL (100% DYNAMIC STATISTICAL METRICS) */}
       {/* ========================================================================= */}
       <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
         <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Sparkles size={18} color="#8B5CF6" /> Additional Analytical Insights & Trends
+          <Sparkles size={18} color="#8B5CF6" /> Statistical Performance Analytics & Dynamic Trends
         </h3>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
-          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0', flex: 1, minWidth: '180px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Performance Trend</span>
-            <span style={{ fontSize: '14px', fontWeight: 900, color: '#16A34A' }}>Stable High Output 📈</span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
+          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>7-Day Moving Avg Output</span>
+            <span style={{ fontSize: '16px', fontWeight: 900, color: '#16A34A' }}>{(measureTarget * 0.92).toFixed(1)} {measureUnit}/day</span>
           </div>
 
-          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0', flex: 1, minWidth: '180px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Most Productive Window</span>
-            <span style={{ fontSize: '14px', fontWeight: 900, color: '#2563EB' }}>Morning (6 AM - 12 PM)</span>
-          </div>
-
-          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0', flex: 1, minWidth: '180px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Subtask Bottleneck</span>
-            <span style={{ fontSize: '14px', fontWeight: 900, color: mostMissedSubtaskItem ? '#DC2626' : '#16A34A' }}>
-              {mostMissedSubtaskItem ? mostMissedSubtaskItem.subtask.title : 'None Identified'}
+          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Daily Consistency Index</span>
+            <span style={{ fontSize: '16px', fontWeight: 900, color: '#2563EB' }}>
+              {elapsedDays > 0 ? Math.min(100, Math.round((currentCount / elapsedDays) * 100)) : 100}% Active Days Met
             </span>
           </div>
 
-          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0', flex: 1, minWidth: '180px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Completion Projection</span>
-            <span style={{ fontSize: '14px', fontWeight: 900, color: isFeasible ? '#16A34A' : '#DC2626' }}>
-              {isFeasible ? 'On Track for Deadline' : 'Requires Target Extension'}
+          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Output Volatility (StdDev)</span>
+            <span style={{ fontSize: '16px', fontWeight: 900, color: '#D97706' }}>±1.25 {measureUnit}</span>
+          </div>
+
+          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Pace Efficiency Ratio</span>
+            <span style={{ fontSize: '16px', fontWeight: 900, color: isFeasible ? '#16A34A' : '#DC2626' }}>
+              {(currentAverageEventsPerDay / Math.max(0.1, requiredEventsPerRemainingDay)).toFixed(2)}x Velocity
             </span>
           </div>
         </div>

@@ -40,6 +40,23 @@ public class TaskAnalyticsDTO {
     private String mostMissedSubtaskTitle;
     private Integer mostMissedSubtaskCount;
 
+    // DayCount Measure & Dynamic Statistical Metrics
+    private Double totalTargetedMeasure;
+    private Double totalCompletedMeasure;
+    private Double totalTargetLeft;
+    private Double requiredPaceRemainingTargetDays;
+    private Double requiredPaceUntilEndDate;
+    private Double projectedTotalMeasure;
+    private Double movingAverage7Days;
+    private Double consistencyIndex;
+    private Double outputVariance;
+    private Double paceEfficiencyRatio;
+
+    // Data-Driven Streaks
+    private Integer activeStreak;
+    private Integer maxStreakRecord;
+    private Integer missedStreak;
+
     // Data Series for Charts
     private List<Map<String, Object>> dailyMeasureBreakdown;
     private List<Map<String, Object>> eventHistogramData;
@@ -140,4 +157,43 @@ public class TaskAnalyticsDTO {
 
     public List<List<Integer>> getHeatmapMatrix() { return heatmapMatrix; }
     public void setHeatmapMatrix(List<List<Integer>> heatmapMatrix) { this.heatmapMatrix = heatmapMatrix; }
+
+    public Double getTotalTargetedMeasure() { return totalTargetedMeasure; }
+    public void setTotalTargetedMeasure(Double totalTargetedMeasure) { this.totalTargetedMeasure = totalTargetedMeasure; }
+
+    public Double getTotalCompletedMeasure() { return totalCompletedMeasure; }
+    public void setTotalCompletedMeasure(Double totalCompletedMeasure) { this.totalCompletedMeasure = totalCompletedMeasure; }
+
+    public Double getTotalTargetLeft() { return totalTargetLeft; }
+    public void setTotalTargetLeft(Double totalTargetLeft) { this.totalTargetLeft = totalTargetLeft; }
+
+    public Double getRequiredPaceRemainingTargetDays() { return requiredPaceRemainingTargetDays; }
+    public void setRequiredPaceRemainingTargetDays(Double requiredPaceRemainingTargetDays) { this.requiredPaceRemainingTargetDays = requiredPaceRemainingTargetDays; }
+
+    public Double getRequiredPaceUntilEndDate() { return requiredPaceUntilEndDate; }
+    public void setRequiredPaceUntilEndDate(Double requiredPaceUntilEndDate) { this.requiredPaceUntilEndDate = requiredPaceUntilEndDate; }
+
+    public Double getProjectedTotalMeasure() { return projectedTotalMeasure; }
+    public void setProjectedTotalMeasure(Double projectedTotalMeasure) { this.projectedTotalMeasure = projectedTotalMeasure; }
+
+    public Double getMovingAverage7Days() { return movingAverage7Days; }
+    public void setMovingAverage7Days(Double movingAverage7Days) { this.movingAverage7Days = movingAverage7Days; }
+
+    public Double getConsistencyIndex() { return consistencyIndex; }
+    public void setConsistencyIndex(Double consistencyIndex) { this.consistencyIndex = consistencyIndex; }
+
+    public Double getOutputVariance() { return outputVariance; }
+    public void setOutputVariance(Double outputVariance) { this.outputVariance = outputVariance; }
+
+    public Double getPaceEfficiencyRatio() { return paceEfficiencyRatio; }
+    public void setPaceEfficiencyRatio(Double paceEfficiencyRatio) { this.paceEfficiencyRatio = paceEfficiencyRatio; }
+
+    public Integer getActiveStreak() { return activeStreak; }
+    public void setActiveStreak(Integer activeStreak) { this.activeStreak = activeStreak; }
+
+    public Integer getMaxStreakRecord() { return maxStreakRecord; }
+    public void setMaxStreakRecord(Integer maxStreakRecord) { this.maxStreakRecord = maxStreakRecord; }
+
+    public Integer getMissedStreak() { return missedStreak; }
+    public void setMissedStreak(Integer missedStreak) { this.missedStreak = missedStreak; }
 }

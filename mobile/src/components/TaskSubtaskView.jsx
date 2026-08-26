@@ -41,13 +41,14 @@ export default function TaskSubtaskView({
   onMapTaskParent,
   onUnmapSubtask,
   onOpenDedicatedTaskPage,
-  onEditTask
+  onEditTask,
+  onExtendTask
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [activeSection, setActiveSection] = useState('ALL');
   const [activeTag, setActiveTag] = useState('ALL');
-  const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'PARENTS_ONLY', 'SUBTASKS_ONLY'
+  const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'PARENTS_ONLY', 'SUBTASKS_ONLY', 'COMPLETED'
   const [sortBy, setSortBy] = useState('START_DATE_ASC');
   const [expandedTasks, setExpandedTasks] = useState({});
 
@@ -80,11 +81,17 @@ export default function TaskSubtaskView({
 
   let displayedTasks = activeParentTasks;
 
-  // Filter Type: Parents vs Subtasks
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Filter Type: Parents vs Subtasks vs Completed
   if (filterType === 'PARENTS_ONLY') {
-    displayedTasks = displayedTasks.filter(t => !t.parentTaskId);
+    displayedTasks = displayedTasks.filter(t => !t.parentTaskId && !(t.progressPercent >= 100 || (t.plannedEnd && t.plannedEnd < todayStr)));
   } else if (filterType === 'SUBTASKS_ONLY') {
-    displayedTasks = displayedTasks.filter(t => t.parentTaskId);
+    displayedTasks = displayedTasks.filter(t => t.parentTaskId && !(t.progressPercent >= 100 || (t.plannedEnd && t.plannedEnd < todayStr)));
+  } else if (filterType === 'COMPLETED') {
+    displayedTasks = tasks.filter(t => !t.isArchived && (t.progressPercent >= 100 || (t.plannedEnd && t.plannedEnd < todayStr) || t.isDoneToday));
+  } else if (filterType === 'ALL') {
+    displayedTasks = displayedTasks.filter(t => !(t.progressPercent >= 100 || (t.plannedEnd && t.plannedEnd < todayStr)));
   }
 
   // Dynamic User Categories ONLY
@@ -198,7 +205,8 @@ export default function TaskSubtaskView({
   const getTypeOptions = () => [
     { val: 'ALL', label: 'All Tasks' },
     { val: 'PARENTS_ONLY', label: 'Parents Only' },
-    { val: 'SUBTASKS_ONLY', label: 'Subtasks Only' }
+    { val: 'SUBTASKS_ONLY', label: 'Subtasks Only' },
+    { val: 'COMPLETED', label: 'Completed Tasks' }
   ];
 
   const getSortOptions = () => [
@@ -435,29 +443,27 @@ export default function TaskSubtaskView({
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         
-                        <span style={{ fontSize: '15px', fontWeight: 800, color: isTaskDone ? '#475569' : '#0F172A', letterSpacing: '-0.01em' }}>
-                          {task.title}
+                        <span style={{ fontSize: '15px', fontWeight: 800, color: isTaskDone ? '#475569' : '#0F172A', letterSpacing: '-0.01em', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                          <span>{task.emoji || '🎯'}</span>
+                          <span>{task.title}</span>
                         </span>
 
-                        {/* Category Badge with comfortable spacing from title */}
-                        <span style={{ fontSize: '11px', color: '#475569', fontWeight: 700, background: '#F1F5F9', border: '1px solid #CBD5E1', padding: '2px 8px', borderRadius: '6px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }}>
+                        {/* Category Badge */}
+                        <span style={{ fontSize: '11px', color: '#475569', fontWeight: 700, background: '#F1F5F9', border: '1px solid #CBD5E1', padding: '2px 8px', borderRadius: '6px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                           <Folder size={11} color="#64748B" /> {task.category || 'General'}
                         </span>
 
-                        {/* Parent Reference Badge WITHOUT "Child of" */}
+                        {/* Parent Reference Badge */}
                         {parentTaskObj && (
                           <span style={{ fontSize: '11px', color: '#D97706', fontWeight: 800, background: '#FEF3C7', border: '1px solid #FDE68A', padding: '2px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>
                             ↳ {parentTaskObj.title}
                           </span>
                         )}
 
-                        {/* LIGHTNING BOLT PRIORITY INDICATOR */}
-                        {renderPriorityVisual(task.priority)}
-
-                        {/* Measure Badge Indicator if task has measure tracking */}
-                        {task.hasMeasureTracking && (
-                          <span style={{ fontSize: '10px', color: '#2563EB', fontWeight: 800, background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '2px 6px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '3px' }} title={`Tracks daily measure in ${task.measureUnit || 'units'}`}>
-                            <Ruler size={11} /> {task.measureUnit || 'measure'}
+                        {/* Attachment File Pill */}
+                        {(task.attachmentName || task.attachmentUrl) && (
+                          <span style={{ fontSize: '10px', color: '#2563EB', fontWeight: 800, background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '2px 7px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            📎 {task.attachmentName || 'Attachment'}
                           </span>
                         )}
                       </div>
@@ -647,6 +653,38 @@ export default function TaskSubtaskView({
             }}
           >
             <ExternalLink size={13} color="#DC2626" /> Open
+          </button>
+
+          {/* 2. Extend Deadline Button */}
+          <button 
+            onClick={() => {
+              const defaultNewEnd = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().split('T')[0];
+              const newDate = prompt('Enter new extended deadline (YYYY-MM-DD):', defaultNewEnd);
+              if (newDate && onExtendTask) {
+                onExtendTask(selectedTaskObj.id, newDate);
+                setSelectedTaskId(null);
+              }
+            }}
+            title="Extend Task Deadline & Reactivate"
+            style={{
+              flex: 1,
+              background: '#FEF3C7',
+              color: '#B45309',
+              border: '1px solid #FDE68A',
+              padding: '6px 6px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justify: 'center',
+              gap: '3px',
+              whiteSpace: 'nowrap',
+              height: '31px'
+            }}
+          >
+            <Calendar size={13} color="#B45309" /> Extend
           </button>
 
           {/* 2. Archive */}
