@@ -154,50 +154,66 @@ export default function TaskDedicatedPageView({
   const measureUnit = currentTask.measureUnit || 'units';
   const measureTarget = currentTask.measureTarget || 10;
 
-  // Daily Measure & Subtask Contribution Data
+  // Daily Measure & Subtask Contribution Data (For Start-End Date Tasks & Day Count Tasks)
   const sampleDailyMeasures = Array.from({ length: 7 }).map((_, idx) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - idx));
     const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
 
-    // Step 1: Collect explicit measure values from measurable subtasks
-    const measuredVals = [];
+    // Step 1: Collect explicit measure values on this day
+    const explicitMeasuredVals = [];
     directChildSubtasks.forEach((st) => {
       if (st.hasMeasureTracking) {
-        const val = st.measureTarget || 4;
-        measuredVals.push(val);
+        const val = st.loggedMeasureVal || (st.measureTarget ? Math.max(1, Math.round(st.measureTarget * (0.6 + ((idx) % 4) * 0.15))) : 4);
+        explicitMeasuredVals.push(val);
       }
     });
 
-    // Step 2: Compute Derived Average
-    const sumMeasured = measuredVals.reduce((a, b) => a + b, 0);
-    const totalSubtasksCount = Math.max(1, directChildSubtasks.length);
-    const derivedAvg = measuredVals.length > 0 ? Math.max(1, Math.round(sumMeasured / totalSubtasksCount)) : 2;
+    // Step 2: Compute Average Measure of explicit measure subtasks (default to 2 if no explicit measure subtasks exist)
+    const avgMeasured = explicitMeasuredVals.length > 0
+      ? Math.round((explicitMeasuredVals.reduce((a, b) => a + b, 0) / explicitMeasuredVals.length) * 10) / 10
+      : 2;
 
-    // Step 3: Compute individual subtask contributions based on subtask type
+    // Step 3: Compute individual subtask contributions according to user's exact specification
+    let totalColumnVal = 0;
     const subtaskContributions = directChildSubtasks.map((st, sIdx) => {
       const color = subtaskColors[sIdx % subtaskColors.length];
       let val = 0;
-      let labelDetail = '';
+      let note = '';
 
       if (st.hasMeasureTracking) {
-        val = st.measureTarget || 4;
-        labelDetail = `${val} ${st.measureUnit || 'units'}`;
+        // Explicit Measure Subtask (e.g. LeetCode 4 problems, GeeksforGeeks 2 problems)
+        val = st.loggedMeasureVal || (st.measureTarget ? Math.max(1, Math.round(st.measureTarget * (0.6 + ((idx + sIdx) % 4) * 0.15))) : (sIdx === 0 ? 4 : 2));
+        note = `Explicit Measure: ${val} ${measureUnit}`;
       } else if (st.trackingMode === 'count_event') {
+        // Event-Count Based Subtask under Start-End/DayCount parent (e.g. Learning Java 10 pages per event)
+        // If event completed once: +1 * avgMeasured. If twice: +2 * avgMeasured.
         const eventsCompletedToday = (idx % 2 === 0) ? 2 : 1;
-        val = eventsCompletedToday * derivedAvg;
-        labelDetail = `${eventsCompletedToday} Events (${eventsCompletedToday} × ${derivedAvg} derived avg = ${val})`;
+        val = Math.round(eventsCompletedToday * avgMeasured * 10) / 10;
+        note = `Event-based: ${eventsCompletedToday} event(s) × ${avgMeasured} avg = ${val} ${measureUnit}`;
       } else {
-        const isDone = (idx % 2 === 0);
-        val = isDone ? derivedAvg : 0;
-        labelDetail = isDone ? `Completed (+${derivedAvg} derived avg)` : `Not Done (0)`;
+        // Standard Subtask (NO explicit measure, NOT event-count)
+        // If completed: +1 * avgMeasured (+2)
+        const isDoneOnDay = (idx % 2 === 0) || Boolean(st.isDoneToday);
+        val = isDoneOnDay ? avgMeasured : 0;
+        note = isDoneOnDay ? `Standard check completed (+${avgMeasured} avg ${measureUnit})` : 'Not completed';
       }
 
-      return { id: st.id, title: st.title, val, labelDetail, isMeasured: st.hasMeasureTracking, color };
+      totalColumnVal += val;
+
+      return {
+        id: st.id,
+        title: st.title,
+        val,
+        color,
+        hasMeasureTracking: Boolean(st.hasMeasureTracking),
+        trackingMode: st.trackingMode,
+        note
+      };
     });
 
-    let totalColumnVal = subtaskContributions.reduce((acc, curr) => acc + curr.val, 0);
-    if (totalColumnVal === 0) totalColumnVal = 6;
+    totalColumnVal = Math.round(totalColumnVal * 10) / 10;
+    if (totalColumnVal === 0) totalColumnVal = 10;
     const maxTargetVal = 25;
     const columnPercentage = Math.round((totalColumnVal / maxTargetVal) * 100);
 
@@ -207,7 +223,7 @@ export default function TaskDedicatedPageView({
       totalColumnVal,
       columnPercentage,
       subtaskContributions,
-      derivedAvg
+      avgMeasured
     };
   });
 
@@ -647,7 +663,7 @@ export default function TaskDedicatedPageView({
               Subtask Contribution per Day - Grouped Breakdown
             </h3>
             <p style={{ fontSize: '11px', color: '#64748B', margin: '4px 0 0 0', textAlign: 'center' }}>
-              Non-measurable subtasks are derived from the daily average of measurable subtasks ({measureUnit}).
+              Explicit measure subtasks contribute logged units. Event-count subtasks contribute (Event Count × Avg Explicit Measure). Standard subtasks contribute (+1 × Avg Explicit Measure).
             </p>
           </div>
 
@@ -682,7 +698,7 @@ export default function TaskDedicatedPageView({
                             transition: 'all 0.3s ease',
                             borderBottom: scIdx > 0 ? '1px solid rgba(255,255,255,0.3)' : 'none'
                           }}
-                          title={`${sc.title}: ${sc.val} ${measureUnit}`}
+                          title={`${sc.title}: ${sc.val} ${measureUnit} (${sc.note})`}
                         />
                       ))}
                     </div>
@@ -1303,20 +1319,12 @@ export default function TaskDedicatedPageView({
               <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>
                 Subtask Contribution Breakdown:
               </div>
-              {directChildSubtasks.map((s, sIdx) => {
-                const isMeasured = s.hasMeasureTracking;
-                const isEventCount = s.trackingMode === 'count_event';
-                const label = isMeasured 
-                  ? `${s.measureTarget || 4} ${s.measureUnit || 'units'}` 
-                  : (isEventCount ? `2 Events (2 × derived avg = +4 measure)` : `Completed (+2 derived avg)`);
-
-                return (
-                  <div key={s.id} style={{ fontSize: '11px', color: '#16A34A', fontWeight: 700, background: '#DCFCE7', padding: '8px 12px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>✓ {s.title}</span>
-                    <span style={{ fontSize: '10px', background: '#FFF', color: '#15803D', padding: '2px 8px', borderRadius: '6px', border: '1px solid #BBF7D0', fontWeight: 800 }}>{label}</span>
-                  </div>
-                );
-              })}
+              {directChildSubtasks.slice(0, 3).map(s => (
+                <div key={s.id} style={{ fontSize: '11px', color: '#16A34A', fontWeight: 700, background: '#DCFCE7', padding: '8px 12px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span>✓ {s.title}</span>
+                  <span>{s.hasMeasureTracking ? `${s.measureTarget || 5} ${s.measureUnit || 'units'}` : 'Derived Avg'}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
