@@ -139,7 +139,9 @@ export default function TaskDedicatedPageView({
   const missRatePercent = elapsedDays > 0 ? Math.round((missedDaysCount / elapsedDays) * 100) : 0;
 
   // Direct Child Subtasks
-  const directChildSubtasks = (childSubtasks.length > 0 ? childSubtasks : allTasks.filter(t => t.parentTaskId === currentTask.id));
+  const directChildSubtasks = (childSubtasks && childSubtasks.length > 0)
+    ? childSubtasks
+    : (allTasks ? allTasks.filter(t => t && currentTask && t.parentTaskId === currentTask.id) : []);
 
   // Subtask Missed Failures & Bottleneck Highlight
   const subtaskFailureStats = directChildSubtasks.map(s => ({

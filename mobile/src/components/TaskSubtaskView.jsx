@@ -276,7 +276,7 @@ export default function TaskSubtaskView({
               whiteSpace: 'nowrap'
             }}
           >
-            <span>Type: {filterType === 'ALL' ? 'All' : (filterType === 'PARENTS_ONLY' ? 'Parents' : 'Subtasks')}</span>
+            <span>Type: {filterType === 'ALL' ? 'All Tasks' : (filterType === 'PARENTS_ONLY' ? 'Parents Only' : (filterType === 'SUBTASKS_ONLY' ? 'Subtasks Only' : 'Completed Tasks'))}</span>
             <ChevronDown size={12} color="#DC2626" />
           </button>
 
@@ -350,10 +350,12 @@ export default function TaskSubtaskView({
           <div className="glass-panel" style={{ padding: '36px', textAlign: 'center', color: '#64748B' }}>
             <Layers size={36} color="#DC2626" style={{ margin: '0 auto 10px auto' }} />
             <div style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A' }}>
-              No Active Tasks Scheduled
+              {filterType === 'COMPLETED' ? 'No Completed Tasks Found' : 'No Active Tasks Scheduled'}
             </div>
             <div style={{ fontSize: '12px', marginTop: '4px' }}>
-              Click + Add Task to create a new task.
+              {filterType === 'COMPLETED'
+                ? 'Tasks marked as completed or past their end date will appear here for review and deadline extension.'
+                : 'Click + Add Task to create a new task.'}
             </div>
           </div>
         ) : (
@@ -365,16 +367,15 @@ export default function TaskSubtaskView({
             const isTaskDone = task.isDoneToday || task.progressPercent >= 100;
             const isSelected = selectedTaskId === task.id;
 
-            // Optional Stripes Background Visual Pattern
-            const cardBgStyle = task.isOptional 
-              ? 'repeating-linear-gradient(45deg, #FFFDF5, #FFFDF5 10px, #FFFBEB 10px, #FFFBEB 20px)'
-              : (isSubtaskEntity ? '#FFFDF5' : '#FFFFFF');
-
-            // Format progress ratio according to task's ACTUAL day/event target count attribute!
-            const targetMax = task.targetCount || task.targetDayCount || task.targetEventCount || calculateSpanDays(task.plannedStart, task.plannedEnd) || 50;
-            const currentDone = task.currentCount || task.currentDayCount || task.currentEventCount || (isTaskDone ? targetMax : 0);
-            const countRatioStr = `(${currentDone}/${targetMax})`;
-            const calculatedProgPercent = Math.round((currentDone / targetMax) * 100);
+            // Calculations for Task Row KPI Badges
+            const spanDays = calculateSpanDays(task.plannedStart, task.plannedEnd);
+            const targetCount = task.targetCount || task.targetDayCount || task.targetEventCount || spanDays || 50;
+            const currentCount = task.currentCount || task.currentDayCount || task.currentEventCount || (isTaskDone ? targetCount : 0);
+            const calculatedProgPercent = task.progressPercent || (targetCount > 0 ? Math.round((currentCount / targetCount) * 100) : 0);
+            const countRatioStr = `${currentCount}:${targetCount}`;
+            const cardBgStyle = isSelected 
+              ? (isSubtaskEntity ? '#FFFBEB' : '#FEF2F2') 
+              : (isTaskDone ? '#F8FAFC' : '#FFFFFF');
 
             // Subtask completion stats for expanded dropdown section
             const subtaskCompletedCount = childTasks.filter(c => c.isDoneToday || c.progressPercent >= 100).length;
@@ -398,7 +399,7 @@ export default function TaskSubtaskView({
                 key={task.id} 
                 className="glass-panel" 
                 onClick={() => handleTaskCardClick(task.id)}
-                onDoubleClick={(e) => { e.stopPropagation(); onOpenDedicatedTaskPage(task); }}
+                onDoubleClick={(e) => { e.stopPropagation(); if (onOpenDedicatedTaskPage) onOpenDedicatedTaskPage(task); }}
                 style={{ 
                   padding: '14px 16px', 
                   borderLeft: isSubtaskEntity ? '6px solid #D97706' : '6px solid #DC2626',
@@ -409,7 +410,7 @@ export default function TaskSubtaskView({
                   cursor: 'pointer',
                   position: 'relative'
                 }}
-                title="Click to select & show action dock at bottom. Double click for dedicated task info page."
+                title="Click to select & show action dock at bottom. Double click to open dedicated task page."
               >
                 
                 {/* Main Card Header */}
@@ -439,7 +440,7 @@ export default function TaskSubtaskView({
                       )}
                     </button>
 
-                    {/* Task Title, Category Badge, Parent Reference & LIGHTNING BOLT PRIORITY */}
+                    {/* Task Title, Category Badge & Attachment Pill */}
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         
@@ -502,14 +503,36 @@ export default function TaskSubtaskView({
                     ))}
                   </div>
 
-                  {/* RIGHT SIDE INDEPENDENT DAY-COUNT PERCENTAGE & RATIO */}
-                  <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '17px', fontWeight: 900, color: isSubtaskEntity ? '#D97706' : '#DC2626' }}>
-                      {calculatedProgPercent}%
-                    </span>
-                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#64748B' }}>
-                      {countRatioStr}
-                    </span>
+                  {/* RIGHT SIDE INDEPENDENT DAY-COUNT PERCENTAGE & RATIO & 1-CLICK OPEN BUTTON */}
+                  <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div>
+                      <span style={{ fontSize: '17px', fontWeight: 900, color: isSubtaskEntity ? '#D97706' : '#DC2626' }}>
+                        {calculatedProgPercent}%
+                      </span>
+                      <span style={{ fontSize: '12px', fontWeight: 800, color: '#64748B', marginLeft: '4px' }}>
+                        {countRatioStr}
+                      </span>
+                    </div>
+
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); if (onOpenDedicatedTaskPage) onOpenDedicatedTaskPage(task); }}
+                      title="Open Dedicated Task Analytics Page"
+                      style={{
+                        background: '#EFF6FF',
+                        color: '#2563EB',
+                        border: '1px solid #BFDBFE',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}
+                    >
+                      <ExternalLink size={12} color="#2563EB" /> Open
+                    </button>
                   </div>
 
                 </div>
