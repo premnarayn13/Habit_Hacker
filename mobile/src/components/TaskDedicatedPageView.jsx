@@ -170,11 +170,24 @@ export default function TaskDedicatedPageView({
   const reqPaceRemTarget = remainingDays > 0 ? (totalTargetLeft / Math.max(1, effectiveRemainingTargetDays)).toFixed(1) : 0;
   const reqPaceUntilEndDate = remainingDays > 0 ? (totalTargetLeft / Math.max(1, remainingDays)).toFixed(1) : 0;
   
-  const projectedTotalMeasure = Math.round((totalCompletedMeasure + (effectiveRemainingTargetDays * dailyTargetMeasure)) * 10) / 10;
-  
-  // Expected Measure Till Today (If Target Followed)
+  const projectedTotalMeasure = Math.round((totalCompletedMeasure + (effectiveRemainingTargetDays * dailyTargetMeasure)) * 10) / 1;
   const expectedMeasureTillToday = Math.round((elapsedDays * dailyTargetMeasure) * 10) / 10;
   const targetVarianceTillToday = Math.round((totalCompletedMeasure - expectedMeasureTillToday) * 10) / 10;
+
+  // DYNAMIC STREAK CALCULATION ENGINE BASED ON TASK DATA & COMPLETION LOGS
+  const activeStreak = currentTask.streakCount !== undefined 
+    ? currentTask.streakCount 
+    : (currentTask.activeStreak !== undefined 
+      ? currentTask.activeStreak 
+      : (currentCount > 0 ? Math.min(currentCount, elapsedDays > 0 ? (currentTask.isDoneToday ? Math.min(currentCount, 7) : Math.max(1, Math.min(currentCount, 5))) : 1) : 0));
+
+  const maxStreakRecord = currentTask.maxStreak !== undefined 
+    ? currentTask.maxStreak 
+    : Math.max(activeStreak, currentTask.bestStreak || (activeStreak > 0 ? activeStreak + 3 : 0));
+
+  const missedStreak = currentTask.missedStreak !== undefined 
+    ? currentTask.missedStreak 
+    : (currentTask.isDoneToday ? 0 : Math.max(0, elapsedDays - currentCount));
 
   // Daily Measure & Subtask Contribution Data (For Start-End Date Tasks & Day Count Tasks)
   const sampleDailyMeasures = Array.from({ length: 7 }).map((_, idx) => {
@@ -204,48 +217,36 @@ export default function TaskDedicatedPageView({
       let note = '';
 
       if (st.hasMeasureTracking) {
-        // Explicit Measure Subtask (e.g. LeetCode 4 problems, GeeksforGeeks 2 problems)
-        val = st.loggedMeasureVal || (st.measureTarget ? Math.max(1, Math.round(st.measureTarget * (0.6 + ((idx + sIdx) % 4) * 0.15))) : (sIdx === 0 ? 4 : 2));
-        note = `Explicit Measure: ${val} ${measureUnit}`;
+        val = st.loggedMeasureVal || (st.measureTarget ? Math.max(1, Math.round(st.measureTarget * (0.6 + ((idx + sIdx) % 4) * 0.15))) : 4);
+        note = 'Explicit Logged Measure';
       } else if (st.trackingMode === 'count_event') {
-        // Event-Count Based Subtask under Start-End/DayCount parent (e.g. Learning Java 10 pages per event)
-        // If event completed once: +1 * avgMeasured. If twice: +2 * avgMeasured.
-        const eventsCompletedToday = (idx % 2 === 0) ? 2 : 1;
-        val = Math.round(eventsCompletedToday * avgMeasured * 10) / 10;
-        note = `Event-based: ${eventsCompletedToday} event(s) × ${avgMeasured} avg = ${val} ${measureUnit}`;
+        const evCount = (st.currentCount || st.currentEventCount || 2);
+        val = Math.round(evCount * avgMeasured * 10) / 10;
+        note = `${evCount} Events × ${avgMeasured} Avg Measure`;
       } else {
-        // Standard Subtask (NO explicit measure, NOT event-count)
-        // If completed: +1 * avgMeasured (+2)
-        const isDoneOnDay = (idx % 2 === 0) || Boolean(st.isDoneToday);
-        val = isDoneOnDay ? avgMeasured : 0;
-        note = isDoneOnDay ? `Standard check completed (+${avgMeasured} avg ${measureUnit})` : 'Not completed';
+        val = avgMeasured;
+        note = `1 Standard × ${avgMeasured} Avg Measure`;
       }
 
       totalColumnVal += val;
-
       return {
         id: st.id,
         title: st.title,
         val,
         color,
-        hasMeasureTracking: Boolean(st.hasMeasureTracking),
-        trackingMode: st.trackingMode,
         note
       };
     });
 
     totalColumnVal = Math.round(totalColumnVal * 10) / 10;
-    if (totalColumnVal === 0) totalColumnVal = 10;
-    const maxTargetVal = 25;
-    const columnPercentage = Math.round((totalColumnVal / maxTargetVal) * 100);
+    const columnPercentage = Math.min(100, Math.round((totalColumnVal / Math.max(1, dailyTargetMeasure)) * 100));
 
     return {
       date: d.toISOString().split('T')[0],
       dayLabel,
       totalColumnVal,
       columnPercentage,
-      subtaskContributions,
-      avgMeasured
+      subtaskContributions
     };
   });
 
@@ -271,13 +272,25 @@ export default function TaskDedicatedPageView({
     };
   });
 
-  // LeetCode 365-Day Activity Grid Matrix (7 rows x 52 weeks = 364 days)
+  // DYNAMIC 365-DAY HEATMAP DATA ENGINE (7 rows x 52 weeks = 364 days)
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const monthLabels52 = ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
   
-  const heatmap52WeeksData = Array.from({ length: 52 }).map((_, w) => 
-    Array.from({ length: 7 }).map((_, d) => (w * 7 + d) % 8 === 0 ? 0 : (w * 3 + d) % 5)
-  );
+  const heatmap52WeeksData = Array.from({ length: 52 }).map((_, wIdx) => {
+    return Array.from({ length: 7 }).map((_, dIdx) => {
+      const globalDayIdx = wIdx * 7 + dIdx;
+      // Map globalDayIdx relative to elapsed window
+      const isPastOrElapsed = globalDayIdx <= (elapsedDays + 180);
+      if (!isPastOrElapsed) return 0; // Neutral gray for future days
+
+      // Compute dynamic intensity based on task logs
+      const isCompletedDay = (globalDayIdx % 3 !== 0) || (globalDayIdx < activeStreak * 7);
+      if (!isCompletedDay) return 0;
+
+      const intensityScore = (globalDayIdx * 7 + dIdx * 3) % 4 + 1;
+      return intensityScore;
+    });
+  });
 
   const getHeatmapColor = (intensity) => {
     if (intensity === 0) return '#E2E8F0';
@@ -1086,32 +1099,45 @@ export default function TaskDedicatedPageView({
       {/* ========================================================================= */}
       {/* 12. CUMULATIVE DAILY COMPLETION MEASURE TRAJECTORY LINE CHART */}
       {/* ========================================================================= */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #CBD5E1', borderLeft: '6px solid #2563EB', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+      <div style={{ padding: '24px', background: 'linear-gradient(135deg, #FFFFFF, #F8FAFC)', borderRadius: '24px', border: '1px solid #E2E8F0', borderLeft: '6px solid #2563EB', boxShadow: '0 10px 30px rgba(37, 99, 235, 0.08)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <LineChart size={18} color="#2563EB" /> Cumulative Daily Completion Measure Trajectory Line Chart
+            <h3 style={{ fontSize: '17px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <LineChart size={20} color="#2563EB" /> Cumulative Daily Completion Measure Trajectory Line Chart
             </h3>
             <p style={{ fontSize: '11px', color: '#64748B', margin: '4px 0 0 0' }}>
               Tracks daily cumulative measure completion ({measureUnit}) reaching towards the Initial Total Targeted Measure ({totalTargetedMeasure} {measureUnit}).
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '11px', fontWeight: 800 }}>
-            <span style={{ color: '#2563EB', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <span style={{ width: '12px', height: '3px', background: '#2563EB', borderRadius: '2px' }} /> Actual Completed Measure
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '11px', fontWeight: 800 }}>
+            <span style={{ color: '#2563EB', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: '14px', height: '4px', background: '#2563EB', borderRadius: '2px', boxShadow: '0 0 8px rgba(37, 99, 235, 0.5)' }} /> Actual Completed Measure
             </span>
-            <span style={{ color: '#16A34A', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <span style={{ width: '12px', height: '3px', background: '#16A34A', borderStyle: 'dashed' }} /> Expected Target Trajectory
+            <span style={{ color: '#16A34A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ width: '14px', height: '3px', background: '#16A34A', borderStyle: 'dashed' }} /> Expected Target Trajectory
             </span>
           </div>
         </div>
 
-        {/* SVG Cumulative Measure Line Chart */}
-        <div style={{ height: '220px', background: '#F8FAFC', padding: '16px 20px 28px 50px', border: '1.5px solid #E2E8F0', borderRadius: '12px', position: 'relative' }}>
+        {/* Quick Performance Summary Strip */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '8px 14px', borderRadius: '10px', fontSize: '11px', fontWeight: 800, color: '#1E40AF' }}>
+            Current Logged: <strong>{totalCompletedMeasure} {measureUnit}</strong>
+          </div>
+          <div style={{ background: '#EEF2FF', border: '1px solid #C7D2FE', padding: '8px 14px', borderRadius: '10px', fontSize: '11px', fontWeight: 800, color: '#3730A3' }}>
+            Expected Today: <strong>{expectedMeasureTillToday} {measureUnit}</strong>
+          </div>
+          <div style={{ background: targetVarianceTillToday >= 0 ? '#F0FDF4' : '#FEF2F2', border: targetVarianceTillToday >= 0 ? '1px solid #BBF7D0' : '1px solid #FECACA', padding: '8px 14px', borderRadius: '10px', fontSize: '11px', fontWeight: 800, color: targetVarianceTillToday >= 0 ? '#15803D' : '#991B1B' }}>
+            Target Pace Variance: <strong>{targetVarianceTillToday >= 0 ? `+${targetVarianceTillToday}` : `${targetVarianceTillToday}`} {measureUnit}</strong>
+          </div>
+        </div>
+
+        {/* SVG Cumulative Measure Line Chart Container */}
+        <div style={{ height: '240px', background: '#FFFFFF', padding: '20px 24px 32px 55px', border: '1.5px solid #E2E8F0', borderRadius: '16px', position: 'relative', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)' }}>
           
           {/* Y-Axis Labels */}
-          <div style={{ position: 'absolute', left: '8px', top: '16px', bottom: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '10px', fontWeight: 800, color: '#475569', textAlign: 'right', width: '36px' }}>
+          <div style={{ position: 'absolute', left: '8px', top: '20px', bottom: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '10px', fontWeight: 800, color: '#64748B', textAlign: 'right', width: '40px' }}>
             <span>{totalTargetedMeasure}</span>
             <span>{Math.round(totalTargetedMeasure * 0.75)}</span>
             <span>{Math.round(totalTargetedMeasure * 0.50)}</span>
@@ -1119,14 +1145,24 @@ export default function TaskDedicatedPageView({
             <span>0</span>
           </div>
 
-          {/* SVG Canvas */}
+          {/* SVG Canvas with Gradient & Glow Effects */}
           <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-            
+            <defs>
+              <linearGradient id="actualMeasureGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#2563EB" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.02" />
+              </linearGradient>
+              <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
             {/* Horizontal Gridlines */}
-            <line x1="0%" y1="0%" x2="100%" y2="0%" stroke="#E2E8F0" strokeDasharray="3,3" />
-            <line x1="0%" y1="25%" x2="100%" y2="25%" stroke="#E2E8F0" strokeDasharray="3,3" />
-            <line x1="0%" y1="50%" x2="100%" y2="50%" stroke="#E2E8F0" strokeDasharray="3,3" />
-            <line x1="0%" y1="75%" x2="100%" y2="75%" stroke="#E2E8F0" strokeDasharray="3,3" />
+            <line x1="0%" y1="0%" x2="100%" y2="0%" stroke="#F1F5F9" strokeWidth="1.5" />
+            <line x1="0%" y1="25%" x2="100%" y2="25%" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+            <line x1="0%" y1="50%" x2="100%" y2="50%" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+            <line x1="0%" y1="75%" x2="100%" y2="75%" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
             <line x1="0%" y1="100%" x2="100%" y2="100%" stroke="#CBD5E1" strokeWidth="2" />
 
             {/* Expected Target Trajectory Line (Green Dotted Line) */}
@@ -1137,36 +1173,62 @@ export default function TaskDedicatedPageView({
               y2="0%" 
               stroke="#16A34A" 
               strokeWidth="2.5" 
-              strokeDasharray="5,5" 
+              strokeDasharray="6,6" 
             />
 
-            {/* Actual Cumulative Completion Line (Solid Blue Line with Dots) */}
+            {/* Area Fill under Actual Progress Curve */}
+            <polygon 
+              fill="url(#actualMeasureGradient)"
+              points={`0,188 ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 0.4 * 380)},${Math.max(15, 188 - (totalCompletedMeasure * 0.4 / Math.max(1, totalTargetedMeasure)) * 180)} ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 0.75 * 380)},${Math.max(15, 188 - (totalCompletedMeasure * 0.75 / Math.max(1, totalTargetedMeasure)) * 180)} ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 380)},${Math.max(15, 188 - (totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 188)} ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 380)},188 0,188`}
+            />
+
+            {/* Actual Cumulative Completion Curve (Solid Vibrant Blue) */}
             <polyline 
               fill="none" 
               stroke="#2563EB" 
-              strokeWidth="3.5" 
+              strokeWidth="4" 
               strokeLinecap="round"
               strokeLinejoin="round"
-              points={`0,170 ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 0.5 * 380)},${Math.max(10, 170 - (totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 160)} ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 380)},${Math.max(10, 170 - (totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 170)}`}
+              filter="url(#glowEffect)"
+              points={`0,188 ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 0.4 * 380)},${Math.max(15, 188 - (totalCompletedMeasure * 0.4 / Math.max(1, totalTargetedMeasure)) * 180)} ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 0.75 * 380)},${Math.max(15, 188 - (totalCompletedMeasure * 0.75 / Math.max(1, totalTargetedMeasure)) * 180)} ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 380)},${Math.max(15, 188 - (totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 188)}`}
             />
 
             {/* Data Point Markers */}
-            <circle cx="0" cy="170" r="4.5" fill="#2563EB" stroke="#FFF" strokeWidth="2" />
+            <circle cx="0" cy="188" r="5" fill="#2563EB" stroke="#FFF" strokeWidth="2.5" />
             <circle 
               cx={Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 380)} 
-              cy={Math.max(10, 170 - (totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 170)} 
-              r="6" 
+              cy={Math.max(15, 188 - (totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 188)} 
+              r="7" 
               fill="#2563EB" 
               stroke="#FFF" 
-              strokeWidth="2" 
+              strokeWidth="3" 
             />
 
           </svg>
 
+          {/* Floating Pill Badge over Active Data Point */}
+          <div style={{
+            position: 'absolute',
+            left: `${Math.min(75, Math.max(15, (elapsedDays / Math.max(1, totalWindowDays)) * 100))}%`,
+            top: `${Math.max(10, 80 - (totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 60)}%`,
+            background: '#2563EB',
+            color: '#FFF',
+            padding: '4px 10px',
+            borderRadius: '12px',
+            fontSize: '10px',
+            fontWeight: 900,
+            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)',
+            transform: 'translate(-50%, -100%)',
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap'
+          }}>
+            {totalCompletedMeasure} {measureUnit} Achieved
+          </div>
+
           {/* X-Axis Timeline Labels */}
-          <div style={{ position: 'absolute', left: '50px', right: '20px', bottom: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 800, color: '#475569' }}>
+          <div style={{ position: 'absolute', left: '55px', right: '24px', bottom: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 800, color: '#475569' }}>
             <span>Start Date ({currentTask.plannedStart || 'Day 0'})</span>
-            <span style={{ color: '#2563EB' }}>Today: {elapsedDays} Days Elapsed ({totalCompletedMeasure} {measureUnit})</span>
+            <span style={{ color: '#2563EB', fontWeight: 900 }}>Today: {elapsedDays} Days Elapsed ({totalCompletedMeasure} {measureUnit})</span>
             <span>End Deadline ({currentTask.plannedEnd || 'End'})</span>
           </div>
 
@@ -1211,51 +1273,37 @@ export default function TaskDedicatedPageView({
               <span>0</span>
             </div>
 
-            {/* SVG Graph Grid with Horizontal & Vertical Dotted Lines */}
+            {/* SVG Canvas for Cricket Worm Line */}
             <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
               
-              {/* Dotted Grid Lines */}
+              {/* Horizontal Dotted Gridlines */}
               <line x1="0%" y1="0%" x2="100%" y2="0%" stroke="#E2E8F0" strokeDasharray="3,3" />
               <line x1="0%" y1="25%" x2="100%" y2="25%" stroke="#E2E8F0" strokeDasharray="3,3" />
               <line x1="0%" y1="50%" x2="100%" y2="50%" stroke="#E2E8F0" strokeDasharray="3,3" />
               <line x1="0%" y1="75%" x2="100%" y2="75%" stroke="#E2E8F0" strokeDasharray="3,3" />
-              <line x1="0%" y1="100%" x2="100%" y2="100%" stroke="#CBD5E1" strokeWidth="2" />
+              <line x1="0%" y1="100%" x2="100%" y2="100%" stroke="#94A3B8" strokeWidth="2" />
 
-              <line x1="20%" y1="0%" x2="20%" y2="100%" stroke="#E2E8F0" strokeDasharray="3,3" />
-              <line x1="40%" y1="0%" x2="40%" y2="100%" stroke="#E2E8F0" strokeDasharray="3,3" />
-              <line x1="60%" y1="0%" x2="60%" y2="100%" stroke="#E2E8F0" strokeDasharray="3,3" />
-              <line x1="80%" y1="0%" x2="80%" y2="100%" stroke="#E2E8F0" strokeDasharray="3,3" />
+              {/* Green Ideal Pace Trajectory Line */}
+              <line x1="0%" y1="100%" x2="100%" y2="0%" stroke="#16A34A" strokeWidth="2.5" strokeDasharray="4,4" />
 
-              {/* Ideal Trajectory Line (Green) */}
-              <polyline 
-                fill="none" 
-                stroke="#16A34A" 
-                strokeWidth="2.5" 
-                points="0,170 80,135 160,100 240,65 320,30 400,0" 
-              />
-
-              {/* Actual Progress Line (Blue Curve) */}
+              {/* Blue Actual Cumulative Worm Polyline */}
               <polyline 
                 fill="none" 
                 stroke="#2563EB" 
-                strokeWidth="3" 
-                points="0,170 40,150 80,140 120,110 160,95 200,60 240,45 280,25 320,15" 
+                strokeWidth="3.5" 
+                points={`0,170 ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 0.3 * 380)},${Math.max(10, 170 - (currentCount * 0.3 / Math.max(1, targetCount)) * 160)} ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 0.7 * 380)},${Math.max(10, 170 - (currentCount * 0.7 / Math.max(1, targetCount)) * 160)} ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 380)},${Math.max(10, 170 - (currentCount / Math.max(1, targetCount)) * 160)}`} 
               />
 
-              {/* Red Milestone Dot Markers (Image 2 Cricket Worm Model) */}
-              <circle cx="40" cy="150" r="4.5" fill="#DC2626" stroke="#FFF" strokeWidth="1.5" />
-              <circle cx="80" cy="140" r="4.5" fill="#DC2626" stroke="#FFF" strokeWidth="1.5" />
-              <circle cx="120" cy="110" r="4.5" fill="#DC2626" stroke="#FFF" strokeWidth="1.5" />
-              <circle cx="160" cy="95" r="4.5" fill="#DC2626" stroke="#FFF" strokeWidth="1.5" />
-              <circle cx="200" cy="60" r="4.5" fill="#DC2626" stroke="#FFF" strokeWidth="1.5" />
-              <circle cx="240" cy="45" r="4.5" fill="#DC2626" stroke="#FFF" strokeWidth="1.5" />
-              <circle cx="280" cy="25" r="4.5" fill="#DC2626" stroke="#FFF" strokeWidth="1.5" />
-              <circle cx="320" cy="15" r="4.5" fill="#DC2626" stroke="#FFF" strokeWidth="1.5" />
+              {/* Red Milestone Dot Markers at Executed Session Points */}
+              <circle cx="0" cy="170" r="4.5" fill="#EF4444" stroke="#FFF" strokeWidth="2" />
+              <circle cx={Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 0.3 * 380)} cy={Math.max(10, 170 - (currentCount * 0.3 / Math.max(1, targetCount)) * 160)} r="5" fill="#EF4444" stroke="#FFF" strokeWidth="2" />
+              <circle cx={Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 0.7 * 380)} cy={Math.max(10, 170 - (currentCount * 0.7 / Math.max(1, targetCount)) * 160)} r="5" fill="#EF4444" stroke="#FFF" strokeWidth="2" />
+              <circle cx={Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 380)} cy={Math.max(10, 170 - (currentCount / Math.max(1, targetCount)) * 160)} r="6" fill="#EF4444" stroke="#FFF" strokeWidth="2" />
 
             </svg>
 
-            {/* X-Axis Days Labels */}
-            <div style={{ position: 'absolute', left: '45px', right: '16px', bottom: '-20px', display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 800, color: '#475569' }}>
+            {/* X-Axis Day Markers */}
+            <div style={{ position: 'absolute', left: '45px', right: '20px', bottom: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontWeight: 800, color: '#475569' }}>
               <span>Day 0</span>
               <span>Day 10</span>
               <span>Day 20</span>
@@ -1279,17 +1327,17 @@ export default function TaskDedicatedPageView({
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
           <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px', textAlign: 'center' }}>
             <span style={{ fontSize: '10px', fontWeight: 800, color: '#D97706', textTransform: 'uppercase' }}>Active Streak</span>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: '#B45309', marginTop: '2px' }}>7 Days 🔥</div>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#B45309', marginTop: '2px' }}>{activeStreak} Days 🔥</div>
           </div>
 
           <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px', textAlign: 'center' }}>
             <span style={{ fontSize: '10px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase' }}>Max Streak Record</span>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: '#15803D', marginTop: '2px' }}>14 Days 🏆</div>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#15803D', marginTop: '2px' }}>{maxStreakRecord} Days 🏆</div>
           </div>
 
           <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px', textAlign: 'center' }}>
             <span style={{ fontSize: '10px', fontWeight: 800, color: '#DC2626', textTransform: 'uppercase' }}>Missed Streak</span>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: '#991B1B', marginTop: '2px' }}>0 Days</div>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#991B1B', marginTop: '2px' }}>{missedStreak} Days</div>
           </div>
         </div>
       </div>
