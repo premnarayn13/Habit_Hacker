@@ -154,7 +154,27 @@ export default function TaskDedicatedPageView({
   // Subtask Contribution Palette
   const subtaskColors = ['#4338CA', '#F59E0B', '#10B981', '#EF4444', '#06B6D4', '#8B5CF6', '#EC4899'];
   const measureUnit = currentTask.measureUnit || 'units';
-  const measureTarget = currentTask.measureTarget || 10;
+  const measureTarget = currentTask.measureTarget || 15;
+  const dailyTargetMeasure = measureTarget;
+  
+  // For Start-End Date daily tasks, targetCount is the total calendar window duration
+  const effectiveTargetDays = trackingMode === 'end_date' ? totalWindowDays : (targetCount || totalWindowDays);
+  const totalTargetedMeasure = Math.round((effectiveTargetDays * dailyTargetMeasure) * 10) / 10;
+  
+  const totalCompletedMeasure = Math.round((currentCount * dailyTargetMeasure * 0.86) * 10) / 10;
+  const totalTargetLeft = Math.max(0, Math.round((totalTargetedMeasure - totalCompletedMeasure) * 10) / 10);
+  
+  // For Start-End Date daily tasks, target days left equals calendar days left (remainingDays)
+  const effectiveRemainingTargetDays = trackingMode === 'end_date' ? remainingDays : Math.max(1, remainingTargetCount);
+  
+  const reqPaceRemTarget = remainingDays > 0 ? (totalTargetLeft / Math.max(1, effectiveRemainingTargetDays)).toFixed(1) : 0;
+  const reqPaceUntilEndDate = remainingDays > 0 ? (totalTargetLeft / Math.max(1, remainingDays)).toFixed(1) : 0;
+  
+  const projectedTotalMeasure = Math.round((totalCompletedMeasure + (effectiveRemainingTargetDays * dailyTargetMeasure)) * 10) / 10;
+  
+  // Expected Measure Till Today (If Target Followed)
+  const expectedMeasureTillToday = Math.round((elapsedDays * dailyTargetMeasure) * 10) / 10;
+  const targetVarianceTillToday = Math.round((totalCompletedMeasure - expectedMeasureTillToday) * 10) / 10;
 
   // Daily Measure & Subtask Contribution Data (For Start-End Date Tasks & Day Count Tasks)
   const sampleDailyMeasures = Array.from({ length: 7 }).map((_, idx) => {

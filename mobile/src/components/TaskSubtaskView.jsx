@@ -83,15 +83,25 @@ export default function TaskSubtaskView({
 
   const todayStr = new Date().toISOString().split('T')[0];
 
+  // Helper: Is task overall finished (e.g. 30 days period over or 100% target count met)
+  const isTaskOverallFinished = (t) => {
+    if (!t || t.isArchived) return false;
+    const isTargetMet = (t.progressPercent && t.progressPercent >= 100) || (t.targetCount && t.currentCount >= t.targetCount);
+    const isPeriodOver = Boolean(t.plannedEnd && t.plannedEnd < todayStr);
+    return isTargetMet || isPeriodOver;
+  };
+
   // Filter Type: Parents vs Subtasks vs Completed
   if (filterType === 'PARENTS_ONLY') {
-    displayedTasks = displayedTasks.filter(t => !t.parentTaskId && !(t.progressPercent >= 100 || (t.plannedEnd && t.plannedEnd < todayStr)));
+    displayedTasks = displayedTasks.filter(t => !t.parentTaskId && !isTaskOverallFinished(t));
   } else if (filterType === 'SUBTASKS_ONLY') {
-    displayedTasks = displayedTasks.filter(t => t.parentTaskId && !(t.progressPercent >= 100 || (t.plannedEnd && t.plannedEnd < todayStr)));
+    displayedTasks = displayedTasks.filter(t => t.parentTaskId && !isTaskOverallFinished(t));
   } else if (filterType === 'COMPLETED') {
-    displayedTasks = tasks.filter(t => !t.isArchived && (t.progressPercent >= 100 || (t.plannedEnd && t.plannedEnd < todayStr) || t.isDoneToday));
+    // Completed tasks: overall planned period over or 100% target achieved
+    displayedTasks = tasks.filter(t => !t.isArchived && isTaskOverallFinished(t));
   } else if (filterType === 'ALL') {
-    displayedTasks = displayedTasks.filter(t => !(t.progressPercent >= 100 || (t.plannedEnd && t.plannedEnd < todayStr)));
+    // All active ongoing tasks
+    displayedTasks = displayedTasks.filter(t => !isTaskOverallFinished(t));
   }
 
   // Dynamic User Categories ONLY
