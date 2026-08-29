@@ -160,29 +160,44 @@ export default function TaskDedicatedPageView({
     d.setDate(d.getDate() - (6 - idx));
     const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
 
+    // Step 1: Collect explicit measure values from measurable subtasks
     const measuredVals = [];
+    directChildSubtasks.forEach((st) => {
+      if (st.hasMeasureTracking) {
+        const val = st.measureTarget || 4;
+        measuredVals.push(val);
+      }
+    });
+
+    // Step 2: Compute Derived Average
+    const sumMeasured = measuredVals.reduce((a, b) => a + b, 0);
+    const totalSubtasksCount = Math.max(1, directChildSubtasks.length);
+    const derivedAvg = measuredVals.length > 0 ? Math.max(1, Math.round(sumMeasured / totalSubtasksCount)) : 2;
+
+    // Step 3: Compute individual subtask contributions based on subtask type
     const subtaskContributions = directChildSubtasks.map((st, sIdx) => {
       const color = subtaskColors[sIdx % subtaskColors.length];
+      let val = 0;
+      let labelDetail = '';
+
       if (st.hasMeasureTracking) {
-        const val = Math.max(1, Math.round((st.measureTarget || 5) * (0.6 + ((idx + sIdx) % 4) * 0.15)));
-        measuredVals.push(val);
-        return { id: st.id, title: st.title, val, isMeasured: true, color };
+        val = st.measureTarget || 4;
+        labelDetail = `${val} ${st.measureUnit || 'units'}`;
+      } else if (st.trackingMode === 'count_event') {
+        const eventsCompletedToday = (idx % 2 === 0) ? 2 : 1;
+        val = eventsCompletedToday * derivedAvg;
+        labelDetail = `${eventsCompletedToday} Events (${eventsCompletedToday} × ${derivedAvg} derived avg = ${val})`;
       } else {
-        return { id: st.id, title: st.title, val: 0, isMeasured: false, color };
+        const isDone = (idx % 2 === 0);
+        val = isDone ? derivedAvg : 0;
+        labelDetail = isDone ? `Completed (+${derivedAvg} derived avg)` : `Not Done (0)`;
       }
+
+      return { id: st.id, title: st.title, val, labelDetail, isMeasured: st.hasMeasureTracking, color };
     });
 
-    const avgMeasured = measuredVals.length > 0 ? Math.round(measuredVals.reduce((a, b) => a + b, 0) / measuredVals.length) : 3;
-
-    let totalColumnVal = 0;
-    subtaskContributions.forEach(sc => {
-      if (!sc.isMeasured) {
-        sc.val = avgMeasured;
-      }
-      totalColumnVal += sc.val;
-    });
-
-    if (totalColumnVal === 0) totalColumnVal = 10;
+    let totalColumnVal = subtaskContributions.reduce((acc, curr) => acc + curr.val, 0);
+    if (totalColumnVal === 0) totalColumnVal = 6;
     const maxTargetVal = 25;
     const columnPercentage = Math.round((totalColumnVal / maxTargetVal) * 100);
 
@@ -191,7 +206,8 @@ export default function TaskDedicatedPageView({
       dayLabel,
       totalColumnVal,
       columnPercentage,
-      subtaskContributions
+      subtaskContributions,
+      derivedAvg
     };
   });
 
@@ -1287,12 +1303,20 @@ export default function TaskDedicatedPageView({
               <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>
                 Subtask Contribution Breakdown:
               </div>
-              {directChildSubtasks.slice(0, 3).map(s => (
-                <div key={s.id} style={{ fontSize: '11px', color: '#16A34A', fontWeight: 700, background: '#DCFCE7', padding: '8px 12px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>✓ {s.title}</span>
-                  <span>{s.hasMeasureTracking ? `${s.measureTarget || 5} ${s.measureUnit || 'units'}` : 'Derived Avg'}</span>
-                </div>
-              ))}
+              {directChildSubtasks.map((s, sIdx) => {
+                const isMeasured = s.hasMeasureTracking;
+                const isEventCount = s.trackingMode === 'count_event';
+                const label = isMeasured 
+                  ? `${s.measureTarget || 4} ${s.measureUnit || 'units'}` 
+                  : (isEventCount ? `2 Events (2 × derived avg = +4 measure)` : `Completed (+2 derived avg)`);
+
+                return (
+                  <div key={s.id} style={{ fontSize: '11px', color: '#16A34A', fontWeight: 700, background: '#DCFCE7', padding: '8px 12px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>✓ {s.title}</span>
+                    <span style={{ fontSize: '10px', background: '#FFF', color: '#15803D', padding: '2px 8px', borderRadius: '6px', border: '1px solid #BBF7D0', fontWeight: 800 }}>{label}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
