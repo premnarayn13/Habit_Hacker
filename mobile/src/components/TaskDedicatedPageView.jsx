@@ -776,58 +776,78 @@ export default function TaskDedicatedPageView({
       {/* ========================================================================= */}
       <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
         <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Ruler size={18} color="#EC4899" /> DayCount Measure Analytics System & Calculations
+          <Ruler size={18} color="#EC4899" /> DayCount & Schedule Measure Analytics System
         </h3>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+          
+          {/* Card 1: Daily Target Measure */}
           <div style={{ background: '#F8FAFC', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Daily Target Measure</span>
-            <span style={{ fontSize: '15px', fontWeight: 900, color: '#EC4899' }}>{measureTarget} {measureUnit}/day</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#EC4899' }}>{dailyTargetMeasure} {measureUnit}/day</span>
           </div>
 
+          {/* Card 2: Initial Total Targeted Measure */}
           <div style={{ background: '#EFF6FF', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BFDBFE' }}>
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#1E40AF', textTransform: 'uppercase', display: 'block' }}>Initial Total Targeted Measure</span>
-            <span style={{ fontSize: '15px', fontWeight: 900, color: '#1E3A8A' }}>{targetCount * measureTarget} {measureUnit}</span>
-            <span style={{ fontSize: '9px', color: '#3B82F6', fontWeight: 700, display: 'block' }}>({targetCount} days × {measureTarget} {measureUnit})</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#1E3A8A' }}>{totalTargetedMeasure} {measureUnit}</span>
+            <span style={{ fontSize: '9px', color: '#3B82F6', fontWeight: 700, display: 'block' }}>({effectiveTargetDays} days × {dailyTargetMeasure} {measureUnit})</span>
           </div>
 
+          {/* Card 3: Total Completed Measure */}
           <div style={{ background: '#F0FDF4', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>Total Completed Measure</span>
-            <span style={{ fontSize: '15px', fontWeight: 900, color: '#15803D' }}>{(currentCount * measureTarget * 0.86).toFixed(1)} {measureUnit}</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#15803D' }}>{totalCompletedMeasure} {measureUnit}</span>
           </div>
 
+          {/* Card 4 (NEW): Expected Measure Till Today (If Target Followed) */}
+          <div style={{ background: '#EEF2FF', padding: '12px 16px', borderRadius: '12px', border: '1px solid #C7D2FE' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#3730A3', textTransform: 'uppercase', display: 'block' }}>Expected Till Today (On Target)</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#312E81' }}>{expectedMeasureTillToday} {measureUnit}</span>
+            <span style={{ fontSize: '9px', color: targetVarianceTillToday >= 0 ? '#16A34A' : '#DC2626', fontWeight: 800, display: 'block' }}>
+              ({elapsedDays} days × {dailyTargetMeasure} {measureUnit}) • {targetVarianceTillToday >= 0 ? `+${targetVarianceTillToday}` : `${targetVarianceTillToday}`} {measureUnit} {targetVarianceTillToday >= 0 ? 'ahead' : 'behind'}
+            </span>
+          </div>
+
+          {/* Card 5: Total Target Left */}
           <div style={{ background: '#FEF3C7', padding: '12px 16px', borderRadius: '12px', border: '1px solid #FDE68A' }}>
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#B45309', textTransform: 'uppercase', display: 'block' }}>Total Target Left</span>
-            <span style={{ fontSize: '15px', fontWeight: 900, color: '#B45309' }}>{Math.max(0, (targetCount * measureTarget) - (currentCount * measureTarget * 0.86)).toFixed(1)} {measureUnit}</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#B45309' }}>{totalTargetLeft} {measureUnit}</span>
           </div>
 
+          {/* Card 6: Req Daily Avg (Target Days) */}
           <div style={{ background: '#FAF5FF', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E9D5FF' }}>
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#7E22CE', textTransform: 'uppercase', display: 'block' }}>Req Daily Avg (Target Days)</span>
             <span style={{ fontSize: '15px', fontWeight: 900, color: '#6B21A8' }}>
-              {(Math.max(0, (targetCount * measureTarget) - (currentCount * measureTarget * 0.86)) / Math.max(1, remainingTargetCount)).toFixed(1)} {measureUnit}/day
+              {reqPaceRemTarget} {measureUnit}/day
             </span>
           </div>
 
+          {/* Card 7: Req Daily Avg (End Date) */}
           <div style={{ background: '#FFF1F2', padding: '12px 16px', borderRadius: '12px', border: '1px solid #FECDD3' }}>
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#BE123C', textTransform: 'uppercase', display: 'block' }}>Req Daily Avg (End Date)</span>
             <span style={{ fontSize: '15px', fontWeight: 900, color: '#9F1239' }}>
-              {(Math.max(0, (targetCount * measureTarget) - (currentCount * measureTarget * 0.86)) / Math.max(1, remainingDays)).toFixed(1)} {measureUnit}/day
+              {reqPaceUntilEndDate} {measureUnit}/day
             </span>
+            {trackingMode === 'end_date' && (
+              <span style={{ fontSize: '8px', color: '#BE123C', fontWeight: 700, display: 'block' }}>(Identical for Daily Schedule)</span>
+            )}
           </div>
 
+          {/* Card 8: Projected Total Measure */}
           <div style={{ background: '#F0FDF4', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>Projected Total Measure</span>
             <span style={{ fontSize: '15px', fontWeight: 900, color: '#15803D' }}>
-              {((currentCount * measureTarget * 0.86) + (remainingTargetCount * measureTarget)).toFixed(1)} {measureUnit}
+              {projectedTotalMeasure} {measureUnit}
             </span>
             <span style={{ fontSize: '9px', color: '#16A34A', fontWeight: 700, display: 'block' }}>(Can exceed target)</span>
           </div>
+
         </div>
       </div>
 
       {/* ========================================================================= */}
       {/* 10. CALENDAR VIEWS PANEL (IMAGE 2 & 3 REFERENCES) */}
-      {/* ========================================================================= */}
       <div style={{ padding: '24px', background: '#FFF', borderRadius: '24px', border: '1px solid #E2E8F0', boxShadow: '0 8px 30px rgba(0,0,0,0.04)' }}>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
@@ -1042,24 +1062,92 @@ export default function TaskDedicatedPageView({
       </div>
 
       {/* ========================================================================= */}
-      {/* 12. DAILY GRAPHS PANEL */}
+      {/* 12. CUMULATIVE DAILY COMPLETION MEASURE TRAJECTORY LINE CHART */}
       {/* ========================================================================= */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <BarChart3 size={18} color="#2563EB" /> Daily Performance Output Bar Graph
-        </h3>
-        <p style={{ fontSize: '11px', color: '#64748B', margin: '0 0 14px 0' }}>
-          Taller bars represent higher daily measure output; lower bars indicate reduced completion.
-        </p>
+      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #CBD5E1', borderLeft: '6px solid #2563EB', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+          <div>
+            <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <LineChart size={18} color="#2563EB" /> Cumulative Daily Completion Measure Trajectory Line Chart
+            </h3>
+            <p style={{ fontSize: '11px', color: '#64748B', margin: '4px 0 0 0' }}>
+              Tracks daily cumulative measure completion ({measureUnit}) reaching towards the Initial Total Targeted Measure ({totalTargetedMeasure} {measureUnit}).
+            </p>
+          </div>
 
-        <div style={{ height: '160px', display: 'flex', alignItems: 'flex-end', gap: '10px', padding: '14px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
-          {sampleDailyMeasures.map((d, i) => (
-            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
-              <span style={{ fontSize: '9px', fontWeight: 900, color: '#2563EB' }}>{d.totalColumnVal}</span>
-              <div style={{ width: '100%', maxWidth: '28px', background: 'linear-gradient(180deg, #2563EB, #3B82F6)', borderRadius: '6px 6px 0 0', height: `${(d.totalColumnVal / 25) * 80}%`, minHeight: '8px' }} />
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569' }}>{d.dayLabel}</span>
-            </div>
-          ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '11px', fontWeight: 800 }}>
+            <span style={{ color: '#2563EB', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ width: '12px', height: '3px', background: '#2563EB', borderRadius: '2px' }} /> Actual Completed Measure
+            </span>
+            <span style={{ color: '#16A34A', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span style={{ width: '12px', height: '3px', background: '#16A34A', borderStyle: 'dashed' }} /> Expected Target Trajectory
+            </span>
+          </div>
+        </div>
+
+        {/* SVG Cumulative Measure Line Chart */}
+        <div style={{ height: '220px', background: '#F8FAFC', padding: '16px 20px 28px 50px', border: '1.5px solid #E2E8F0', borderRadius: '12px', position: 'relative' }}>
+          
+          {/* Y-Axis Labels */}
+          <div style={{ position: 'absolute', left: '8px', top: '16px', bottom: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '10px', fontWeight: 800, color: '#475569', textAlign: 'right', width: '36px' }}>
+            <span>{totalTargetedMeasure}</span>
+            <span>{Math.round(totalTargetedMeasure * 0.75)}</span>
+            <span>{Math.round(totalTargetedMeasure * 0.50)}</span>
+            <span>{Math.round(totalTargetedMeasure * 0.25)}</span>
+            <span>0</span>
+          </div>
+
+          {/* SVG Canvas */}
+          <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+            
+            {/* Horizontal Gridlines */}
+            <line x1="0%" y1="0%" x2="100%" y2="0%" stroke="#E2E8F0" strokeDasharray="3,3" />
+            <line x1="0%" y1="25%" x2="100%" y2="25%" stroke="#E2E8F0" strokeDasharray="3,3" />
+            <line x1="0%" y1="50%" x2="100%" y2="50%" stroke="#E2E8F0" strokeDasharray="3,3" />
+            <line x1="0%" y1="75%" x2="100%" y2="75%" stroke="#E2E8F0" strokeDasharray="3,3" />
+            <line x1="0%" y1="100%" x2="100%" y2="100%" stroke="#CBD5E1" strokeWidth="2" />
+
+            {/* Expected Target Trajectory Line (Green Dotted Line) */}
+            <line 
+              x1="0%" 
+              y1="100%" 
+              x2="100%" 
+              y2="0%" 
+              stroke="#16A34A" 
+              strokeWidth="2.5" 
+              strokeDasharray="5,5" 
+            />
+
+            {/* Actual Cumulative Completion Line (Solid Blue Line with Dots) */}
+            <polyline 
+              fill="none" 
+              stroke="#2563EB" 
+              strokeWidth="3.5" 
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              points={`0,170 ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 0.5 * 380)},${Math.max(10, 170 - (totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 160)} ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 380)},${Math.max(10, 170 - (totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 170)}`}
+            />
+
+            {/* Data Point Markers */}
+            <circle cx="0" cy="170" r="4.5" fill="#2563EB" stroke="#FFF" strokeWidth="2" />
+            <circle 
+              cx={Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 380)} 
+              cy={Math.max(10, 170 - (totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 170)} 
+              r="6" 
+              fill="#2563EB" 
+              stroke="#FFF" 
+              strokeWidth="2" 
+            />
+
+          </svg>
+
+          {/* X-Axis Timeline Labels */}
+          <div style={{ position: 'absolute', left: '50px', right: '20px', bottom: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 800, color: '#475569' }}>
+            <span>Start Date ({currentTask.plannedStart || 'Day 0'})</span>
+            <span style={{ color: '#2563EB' }}>Today: {elapsedDays} Days Elapsed ({totalCompletedMeasure} {measureUnit})</span>
+            <span>End Deadline ({currentTask.plannedEnd || 'End'})</span>
+          </div>
+
         </div>
       </div>
 
