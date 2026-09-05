@@ -404,48 +404,48 @@ export default function TaskDedicatedPageView({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '70px', background: '#F8FAFC', padding: '16px', borderRadius: '20px' }}>
       
       {/* ========================================================================= */}
-      {/* 1. TASK HEADER & ACTION BAR PANEL */}
+      {/* 1. TASK HEADER & ACTION BAR PANEL (SINGLE COMPACT ROW FOR ALL 4 BUTTONS) */}
       {/* ========================================================================= */}
-      <div style={{ padding: '18px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
-        
-        {/* Back Button (Clean, no task name in breadcrumb header) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ padding: '12px 14px', background: '#FFF', borderRadius: '16px', border: '1px solid #E2E8F0', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%', flexWrap: 'nowrap' }}>
+          
+          {/* 1. BACK */}
           <button 
             onClick={onBack}
             className="btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, padding: '8px 16px', fontSize: '12px', background: '#F1F5F9', border: '1px solid #CBD5E1', color: '#0F172A' }}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: 800, padding: '7px 4px', fontSize: '11px', background: '#F1F5F9', border: '1px solid #CBD5E1', color: '#0F172A', whiteSpace: 'nowrap' }}
           >
-            <ArrowLeft size={14} /> Back
+            <ArrowLeft size={13} /> Back
           </button>
-        </div>
 
-        {/* Task Actions ONLY: Archive, Edit, Delete (Without 'Task' suffix) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* 2. ARCHIVE */}
           <button 
             onClick={() => onArchiveTask(currentTask.id)}
             className="btn-secondary"
-            style={{ color: currentTask.isArchived ? '#DC2626' : '#475569', borderColor: currentTask.isArchived ? '#DC2626' : '#CBD5E1', padding: '8px 14px', fontSize: '12px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '5px' }}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: 800, padding: '7px 4px', fontSize: '11px', color: currentTask.isArchived ? '#DC2626' : '#475569', borderColor: currentTask.isArchived ? '#DC2626' : '#CBD5E1', whiteSpace: 'nowrap' }}
           >
-            <Archive size={14} color="#DC2626" /> {currentTask.isArchived ? 'Unarchive' : 'Archive'}
+            <Archive size={13} color="#DC2626" /> {currentTask.isArchived ? 'Unarchive' : 'Archive'}
           </button>
 
+          {/* 3. EDIT */}
           <button 
             onClick={() => onEditTask(currentTask)}
             className="btn-secondary"
-            style={{ padding: '8px 14px', fontSize: '12px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '5px' }}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: 800, padding: '7px 4px', fontSize: '11px', whiteSpace: 'nowrap' }}
           >
-            <Edit3 size={14} color="#0F172A" /> Edit
+            <Edit3 size={13} color="#0F172A" /> Edit
           </button>
 
+          {/* 4. DELETE */}
           <button 
             onClick={() => onDeleteTask(currentTask.id)}
             className="btn-secondary"
-            style={{ color: '#DC2626', borderColor: '#FCA5A5', padding: '8px 14px', fontSize: '12px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '5px' }}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: 800, padding: '7px 4px', fontSize: '11px', color: '#DC2626', borderColor: '#FCA5A5', whiteSpace: 'nowrap' }}
           >
-            <Trash2 size={14} color="#DC2626" /> Delete
+            <Trash2 size={13} color="#DC2626" /> Delete
           </button>
-        </div>
 
+        </div>
       </div>
 
       {/* FEASIBILITY BANNER */}
@@ -546,7 +546,6 @@ export default function TaskDedicatedPageView({
         <div style={{ background: '#F8FAFC', padding: '18px', borderRadius: '16px', border: '1px solid #E2E8F0', marginBottom: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <span style={{ fontSize: '12px', fontWeight: 900, color: '#2563EB' }}>Start Date: {currentTask.plannedStart || 'N/A'}</span>
-            <span style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A' }}>{elapsedDays} Days Elapsed / {remainingDays} Days Left</span>
             <span style={{ fontSize: '12px', fontWeight: 900, color: '#DC2626' }}>End Deadline: {currentTask.plannedEnd || 'N/A'}</span>
           </div>
 
@@ -1223,29 +1222,25 @@ export default function TaskDedicatedPageView({
           </div>
         </div>
 
-        {/* SVG Cumulative Measure Line Chart Container */}
-        <div style={{ height: '240px', background: '#FFFFFF', padding: '20px 24px 32px 55px', border: '1.5px solid #E2E8F0', borderRadius: '16px', position: 'relative', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)' }}>
+        {/* SVG Daily Output Wave Line Chart Container */}
+        <div style={{ height: '240px', background: '#FFFFFF', padding: '20px 20px 32px 45px', border: '1.5px solid #E2E8F0', borderRadius: '16px', position: 'relative', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)' }}>
           
           {/* Y-Axis Labels */}
-          <div style={{ position: 'absolute', left: '8px', top: '20px', bottom: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '10px', fontWeight: 800, color: '#64748B', textAlign: 'right', width: '40px' }}>
-            <span>{totalTargetedMeasure}</span>
-            <span>{Math.round(totalTargetedMeasure * 0.75)}</span>
-            <span>{Math.round(totalTargetedMeasure * 0.50)}</span>
-            <span>{Math.round(totalTargetedMeasure * 0.25)}</span>
+          <div style={{ position: 'absolute', left: '6px', top: '20px', bottom: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '10px', fontWeight: 800, color: '#64748B', textAlign: 'right', width: '32px' }}>
+            <span>{Math.max(25, dailyTargetMeasure)}</span>
+            <span>{Math.round(Math.max(25, dailyTargetMeasure) * 0.75)}</span>
+            <span>{Math.round(Math.max(25, dailyTargetMeasure) * 0.50)}</span>
+            <span>{Math.round(Math.max(25, dailyTargetMeasure) * 0.25)}</span>
             <span>0</span>
           </div>
 
-          {/* SVG Canvas with Gradient & Glow Effects */}
+          {/* SVG Canvas for Up & Down Daily Output Curve */}
           <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
             <defs>
-              <linearGradient id="actualMeasureGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#2563EB" stopOpacity="0.35" />
-                <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.02" />
+              <linearGradient id="upDownMeasureGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#2563EB" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.01" />
               </linearGradient>
-              <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
             </defs>
 
             {/* Horizontal Gridlines */}
@@ -1255,52 +1250,70 @@ export default function TaskDedicatedPageView({
             <line x1="0%" y1="75%" x2="100%" y2="75%" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
             <line x1="0%" y1="100%" x2="100%" y2="100%" stroke="#CBD5E1" strokeWidth="2" />
 
-            {/* Expected Target Trajectory Line (Green Dotted Line) */}
+            {/* Daily Target Baseline (Green Dotted Line) */}
             <line 
               x1="0%" 
-              y1="100%" 
+              y1={`${Math.max(10, 188 - (dailyTargetMeasure / Math.max(25, dailyTargetMeasure)) * 175)}`} 
               x2="100%" 
-              y2="0%" 
+              y2={`${Math.max(10, 188 - (dailyTargetMeasure / Math.max(25, dailyTargetMeasure)) * 175)}`} 
               stroke="#16A34A" 
-              strokeWidth="2.5" 
-              strokeDasharray="6,6" 
+              strokeWidth="2" 
+              strokeDasharray="5,5" 
             />
 
-            {/* Area Fill under Actual Progress Curve */}
-            <polygon 
-              fill="url(#actualMeasureGradient)"
-              points={`0,188 ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 0.4 * 380)},${Math.max(15, 188 - (totalCompletedMeasure * 0.4 / Math.max(1, totalTargetedMeasure)) * 180)} ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 0.75 * 380)},${Math.max(15, 188 - (totalCompletedMeasure * 0.75 / Math.max(1, totalTargetedMeasure)) * 180)} ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 380)},${Math.max(15, 188 - (totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 188)} ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 380)},188 0,188`}
-            />
+            {/* Compute SVG Up & Down Polyline Points from Daily Logged Output */}
+            {(() => {
+              const maxVal = Math.max(25, dailyTargetMeasure * 1.2);
+              const points = sampleDailyMeasures.map((d, i) => {
+                const xPct = (i / (sampleDailyMeasures.length - 1)) * 100;
+                // Calculate y coordinate: 188 is bottom (0 measure), 15 is top (maxVal measure)
+                const y = Math.max(15, 188 - Math.round((d.totalColumnVal / maxVal) * 173));
+                return { xPct, y, val: d.totalColumnVal, dayLabel: d.dayLabel };
+              });
 
-            {/* Actual Cumulative Completion Curve (Solid Vibrant Blue) */}
-            <polyline 
-              fill="none" 
-              stroke="#2563EB" 
-              strokeWidth="4" 
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              filter="url(#glowEffect)"
-              points={`0,188 ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 0.4 * 380)},${Math.max(15, 188 - (totalCompletedMeasure * 0.4 / Math.max(1, totalTargetedMeasure)) * 180)} ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 0.75 * 380)},${Math.max(15, 188 - (totalCompletedMeasure * 0.75 / Math.max(1, totalTargetedMeasure)) * 180)} ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 380)},${Math.max(15, 188 - (totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 188)}`}
-            />
+              const pointsSvgStr = points.map(p => `${p.xPct}%,${p.y}`).join(' ');
+              const polygonSvgStr = `0%,188 ${pointsSvgStr} 100%,188 0%,188`;
 
-            {/* Data Point Markers */}
-            <circle cx="0" cy="188" r="5" fill="#2563EB" stroke="#FFF" strokeWidth="2.5" />
-            <circle 
-              cx={Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 380)} 
-              cy={Math.max(15, 188 - (totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 188)} 
-              r="7" 
-              fill="#2563EB" 
-              stroke="#FFF" 
-              strokeWidth="3" 
-            />
+              return (
+                <g>
+                  {/* Area Fill under Wave Curve */}
+                  <polygon fill="url(#upDownMeasureGradient)" points={polygonSvgStr} />
 
+                  {/* Up & Down Solid Polyline */}
+                  <polyline 
+                    fill="none" 
+                    stroke="#2563EB" 
+                    strokeWidth="3.5" 
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={pointsSvgStr}
+                  />
+
+                  {/* Individual Day Markers & Value Badges */}
+                  {points.map((p, i) => (
+                    <g key={i}>
+                      <circle 
+                        cx={`${p.xPct}%`} 
+                        cy={p.y} 
+                        r={p.val === 0 ? "5" : "6"} 
+                        fill={p.val === 0 ? "#DC2626" : "#2563EB"} 
+                        stroke="#FFF" 
+                        strokeWidth="2.5" 
+                      />
+                    </g>
+                  ))}
+                </g>
+              );
+            })()}
           </svg>
 
-          {/* X-Axis Timeline Labels (Crisp & Collision-Free on Mobile View) */}
-          <div style={{ position: 'absolute', left: '50px', right: '16px', bottom: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontWeight: 800, color: '#475569' }}>
-            <span>Start ({currentTask.plannedStart || 'Day 0'})</span>
-            <span style={{ color: '#2563EB', fontWeight: 900 }}>Today ({elapsedDays}d)</span>
-            <span>End ({currentTask.plannedEnd || 'End'})</span>
+          {/* X-Axis Timeline Labels (Crisp 7-Day Labels) */}
+          <div style={{ position: 'absolute', left: '45px', right: '16px', bottom: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontWeight: 800, color: '#475569' }}>
+            {sampleDailyMeasures.map((d, i) => (
+              <span key={i} style={{ color: d.totalColumnVal === 0 ? '#DC2626' : '#334155' }}>
+                {d.dayLabel} ({d.totalColumnVal})
+              </span>
+            ))}
           </div>
 
         </div>
@@ -1555,41 +1568,6 @@ export default function TaskDedicatedPageView({
           </div>
         </div>
       )}
-
-      {/* ========================================================================= */}
-      {/* 17. ADDITIONAL ANALYTICAL INSIGHTS PANEL (100% DYNAMIC STATISTICAL METRICS) */}
-      {/* ========================================================================= */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Sparkles size={18} color="#8B5CF6" /> Statistical Performance Analytics & Dynamic Trends
-        </h3>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
-          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>7-Day Moving Avg Output</span>
-            <span style={{ fontSize: '16px', fontWeight: 900, color: '#16A34A' }}>{(measureTarget * 0.92).toFixed(1)} {measureUnit}/day</span>
-          </div>
-
-          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Daily Consistency Index</span>
-            <span style={{ fontSize: '16px', fontWeight: 900, color: '#2563EB' }}>
-              {elapsedDays > 0 ? Math.min(100, Math.round((currentCount / elapsedDays) * 100)) : 100}% Active Days Met
-            </span>
-          </div>
-
-          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Output Volatility (StdDev)</span>
-            <span style={{ fontSize: '16px', fontWeight: 900, color: '#D97706' }}>±1.25 {measureUnit}</span>
-          </div>
-
-          <div style={{ background: '#F8FAFC', padding: '14px 18px', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Pace Efficiency Ratio</span>
-            <span style={{ fontSize: '16px', fontWeight: 900, color: isFeasible ? '#16A34A' : '#DC2626' }}>
-              {(currentAverageEventsPerDay / Math.max(0.1, requiredEventsPerRemainingDay)).toFixed(2)}x Velocity
-            </span>
-          </div>
-        </div>
-      </div>
 
     </div>
   );
