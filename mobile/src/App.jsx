@@ -557,24 +557,8 @@ export default function App() {
   const processSubtaskLifecycles = (rawTasks) => {
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // 1. Lifecycle Unmapping
-    let updatedTasks = rawTasks.map(task => {
-      if (!task.parentTaskId) return task;
-
-      const parentObj = rawTasks.find(p => p.id === task.parentTaskId);
-
-      // Rule B: Parent ends/archived before child -> Unmap to solo task!
-      if (!parentObj || parentObj.isArchived || (parentObj.plannedEnd && parentObj.plannedEnd < todayStr && parentObj.progressPercent >= 100)) {
-        return { ...task, parentTaskId: '' };
-      }
-
-      // Rule A: Subtask ends before parent (subtask plannedEnd < today) -> Unmap naturally!
-      if (task.plannedEnd && task.plannedEnd < todayStr && parentObj.plannedEnd >= todayStr) {
-        return { ...task, parentTaskId: '' };
-      }
-
-      return task;
-    });
+    // Preserve original subtask mappings
+    let updatedTasks = [...rawTasks];
 
     // 2. Automated Parent Completion Driven by Child Subtasks
     updatedTasks = updatedTasks.map(task => {
@@ -695,25 +679,15 @@ export default function App() {
         }));
 
         const combined = [...mapped];
-        cachedTasks.forEach(ct => {
-          if (!combined.some(dt => dt.id === ct.id)) {
-            combined.push(ct);
-          }
-        });
         INITIAL_DEFAULT_TASKS.forEach(dt => {
-          if (!combined.some(t => t.id === dt.id)) {
+          const existingIdx = combined.findIndex(t => t.id === dt.id);
+          if (existingIdx >= 0) {
+            combined[existingIdx] = { ...dt, ...combined[existingIdx], parentTaskId: dt.parentTaskId || combined[existingIdx].parentTaskId };
+          } else {
             combined.push(dt);
           }
         });
 
-        updateTasksState(combined, userEmail);
-      } else if (cachedTasks && cachedTasks.length > 0) {
-        const combined = [...cachedTasks];
-        INITIAL_DEFAULT_TASKS.forEach(dt => {
-          if (!combined.some(t => t.id === dt.id)) {
-            combined.push(dt);
-          }
-        });
         updateTasksState(combined, userEmail);
       } else {
         updateTasksState(INITIAL_DEFAULT_TASKS, userEmail);
@@ -721,12 +695,7 @@ export default function App() {
 
     } catch (err) {
       console.warn('Supabase fetch notice:', err.message);
-      const globalCached = localStorage.getItem('habit_hacker_tasks_global_v2');
-      if (globalCached) {
-        updateTasksState(JSON.parse(globalCached), userEmail);
-      } else {
-        updateTasksState(INITIAL_DEFAULT_TASKS, userEmail);
-      }
+      updateTasksState(INITIAL_DEFAULT_TASKS, userEmail);
     }
   };
 

@@ -83,6 +83,12 @@ export default function TaskDedicatedPageView({
   onNavigateToSubtask
 }) {
   const [breadcrumbStack, setBreadcrumbStack] = useState([task]);
+
+  React.useEffect(() => {
+    if (task) {
+      setBreadcrumbStack([task]);
+    }
+  }, [task]);
   const [calendarViewMode, setCalendarViewMode] = useState('MONTH'); // 'MONTH', 'WEEK'
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // Selected Date Analysis Panel
   const [subtaskFilter, setSubtaskFilter] = useState('ALL'); // 'ALL', 'REQUIRED', 'OPTIONAL'
