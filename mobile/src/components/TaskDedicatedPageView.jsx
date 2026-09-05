@@ -1545,22 +1545,22 @@ export default function TaskDedicatedPageView({
       {/* 15. MISSED DAYS HISTORY & MANDATORY SUBTASK BREAKDOWN */}
       {/* ========================================================================= */}
       {(() => {
-        const missedDaysRecords = getMissedDaysForTask(currentTask, directChildSubtasks);
+        const missedDaysRecords = getMissedDaysForTask(currentTask, directChildSubtasks, elapsedDays || totalWindowDays || 30);
 
         return (
           <div style={{ padding: '24px', background: '#FFFFFF', borderRadius: '24px', border: '1px solid #E2E8F0', borderLeft: '6px solid #EF4444', boxShadow: '0 8px 24px rgba(239, 68, 68, 0.06)', marginTop: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <h3 style={{ fontSize: '17px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <AlertTriangle size={20} color="#EF4444" /> Missed Days Breakdown
+                  <AlertTriangle size={20} color="#EF4444" /> Missed Days Breakdown ({missedDaysRecords.length} Unsuccessful Days)
                 </h3>
                 <p style={{ fontSize: '11px', color: '#64748B', margin: '4px 0 0 0' }}>
-                  Dates missed and exact mandatory subtasks responsible. Derived directly from child completion states.
+                  Scans full operational timeline window ({elapsedDays || 30} days). Lists exact mandatory subtasks missed per day.
                 </p>
               </div>
 
               <div style={{ background: missedDaysRecords.length === 0 ? '#F0FDF4' : '#FEF2F2', border: missedDaysRecords.length === 0 ? '1px solid #BBF7D0' : '1px solid #FECACA', padding: '6px 14px', borderRadius: '10px', fontSize: '11px', fontWeight: 800, color: missedDaysRecords.length === 0 ? '#15803D' : '#991B1B' }}>
-                {missedDaysRecords.length === 0 ? '0 Missed Days' : `${missedDaysRecords.length} Missed Days`}
+                {missedDaysRecords.length === 0 ? '0 Missed Days (Perfect!)' : `${missedDaysRecords.length} Missed Days Recorded`}
               </div>
             </div>
 
@@ -1569,22 +1569,28 @@ export default function TaskDedicatedPageView({
                 <CheckCircle size={16} /> All mandatory subtasks completed across operational timeline. Zero missed days!
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
+              <div style={{ overflowX: 'auto', maxHeight: '350px' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E2E8F0', color: '#475569', fontWeight: 800 }}>
-                      <th style={{ padding: '10px 14px', borderRadius: '8px 0 0 8px' }}>Date</th>
-                      <th style={{ padding: '10px 14px', borderRadius: '0 8px 8px 0' }}>Missed Subtasks</th>
+                      <th style={{ padding: '10px 14px', borderRadius: '8px 0 0 8px', width: '130px' }}>Date</th>
+                      <th style={{ padding: '10px 14px', borderRadius: '0 8px 8px 0' }}>Missed Mandatory Subtasks</th>
                     </tr>
                   </thead>
                   <tbody>
                     {missedDaysRecords.map((m, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                        <td style={{ padding: '12px 14px', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '12px 14px', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
                           {m.dateFormatted}
                         </td>
-                        <td style={{ padding: '12px 14px', fontWeight: 700, color: '#DC2626' }}>
-                          {m.missedSubtasks.join(', ')}
+                        <td style={{ padding: '10px 14px', fontWeight: 700, color: '#DC2626' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {m.missedSubtasks.map((stTitle, sIdx) => (
+                              <span key={sIdx} style={{ background: '#FEF2F2', color: '#991B1B', border: '1px solid #FCA5A5', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 800 }}>
+                                ✕ {stTitle}
+                              </span>
+                            ))}
+                          </div>
                         </td>
                       </tr>
                     ))}

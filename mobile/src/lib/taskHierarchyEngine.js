@@ -126,7 +126,7 @@ export function calculateParentCompletionStatus(task, childSubtasks = []) {
  * Derives parent missed-days history directly from mandatory child completion states.
  * Returns array of missed day objects: [{ date, dateFormatted, missedSubtasks: [titles] }]
  */
-export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount = 7) {
+export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount = 30) {
   const mandatoryChildren = (childSubtasks || []).filter(c => !c.isOptional);
   
   // If parent has no mandatory children (or no subtasks), standalone task logic applies
