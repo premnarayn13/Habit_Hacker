@@ -647,8 +647,14 @@ export default function App() {
         .from('tasks')
         .select('*');
 
+      const { data: dbSubtasks } = await supabase
+        .from('subtasks')
+        .select('*');
+
+      let fetchedItems = [];
+
       if (dbTasks && dbTasks.length > 0) {
-        const mapped = dbTasks.map(t => ({
+        const mappedTasks = dbTasks.map(t => ({
           id: t.id,
           title: t.title,
           description: t.description || '',
@@ -656,12 +662,14 @@ export default function App() {
           priority: t.priority || 'MEDIUM',
           isOptional: t.is_optional || false,
           hasMeasureTracking: t.has_measure_tracking || false,
-          measureUnit: t.measure_unit || 'units',
-          measureTarget: t.measure_target || 0,
+          measureUnit: t.measure_unit || t.event_unit_name || 'units',
+          measureTarget: Number(t.measure_target || t.event_unit_target || 0),
+          eventUnitTarget: Number(t.event_unit_target || 10),
+          eventUnitName: t.event_unit_name || 'units',
           progressPercent: t.progress_percent || 0,
-          plannedStart: t.start_date || t.planned_start || '2026-08-22',
-          plannedEnd: t.end_date || t.planned_end || '2026-10-10',
-          deadline: t.end_date || t.deadline || '2026-10-10',
+          plannedStart: t.start_date || t.planned_start || '2026-08-01',
+          plannedEnd: t.end_date || t.planned_end || '2026-09-30',
+          deadline: t.end_date || t.deadline || '2026-09-30',
           estimatedMinutes: t.estimated_minutes || 30,
           actualMinutes: t.actual_minutes || 0,
           category: t.category || 'General',
@@ -677,8 +685,43 @@ export default function App() {
           isDoneToday: t.is_done_today || false,
           skipReason: ''
         }));
+        fetchedItems.push(...mappedTasks);
+      }
 
-        const combined = [...mapped];
+      if (dbSubtasks && dbSubtasks.length > 0) {
+        const mappedSubtasks = dbSubtasks.map(s => ({
+          id: s.id,
+          parentTaskId: s.parent_task_id || s.parent_id || '',
+          title: s.title,
+          description: s.description || '',
+          user_id: s.user_id || 'default-user',
+          category: s.category || 'General',
+          priority: s.priority || 'MEDIUM',
+          trackingMode: s.tracking_mode || 'end_date',
+          hasMeasureTracking: s.has_measure_tracking ?? false,
+          measureTarget: Number(s.measure_target || 0),
+          measureUnit: s.measure_unit || 'units',
+          loggedMeasureVal: Number(s.logged_measure_val || 0),
+          currentEventWork: Number(s.current_event_work || 0),
+          isOptional: s.is_optional ?? false,
+          isDoneToday: s.is_done_today ?? false,
+          currentCount: s.current_count || 0,
+          progressPercent: s.progress_percent || 0,
+          isArchived: false
+        }));
+
+        mappedSubtasks.forEach(st => {
+          const existingIdx = fetchedItems.findIndex(t => t.id === st.id);
+          if (existingIdx >= 0) {
+            fetchedItems[existingIdx] = { ...fetchedItems[existingIdx], ...st };
+          } else {
+            fetchedItems.push(st);
+          }
+        });
+      }
+
+      if (fetchedItems.length > 0) {
+        const combined = [...fetchedItems];
         INITIAL_DEFAULT_TASKS.forEach(dt => {
           const existingIdx = combined.findIndex(t => t.id === dt.id);
           if (existingIdx >= 0) {

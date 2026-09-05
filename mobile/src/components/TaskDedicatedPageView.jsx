@@ -94,7 +94,19 @@ export default function TaskDedicatedPageView({
   const [subtaskFilter, setSubtaskFilter] = useState('ALL'); // 'ALL', 'REQUIRED', 'OPTIONAL'
   const [subtaskSearchQuery, setSubtaskSearchQuery] = useState('');
 
-  const currentTask = breadcrumbStack[breadcrumbStack.length - 1] || task;
+  const currentTask = (breadcrumbStack && breadcrumbStack.length > 0) ? breadcrumbStack[breadcrumbStack.length - 1] : task;
+
+  if (!currentTask) {
+    return (
+      <div style={{ padding: '24px', textAlign: 'center', background: '#FFF', borderRadius: '16px', margin: '20px' }}>
+        <button onClick={onBack} className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', cursor: 'pointer' }}>
+          <ArrowLeft size={16} /> Back to Tasks
+        </button>
+        <p style={{ marginTop: '16px', color: '#64748B', fontWeight: 700 }}>No task selected.</p>
+      </div>
+    );
+  }
+
   const isSubtask = !!currentTask.parentTaskId;
 
   // Determine Task Type (Type 1: count_event, Type 2: count_days, Type 3: end_date / Daily Plan)
@@ -115,13 +127,16 @@ export default function TaskDedicatedPageView({
     return Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
   };
 
-  const totalWindowDays = calculateSpanDays(currentTask.plannedStart, currentTask.plannedEnd);
+  const effectiveStartStr = currentTask.plannedStart || parentTask?.plannedStart || '2026-08-01';
+  const effectiveEndStr = currentTask.plannedEnd || parentTask?.plannedEnd || '2026-09-30';
+
+  const totalWindowDays = calculateSpanDays(effectiveStartStr, effectiveEndStr) || 45;
   const today = new Date();
-  const startDate = new Date(currentTask.plannedStart || Date.now());
-  const endDate = new Date(currentTask.plannedEnd || Date.now() + 45 * 24 * 3600 * 1000);
+  const startDate = new Date(effectiveStartStr);
+  const endDate = new Date(effectiveEndStr);
   
-  const elapsedDays = Math.max(0, Math.min(totalWindowDays, Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1));
-  const remainingDays = Math.max(0, Math.floor((endDate - today) / (1000 * 60 * 60 * 24)) + 1);
+  const elapsedDays = Math.max(1, Math.min(totalWindowDays, Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1)) || 1;
+  const remainingDays = Math.max(0, Math.floor((endDate - today) / (1000 * 60 * 60 * 24)) + 1) || 0;
 
   // Target & Completed Numerical Definitions per Task Type
   const targetCount = currentTask.targetCount || currentTask.targetDayCount || currentTask.targetEventCount || 30;
@@ -485,6 +500,27 @@ export default function TaskDedicatedPageView({
           </button>
 
         </div>
+
+        {/* Breadcrumb Hierarchy Trail */}
+        {breadcrumbStack && breadcrumbStack.length > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 800, color: '#64748B', flexWrap: 'wrap', padding: '6px 4px 0 4px', borderTop: '1px solid #F1F5F9', marginTop: '8px' }}>
+            {breadcrumbStack.map((item, idx) => (
+              <React.Fragment key={item.id || idx}>
+                {idx > 0 && <ChevronRight size={12} color="#94A3B8" />}
+                <span 
+                  onClick={() => handleBreadcrumbClick(idx)}
+                  style={{ 
+                    cursor: idx === breadcrumbStack.length - 1 ? 'default' : 'pointer', 
+                    color: idx === breadcrumbStack.length - 1 ? '#0F172A' : '#2563EB',
+                    textDecoration: idx === breadcrumbStack.length - 1 ? 'none' : 'underline'
+                  }}
+                >
+                  {item.title}
+                </span>
+              </React.Fragment>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* FEASIBILITY BANNER */}
