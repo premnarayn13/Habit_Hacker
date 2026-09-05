@@ -3,49 +3,53 @@
 -- Execute this script in your PostgreSQL database or Supabase SQL Editor
 -- =========================================================================
 
--- 1. CREATE ALL TABLES IF THEY DO NOT EXIST YET
+-- 1. ENSURE ALL TABLES AND COLUMNS EXIST (HANDLES PRE-EXISTING TABLES SAFELY)
 
 CREATE TABLE IF NOT EXISTS public.tasks (
     id VARCHAR(255) PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL DEFAULT 'default-user',
     title VARCHAR(255) NOT NULL,
-    description TEXT,
-    category VARCHAR(100) DEFAULT 'General',
-    priority VARCHAR(50) DEFAULT 'Medium',
-    tracking_mode VARCHAR(50) DEFAULT 'end_date', -- 'end_date', 'count_days', 'count_event'
-    planned_start DATE,
-    planned_end DATE,
-    target_count INT DEFAULT 30,
-    current_count INT DEFAULT 0,
-    event_unit_target NUMERIC(10, 2) DEFAULT 10.0,
-    event_unit_name VARCHAR(100) DEFAULT 'units',
-    measure_target NUMERIC(10, 2) DEFAULT 15.0,
-    measure_unit VARCHAR(50) DEFAULT 'units',
-    is_optional BOOLEAN DEFAULT FALSE,
-    is_done_today BOOLEAN DEFAULT FALSE,
-    is_archived BOOLEAN DEFAULT FALSE,
-    progress_percent INT DEFAULT 0,
-    parent_task_id VARCHAR(255) DEFAULT '',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Ensure all required columns exist on public.tasks table
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT 'General';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS priority VARCHAR(50) DEFAULT 'Medium';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS tracking_mode VARCHAR(50) DEFAULT 'end_date';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS planned_start DATE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS planned_end DATE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS target_count INT DEFAULT 30;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS current_count INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS event_unit_target NUMERIC(10, 2) DEFAULT 10.0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS event_unit_name VARCHAR(100) DEFAULT 'units';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS measure_target NUMERIC(10, 2) DEFAULT 15.0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS measure_unit VARCHAR(50) DEFAULT 'units';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS is_optional BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS is_done_today BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS progress_percent INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS parent_task_id VARCHAR(255) DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS public.subtasks (
     id VARCHAR(255) PRIMARY KEY,
     parent_task_id VARCHAR(255) NOT NULL,
-    user_id VARCHAR(255) NOT NULL DEFAULT 'default-user',
     title VARCHAR(255) NOT NULL,
-    tracking_mode VARCHAR(50) DEFAULT 'end_date',
-    has_measure_tracking BOOLEAN DEFAULT FALSE,
-    measure_target NUMERIC(10, 2) DEFAULT 0.0,
-    measure_unit VARCHAR(50) DEFAULT 'units',
-    logged_measure_val NUMERIC(10, 2) DEFAULT 0.0,
-    current_event_work NUMERIC(10, 2) DEFAULT 0.0,
-    is_optional BOOLEAN DEFAULT FALSE,
-    is_done_today BOOLEAN DEFAULT FALSE,
-    current_count INT DEFAULT 0,
-    progress_percent INT DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Ensure all required columns exist on public.subtasks table
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS user_id VARCHAR(255) DEFAULT 'default-user';
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS tracking_mode VARCHAR(50) DEFAULT 'end_date';
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS has_measure_tracking BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS measure_target NUMERIC(10, 2) DEFAULT 0.0;
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS measure_unit VARCHAR(50) DEFAULT 'units';
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS logged_measure_val NUMERIC(10, 2) DEFAULT 0.0;
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS current_event_work NUMERIC(10, 2) DEFAULT 0.0;
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS is_optional BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS is_done_today BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS current_count INT DEFAULT 0;
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS progress_percent INT DEFAULT 0;
 
 -- =========================================================================
 -- 2. SEED DATA FOR TESTING EXTEND & COMPLETE TASK HIERARCHY LOGIC
