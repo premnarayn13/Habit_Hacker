@@ -54,6 +54,15 @@ import {
   Crosshair,
   TrendingUp as TrendUpIcon
 } from 'lucide-react';
+import { 
+  isParentTaskWithChildren, 
+  canManuallyCompleteTask, 
+  calculateMeasurableAverage, 
+  calculateSubtaskContribution, 
+  calculateParentDailyMeasure, 
+  calculateParentCompletionStatus,
+  getMissedDaysForTask 
+} from '../lib/taskHierarchyEngine';
 
 export default function TaskDedicatedPageView({ 
   task, 
@@ -196,41 +205,26 @@ export default function TaskDedicatedPageView({
     : (currentTask.isDoneToday ? 0 : Math.max(0, elapsedDays - currentCount));
 
   // Daily Measure & Subtask Contribution Data (For Start-End Date Tasks & Day Count Tasks)
+  const avgMeasured = calculateMeasurableAverage(directChildSubtasks);
+
   const sampleDailyMeasures = Array.from({ length: 7 }).map((_, idx) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - idx));
     const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
 
-    // Step 1: Collect explicit measure values on this day
-    const explicitMeasuredVals = [];
-    directChildSubtasks.forEach((st) => {
-      if (st.hasMeasureTracking) {
-        const val = st.loggedMeasureVal || (st.measureTarget ? Math.max(1, Math.round(st.measureTarget * (0.6 + ((idx) % 4) * 0.15))) : 4);
-        explicitMeasuredVals.push(val);
-      }
-    });
-
-    // Step 2: Compute Average Measure of explicit measure subtasks (default to 2 if no explicit measure subtasks exist)
-    const avgMeasured = explicitMeasuredVals.length > 0
-      ? Math.round((explicitMeasuredVals.reduce((a, b) => a + b, 0) / explicitMeasuredVals.length) * 10) / 10
-      : 2;
-
-    // Step 3: Compute individual subtask contributions according to user's exact specification
     let totalColumnVal = 0;
     const subtaskContributions = directChildSubtasks.map((st, sIdx) => {
       const color = subtaskColors[sIdx % subtaskColors.length];
-      let val = 0;
+      const isCompletedToday = (idx <= (st.currentCount || 0)) || (idx % 2 === 0);
+      const evCount = st.trackingMode === 'count_event' ? (st.currentCount || 2) : 1;
+      
+      const val = calculateSubtaskContribution(st, isCompletedToday, evCount, avgMeasured);
       let note = '';
-
-      if (st.hasMeasureTracking) {
-        val = st.loggedMeasureVal || (st.measureTarget ? Math.max(1, Math.round(st.measureTarget * (0.6 + ((idx + sIdx) % 4) * 0.15))) : 4);
+      if (st.hasMeasureTracking || st.measureTarget) {
         note = 'Explicit Logged Measure';
       } else if (st.trackingMode === 'count_event') {
-        const evCount = (st.currentCount || st.currentEventCount || 2);
-        val = Math.round(evCount * avgMeasured * 10) / 10;
         note = `${evCount} Events × ${avgMeasured} Avg Measure`;
       } else {
-        val = avgMeasured;
         note = `1 Standard × ${avgMeasured} Avg Measure`;
       }
 
@@ -1546,6 +1540,61 @@ export default function TaskDedicatedPageView({
           )}
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 15. MISSED DAYS HISTORY & MANDATORY SUBTASK BREAKDOWN */}
+      {/* ========================================================================= */}
+      {(() => {
+        const missedDaysRecords = getMissedDaysForTask(currentTask, directChildSubtasks);
+
+        return (
+          <div style={{ padding: '24px', background: '#FFFFFF', borderRadius: '24px', border: '1px solid #E2E8F0', borderLeft: '6px solid #EF4444', boxShadow: '0 8px 24px rgba(239, 68, 68, 0.06)', marginTop: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3 style={{ fontSize: '17px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertTriangle size={20} color="#EF4444" /> Missed Days Breakdown
+                </h3>
+                <p style={{ fontSize: '11px', color: '#64748B', margin: '4px 0 0 0' }}>
+                  Dates missed and exact mandatory subtasks responsible. Derived directly from child completion states.
+                </p>
+              </div>
+
+              <div style={{ background: missedDaysRecords.length === 0 ? '#F0FDF4' : '#FEF2F2', border: missedDaysRecords.length === 0 ? '1px solid #BBF7D0' : '1px solid #FECACA', padding: '6px 14px', borderRadius: '10px', fontSize: '11px', fontWeight: 800, color: missedDaysRecords.length === 0 ? '#15803D' : '#991B1B' }}>
+                {missedDaysRecords.length === 0 ? '0 Missed Days' : `${missedDaysRecords.length} Missed Days`}
+              </div>
+            </div>
+
+            {missedDaysRecords.length === 0 ? (
+              <div style={{ padding: '16px', background: '#F0FDF4', borderRadius: '12px', border: '1px solid #BBF7D0', color: '#16A34A', fontSize: '12px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle size={16} /> All mandatory subtasks completed across operational timeline. Zero missed days!
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E2E8F0', color: '#475569', fontWeight: 800 }}>
+                      <th style={{ padding: '10px 14px', borderRadius: '8px 0 0 8px' }}>Date</th>
+                      <th style={{ padding: '10px 14px', borderRadius: '0 8px 8px 0' }}>Missed Subtasks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {missedDaysRecords.map((m, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                        <td style={{ padding: '12px 14px', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap' }}>
+                          {m.dateFormatted}
+                        </td>
+                        <td style={{ padding: '12px 14px', fontWeight: 700, color: '#DC2626' }}>
+                          {m.missedSubtasks.join(', ')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* 16. SELECTED DATE ANALYSIS DRAWER */}

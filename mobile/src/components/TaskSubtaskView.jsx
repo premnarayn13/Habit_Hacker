@@ -23,6 +23,7 @@ import {
   Ruler,
   ExternalLink
 } from 'lucide-react';
+import { isParentTaskWithChildren, canManuallyCompleteTask } from '../lib/taskHierarchyEngine';
 
 export default function TaskSubtaskView({ 
   tasks, 
@@ -188,9 +189,14 @@ export default function TaskSubtaskView({
     }
   };
 
-  // Intercept Task Completion for Measure Tracking
+  // Intercept Task Completion for Measure Tracking and Parent Hierarchy
   const handleCheckmarkClick = (e, task) => {
     e.stopPropagation();
+    const childTasks = tasks.filter(t => t.parentTaskId === task.id);
+    if (!canManuallyCompleteTask(task, childTasks)) {
+      alert("Parent task completion is driven automatically when all non-optional subtasks are completed.");
+      return;
+    }
     const isDone = task.isDoneToday || task.progressPercent >= 100;
     
     if (!isDone && task.hasMeasureTracking) {

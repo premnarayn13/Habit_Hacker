@@ -22,6 +22,14 @@ import TaskEditModal from './components/TaskEditModal';
 import DateDurationPickerModal from './components/DateDurationPickerModal';
 import AuthLandingPage from './components/AuthLandingPage';
 import { supabase } from './lib/supabaseClient';
+import { 
+  isParentTaskWithChildren, 
+  canManuallyCompleteTask, 
+  calculateMeasurableAverage, 
+  calculateSubtaskContribution, 
+  calculateParentDailyMeasure, 
+  calculateParentCompletionStatus 
+} from './lib/taskHierarchyEngine';
 import { Flame } from 'lucide-react';
 
 const INITIAL_DEFAULT_TASKS = [
@@ -349,31 +357,35 @@ export default function App() {
     updatedTasks = updatedTasks.map(task => {
       const childSubtasks = updatedTasks.filter(t => t.parentTaskId === task.id);
       if (childSubtasks.length > 0) {
-        const completedCount = childSubtasks.filter(c => c.isDoneToday || c.progressPercent >= 100).length;
-        const totalCount = childSubtasks.length;
-        const allSubtasksCompleted = completedCount === totalCount;
-        const subtaskProg = Math.round((completedCount / totalCount) * 100);
+        const isParentWithChildren = isParentTaskWithChildren(task, childSubtasks);
+        
+        // Count mandatory vs total completed
+        const mandatoryChildren = childSubtasks.filter(c => !c.isOptional);
+        const completedMandatoryCount = mandatoryChildren.filter(c => c.isDoneToday || c.progressPercent >= 100).length;
+        const totalCompletedCount = childSubtasks.filter(c => c.isDoneToday || c.progressPercent >= 100).length;
+        
+        // Parent completion: driven by mandatory subtasks (optional subtasks do NOT prevent completion)
+        const parentDoneToday = isParentWithChildren 
+          ? (mandatoryChildren.length > 0 ? completedMandatoryCount === mandatoryChildren.length : totalCompletedCount > 0)
+          : (task.isDoneToday || task.progressPercent >= 100);
 
+        const subtaskProg = Math.round((totalCompletedCount / childSubtasks.length) * 100);
         const targetMax = task.targetCount || task.targetDayCount || task.targetEventCount || 45;
+        
         let parentCurrent = task.currentCount || 0;
-        let parentDoneToday = task.isDoneToday;
-
-        if (allSubtasksCompleted) {
-          parentDoneToday = true;
-          if (parentCurrent === 0) parentCurrent = 1;
-        } else {
-          parentDoneToday = false;
-          if (parentCurrent === 1 && completedCount === 0) parentCurrent = 0;
+        if (isParentWithChildren) {
+          if (parentDoneToday && parentCurrent === 0) parentCurrent = 1;
+          if (!parentDoneToday && parentCurrent === 1 && totalCompletedCount === 0) parentCurrent = 0;
         }
 
         const parentDayProg = Math.round((parentCurrent / targetMax) * 100);
 
         return {
           ...task,
-          subtaskRatioStr: `${completedCount}:${totalCount} Completed`,
+          subtaskRatioStr: `${totalCompletedCount}:${childSubtasks.length} Completed`,
           subtaskProgPercent: subtaskProg,
-          subtaskCompletedCount: completedCount,
-          subtaskTotalCount: totalCount,
+          subtaskCompletedCount: totalCompletedCount,
+          subtaskTotalCount: childSubtasks.length,
           isDoneToday: parentDoneToday,
           currentCount: parentCurrent,
           currentDayCount: parentCurrent,
