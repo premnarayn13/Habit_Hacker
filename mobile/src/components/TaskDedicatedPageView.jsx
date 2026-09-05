@@ -1224,10 +1224,10 @@ export default function TaskDedicatedPageView({
         </div>
 
         {/* SVG Cumulative Measure Slope Trajectory Line Chart Container */}
-        <div style={{ height: '250px', background: '#FFFFFF', padding: '24px 20px 36px 50px', border: '1.5px solid #CBD5E1', borderRadius: '16px', position: 'relative', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)' }}>
+        <div style={{ height: '240px', background: '#FFFFFF', padding: '16px 14px 28px 45px', border: '1.5px solid #CBD5E1', borderRadius: '16px', position: 'relative', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
           
           {/* Y-Axis Labels */}
-          <div style={{ position: 'absolute', left: '6px', top: '24px', bottom: '36px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '10px', fontWeight: 800, color: '#64748B', textAlign: 'right', width: '36px' }}>
+          <div style={{ position: 'absolute', left: '6px', top: '16px', bottom: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '9px', fontWeight: 800, color: '#64748B', textAlign: 'right', width: '32px' }}>
             <span>{totalTargetedMeasure}</span>
             <span>{Math.round(totalTargetedMeasure * 0.75)}</span>
             <span>{Math.round(totalTargetedMeasure * 0.50)}</span>
@@ -1235,8 +1235,8 @@ export default function TaskDedicatedPageView({
             <span>0</span>
           </div>
 
-          {/* SVG Canvas with ViewBox for Precise Responsive Scaling */}
-          <svg viewBox="0 0 500 200" preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+          {/* SVG Canvas with ViewBox for Precise Responsive Scaling (No mobile screen overflow!) */}
+          <svg viewBox="0 0 500 180" preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
             <defs>
               <linearGradient id="cumOrangeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                 <stop offset="0%" stopColor="#EA580C" stopOpacity="0.25" />
@@ -1249,23 +1249,23 @@ export default function TaskDedicatedPageView({
             </defs>
 
             {/* Math Graph Paper Grid Lines (Horizontal & Vertical) */}
-            <line x1="0" y1="20" x2="500" y2="20" stroke="#F1F5F9" strokeWidth="1.5" />
-            <line x1="0" y1="60" x2="500" y2="60" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
-            <line x1="0" y1="100" x2="500" y2="100" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
-            <line x1="0" y1="140" x2="500" y2="140" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
-            <line x1="0" y1="180" x2="500" y2="180" stroke="#CBD5E1" strokeWidth="2" />
+            <line x1="20" y1="20" x2="480" y2="20" stroke="#F1F5F9" strokeWidth="1.5" />
+            <line x1="20" y1="55" x2="480" y2="55" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+            <line x1="20" y1="90" x2="480" y2="90" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+            <line x1="20" y1="125" x2="480" y2="125" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+            <line x1="20" y1="160" x2="480" y2="160" stroke="#CBD5E1" strokeWidth="2" />
 
             {/* Vertical Day Gridlines */}
             {sampleDailyMeasures.map((_, i) => {
-              const x = Math.round((i / Math.max(1, sampleDailyMeasures.length - 1)) * 500);
-              return <line key={i} x1={x} y1="20" x2={x} y2="180" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="3,3" />;
+              const x = Math.round(20 + (i / Math.max(1, sampleDailyMeasures.length - 1)) * 460);
+              return <line key={i} x1={x} y1="20" x2={x} y2="160" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="3,3" />;
             })}
 
-            {/* 1. AVERAGE TARGET LINE (45 DEGREE LINE FROM BOTTOM-LEFT (0,180) TO TOP-RIGHT (500,20)) */}
+            {/* 1. AVERAGE TARGET LINE (45 DEGREE LINE FROM BOTTOM-LEFT (20,160) TO TOP-RIGHT (480,20)) */}
             <line 
-              x1="0" 
-              y1="180" 
-              x2="500" 
+              x1="20" 
+              y1="160" 
+              x2="480" 
               y2="20" 
               stroke="#16A34A" 
               strokeWidth="2.5" 
@@ -1275,14 +1275,14 @@ export default function TaskDedicatedPageView({
             {/* 2. ACTUAL CUMULATIVE MEASURE LINE (MONOTONICALLY INCREASING, NEVER GOES DOWN) */}
             {(() => {
               let runningTotal = 0;
-              const maxCum = Math.max(totalTargetedMeasure, totalCompletedMeasure * 1.1, 10);
+              const maxCum = Math.max(totalTargetedMeasure, totalCompletedMeasure * 1.05, 10);
               
               const points = sampleDailyMeasures.map((d, i) => {
                 const dailyDelta = d.totalColumnVal;
                 runningTotal += dailyDelta;
-                const x = Math.round((i / Math.max(1, sampleDailyMeasures.length - 1)) * 500);
-                // Calculate y: y=180 is 0 cumulative, y=20 is maxCum
-                const y = Math.max(20, 180 - Math.round((runningTotal / maxCum) * 160));
+                const x = Math.round(20 + (i / Math.max(1, sampleDailyMeasures.length - 1)) * 460);
+                // Calculate y: y=160 is 0 cumulative, y=20 is maxCum
+                const y = Math.max(20, 160 - Math.round((runningTotal / maxCum) * 140));
                 return {
                   x,
                   y,
@@ -1293,7 +1293,7 @@ export default function TaskDedicatedPageView({
               });
 
               const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
-              const polygonPoints = `0,180 ${polylinePoints} 500,180 0,180`;
+              const polygonPoints = `20,160 ${polylinePoints} 480,160 20,160`;
 
               return (
                 <g>
@@ -1317,17 +1317,17 @@ export default function TaskDedicatedPageView({
                       <circle 
                         cx={p.x} 
                         cy={p.y} 
-                        r={p.dailyDelta === 0 ? "5" : "6.5"} 
+                        r={p.dailyDelta === 0 ? "4.5" : "6"} 
                         fill={p.dailyDelta === 0 ? "#F97316" : "#EA580C"} 
                         stroke="#FFFFFF" 
-                        strokeWidth="2.5" 
+                        strokeWidth="2" 
                       />
                       {/* Cumulative Value Text Label above Node */}
                       <text 
                         x={p.x} 
-                        y={p.y - 10} 
+                        y={p.y - 8} 
                         textAnchor="middle" 
-                        fontSize="10" 
+                        fontSize="9" 
                         fontWeight="800" 
                         fill="#C2410C"
                       >
@@ -1341,7 +1341,7 @@ export default function TaskDedicatedPageView({
           </svg>
 
           {/* X-Axis Timeline Labels */}
-          <div style={{ position: 'absolute', left: '50px', right: '20px', bottom: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '9.5px', fontWeight: 800, color: '#475569' }}>
+          <div style={{ position: 'absolute', left: '45px', right: '16px', bottom: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', fontWeight: 800, color: '#475569' }}>
             {sampleDailyMeasures.map((d, i) => (
               <span key={i} style={{ color: d.totalColumnVal === 0 ? '#94A3B8' : '#0F172A' }}>
                 {d.dayLabel} ({d.totalColumnVal > 0 ? `+${d.totalColumnVal}` : '0'})
