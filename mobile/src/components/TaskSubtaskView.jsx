@@ -428,14 +428,14 @@ export default function TaskSubtaskView({
                   
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '220px' }}>
                     
-                    {!isSubtaskEntity && (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); toggleExpand(task.id); }}
-                        style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', padding: 0 }}
-                      >
-                        {isExpanded ? <ChevronDown size={18} color="#DC2626" /> : <ChevronRight size={18} color="#64748B" />}
-                      </button>
-                    )}
+                    {/* Accordion Expand / Collapse Dropdown Chevron */}
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); toggleExpand(task.id); }}
+                      style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                      title={isExpanded ? "Hide Details & Analytics" : "Show Details & Analytics"}
+                    >
+                      {isExpanded ? <ChevronDown size={20} color="#DC2626" /> : <ChevronRight size={20} color="#64748B" />}
+                    </button>
 
                     {/* Completion Checkmark */}
                     <button 
@@ -450,18 +450,12 @@ export default function TaskSubtaskView({
                       )}
                     </button>
 
-                    {/* Task Title, Category Badge & Attachment Pill */}
+                    {/* Task Title, Parent Reference & Attachment Pill (Emoji & Category removed) */}
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         
-                        <span style={{ fontSize: '15px', fontWeight: 800, color: isTaskDone ? '#475569' : '#0F172A', letterSpacing: '-0.01em', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                          <span>{task.emoji || '🎯'}</span>
-                          <span>{task.title}</span>
-                        </span>
-
-                        {/* Category Badge */}
-                        <span style={{ fontSize: '11px', color: '#475569', fontWeight: 700, background: '#F1F5F9', border: '1px solid #CBD5E1', padding: '2px 8px', borderRadius: '6px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <Folder size={11} color="#64748B" /> {task.category || 'General'}
+                        <span style={{ fontSize: '15px', fontWeight: 800, color: isTaskDone ? '#475569' : '#0F172A', letterSpacing: '-0.01em' }}>
+                          {task.title}
                         </span>
 
                         {/* Parent Reference Badge */}
@@ -494,141 +488,188 @@ export default function TaskSubtaskView({
 
                   </div>
 
-                  {/* DYNAMIC REAL-TIME 7-TILE HEATMAP (7 DAYS FULL LOG) */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px', background: '#F8FAFC', padding: '4px 7px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                    <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', marginRight: '2px' }}>7-DAY:</span>
-                    {heatmapTiles.map((tile, idx) => (
-                      <div 
-                        key={idx} 
-                        style={{
-                          width: '11px',
-                          height: '11px',
-                          borderRadius: '2.5px',
-                          background: tile.isComplete ? '#22C55E' : '#CBD5E1',
-                          boxShadow: tile.isComplete ? '0 0 6px rgba(34, 197, 94, 0.4)' : 'none',
-                          transition: 'all 0.2s ease'
-                        }}
-                        title={tile.label === 'Today' ? (tile.isComplete ? 'Today: Completed' : 'Today: Unscheduled') : `Past Day ${tile.label}`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* RIGHT SIDE INDEPENDENT DAY-COUNT PERCENTAGE & RATIO & 1-CLICK OPEN BUTTON */}
+                  {/* RIGHT SIDE CLEAN DROPDOWN DETAILS TRIGGER BUTTON */}
                   <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div>
-                      <span style={{ fontSize: '17px', fontWeight: 900, color: isSubtaskEntity ? '#D97706' : '#DC2626' }}>
-                        {calculatedProgPercent}%
-                      </span>
-                      <span style={{ fontSize: '12px', fontWeight: 800, color: '#64748B', marginLeft: '4px' }}>
-                        {countRatioStr}
-                      </span>
-                    </div>
-
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); if (onOpenDedicatedTaskPage) onOpenDedicatedTaskPage(task); }}
-                      title="Open Dedicated Task Analytics Page"
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleExpand(task.id); }}
                       style={{
-                        background: '#EFF6FF',
-                        color: '#2563EB',
-                        border: '1px solid #BFDBFE',
-                        padding: '4px 8px',
-                        borderRadius: '6px',
+                        background: isExpanded ? '#FEF2F2' : '#F8FAFC',
+                        color: isExpanded ? '#DC2626' : '#475569',
+                        border: '1px solid',
+                        borderColor: isExpanded ? '#FECACA' : '#CBD5E1',
+                        padding: '4px 10px',
+                        borderRadius: '8px',
                         fontSize: '11px',
                         fontWeight: 800,
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '3px'
+                        gap: '4px',
+                        transition: 'all 0.2s ease'
                       }}
+                      title="Toggle Details & Subtasks Dropdown"
                     >
-                      <ExternalLink size={12} color="#2563EB" /> Open
+                      <span>Details</span>
+                      {isExpanded ? <ChevronDown size={14} color="#DC2626" /> : <ChevronRight size={14} color="#475569" />}
                     </button>
                   </div>
 
                 </div>
 
-                {/* Subtasks Accordion Dropdown Section */}
-                {!isSubtaskEntity && isExpanded && (
-                  <div style={{ marginTop: '12px', marginLeft: '20px', paddingLeft: '12px', borderLeft: '2px solid rgba(220, 38, 38, 0.3)', display: 'flex', flexDirection: 'column', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+                {/* Subtasks & Analytics Accordion Dropdown Section (Visible when expanded) */}
+                {isExpanded && (
+                  <div 
+                    style={{ 
+                      marginTop: '12px', 
+                      padding: '12px', 
+                      background: '#F8FAFC', 
+                      borderRadius: '10px', 
+                      border: '1px solid #E2E8F0',
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '10px' 
+                    }} 
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     
-                    {/* ACCORDION HEADER: CLEAN SUBTASK STATS (REMOVED CHILD SUBTASK ENTITIES TEXT) */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px', flexWrap: 'wrap', gap: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {subtaskTotalCount > 0 && (
-                          <span style={{ background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <CheckCircle2 size={12} color="#D97706" /> {subtaskRatioStr} ({subtaskProgPercent}%)
-                          </span>
-                        )}
+                    {/* DROPDOWN TOP BAR: 7-DAY HEATMAP, PROGRESS %, DAY COUNT RATIO & OPEN BUTTON */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', background: '#FFFFFF', padding: '10px 12px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                      
+                      {/* DYNAMIC REAL-TIME 7-TILE HEATMAP */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', marginRight: '4px' }}>7-DAY LOG:</span>
+                        {heatmapTiles.map((tile, idx) => (
+                          <div 
+                            key={idx} 
+                            style={{
+                              width: '12px',
+                              height: '12px',
+                              borderRadius: '3px',
+                              background: tile.isComplete ? '#22C55E' : '#CBD5E1',
+                              boxShadow: tile.isComplete ? '0 0 6px rgba(34, 197, 94, 0.4)' : 'none',
+                              transition: 'all 0.2s ease'
+                            }}
+                            title={tile.label === 'Today' ? (tile.isComplete ? 'Today: Completed' : 'Today: Unscheduled') : `Past Day ${tile.label}`}
+                          />
+                        ))}
                       </div>
 
+                      {/* INDEPENDENT PROGRESS PERCENTAGE & COMPLETED/TOTAL RATIO */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '16px', fontWeight: 900, color: isSubtaskEntity ? '#D97706' : '#DC2626' }}>
+                          {calculatedProgPercent}%
+                        </span>
+                        <span style={{ fontSize: '12px', fontWeight: 800, color: '#64748B' }}>
+                          ({countRatioStr} Days)
+                        </span>
+                      </div>
+
+                      {/* 1-CLICK DEDICATED PAGE OPEN BUTTON */}
                       <button 
-                        onClick={() => onOpenQuickAddForSubtask(task.id)}
-                        style={{ background: 'transparent', border: 'none', color: '#DC2626', fontSize: '11px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onClick={(e) => { e.stopPropagation(); if (onOpenDedicatedTaskPage) onOpenDedicatedTaskPage(task); }}
+                        title="Open Dedicated Task Analytics Page"
+                        style={{
+                          background: '#EFF6FF',
+                          color: '#2563EB',
+                          border: '1px solid #BFDBFE',
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
                       >
-                        <Plus size={12} /> Add Child Subtask
+                        <ExternalLink size={13} color="#2563EB" /> Open
                       </button>
                     </div>
 
-                    {childTasks.length === 0 ? (
-                      <div style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic', background: '#F8FAFC', padding: '10px', borderRadius: '8px' }}>
-                        No child subtasks mapped yet. Click card to select & map.
-                      </div>
-                    ) : (
-                      childTasks.map(child => {
-                        const childTarget = child.targetCount || child.targetDayCount || child.targetEventCount || 50;
-                        const childDone = child.currentCount || (child.isDoneToday || child.progressPercent >= 100 ? childTarget : 0);
-                        const childProg = Math.round((childDone / childTarget) * 100);
+                    {/* CHILD SUBTASKS SECTION FOR MAIN TASKS */}
+                    {!isSubtaskEntity && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px', flexWrap: 'wrap', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '12px', fontWeight: 800, color: '#334155' }}>Subtasks</span>
+                            {subtaskTotalCount > 0 && (
+                              <span style={{ background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <CheckCircle2 size={12} color="#D97706" /> {subtaskRatioStr} ({subtaskProgPercent}%)
+                              </span>
+                            )}
+                          </div>
 
-                        return (
-                          <div 
-                            key={child.id}
-                            style={{
-                              background: '#FFFDF5',
-                              border: '1px solid #FDE68A',
-                              borderRadius: '10px',
-                              padding: '10px 14px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justify: 'space-between',
-                              gap: '10px'
-                            }}
+                          <button 
+                            onClick={() => onOpenQuickAddForSubtask(task.id)}
+                            style={{ background: 'transparent', border: 'none', color: '#DC2626', fontSize: '11px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <button 
-                                onClick={(e) => handleCheckmarkClick(e, child)}
-                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
-                              >
-                                {child.progressPercent >= 100 || child.isDoneToday ? (
-                                  <CheckCircle2 size={18} color="#D97706" />
-                                ) : (
-                                  <Circle size={18} color="#94A3B8" />
-                                )}
-                              </button>
+                            <Plus size={12} /> Add Child Subtask
+                          </button>
+                        </div>
 
-                              <div>
+                        {childTasks.length === 0 ? (
+                          <div style={{ fontSize: '11px', color: '#64748B', fontStyle: 'italic', background: '#FFFFFF', padding: '8px 12px', borderRadius: '6px', border: '1px dashed #CBD5E1' }}>
+                            No child subtasks mapped yet. Click "+ Add Child Subtask" to add one.
+                          </div>
+                        ) : (
+                          childTasks.map(child => {
+                            const childTarget = child.targetCount || child.targetDayCount || child.targetEventCount || 50;
+                            const childDone = child.currentCount || (child.isDoneToday || child.progressPercent >= 100 ? childTarget : 0);
+                            const childProg = Math.round((childDone / childTarget) * 100);
+
+                            return (
+                              <div 
+                                key={child.id}
+                                style={{
+                                  background: '#FFFDF5',
+                                  border: '1px solid #FDE68A',
+                                  borderRadius: '8px',
+                                  padding: '8px 12px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: '10px'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <button 
+                                    onClick={(e) => handleCheckmarkClick(e, child)}
+                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                                  >
+                                    {child.progressPercent >= 100 || child.isDoneToday ? (
+                                      <CheckCircle2 size={18} color="#D97706" />
+                                    ) : (
+                                      <Circle size={18} color="#94A3B8" />
+                                    )}
+                                  </button>
+
+                                  <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <CornerDownRight size={13} color="#D97706" />
+                                      <span style={{ 
+                                        fontSize: '13px', 
+                                        fontWeight: 800, 
+                                        color: child.progressPercent >= 100 || child.isDoneToday ? '#475569' : '#0F172A'
+                                      }}>
+                                        {child.title}
+                                      </span>
+                                      {renderPriorityVisual(child.priority)}
+                                    </div>
+                                  </div>
+                                </div>
+
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <CornerDownRight size={13} color="#D97706" />
-                                  <span style={{ 
-                                    fontSize: '13px', 
-                                    fontWeight: 800, 
-                                    color: child.progressPercent >= 100 || child.isDoneToday ? '#475569' : '#0F172A'
-                                  }}>
-                                    {child.title}
+                                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#D97706' }}>
+                                    {childProg}% ({childDone}/{childTarget})
                                   </span>
-                                  {renderPriorityVisual(child.priority)}
                                 </div>
                               </div>
-                            </div>
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ fontSize: '13px', fontWeight: 800, color: '#D97706' }}>
-                                {childProg}% ({childDone}/{childTarget})
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })
+                            );
+                          })
+                        )}
+                      </div>
                     )}
+
                   </div>
                 )}
 
