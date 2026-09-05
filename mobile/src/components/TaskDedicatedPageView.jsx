@@ -170,7 +170,13 @@ export default function TaskDedicatedPageView({
   const reqPaceRemTarget = remainingDays > 0 ? (totalTargetLeft / Math.max(1, effectiveRemainingTargetDays)).toFixed(1) : 0;
   const reqPaceUntilEndDate = remainingDays > 0 ? (totalTargetLeft / Math.max(1, remainingDays)).toFixed(1) : 0;
   
-  const projectedTotalMeasure = Math.round((totalCompletedMeasure + (effectiveRemainingTargetDays * dailyTargetMeasure)) * 10) / 1;
+  // Product of remaining days to target & average of measure daily till now
+  const dailyAverageMeasureTillNow = elapsedDays > 0 
+    ? Math.round((totalCompletedMeasure / elapsedDays) * 10) / 10 
+    : dailyTargetMeasure;
+  const projectedRemainingOutput = Math.round((remainingDays * dailyAverageMeasureTillNow) * 10) / 10;
+  const projectedTotalMeasure = Math.round((totalCompletedMeasure + projectedRemainingOutput) * 10) / 10;
+
   const expectedMeasureTillToday = Math.round((elapsedDays * dailyTargetMeasure) * 10) / 10;
   const targetVarianceTillToday = Math.round((totalCompletedMeasure - expectedMeasureTillToday) * 10) / 10;
 
@@ -402,62 +408,41 @@ export default function TaskDedicatedPageView({
       {/* ========================================================================= */}
       <div style={{ padding: '18px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
         
-        {/* Back Button & Breadcrumb Trail */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        {/* Back Button (Clean, no task name in breadcrumb header) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button 
             onClick={onBack}
             className="btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, padding: '8px 16px', fontSize: '12px', background: '#F1F5F9', border: '1px solid #CBD5E1' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, padding: '8px 16px', fontSize: '12px', background: '#F1F5F9', border: '1px solid #CBD5E1', color: '#0F172A' }}
           >
-            <ArrowLeft size={14} /> ← Back to Tasks Preserving Filters
+            <ArrowLeft size={14} /> Back
           </button>
-
-          {breadcrumbStack.map((item, idx) => (
-            <React.Fragment key={item.id || idx}>
-              <ChevronRight size={14} color="#94A3B8" />
-              <button
-                onClick={() => handleBreadcrumbClick(idx)}
-                style={{
-                  background: idx === breadcrumbStack.length - 1 ? 'rgba(220, 38, 38, 0.1)' : 'transparent',
-                  color: idx === breadcrumbStack.length - 1 ? '#DC2626' : '#475569',
-                  border: idx === breadcrumbStack.length - 1 ? '1px solid #DC2626' : 'none',
-                  padding: '5px 12px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  fontWeight: 800,
-                  cursor: 'pointer'
-                }}
-              >
-                {item.title}
-              </button>
-            </React.Fragment>
-          ))}
         </div>
 
-        {/* Task Actions ONLY: Edit, Delete, Archive, Unarchive */}
+        {/* Task Actions ONLY: Archive, Edit, Delete (Without 'Task' suffix) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button 
             onClick={() => onArchiveTask(currentTask.id)}
             className="btn-secondary"
-            style={{ color: currentTask.isArchived ? '#DC2626' : '#475569', borderColor: currentTask.isArchived ? '#DC2626' : '#CBD5E1', padding: '8px 16px', fontSize: '12px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{ color: currentTask.isArchived ? '#DC2626' : '#475569', borderColor: currentTask.isArchived ? '#DC2626' : '#CBD5E1', padding: '8px 14px', fontSize: '12px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '5px' }}
           >
-            <Archive size={14} color="#DC2626" /> {currentTask.isArchived ? 'Unarchive Task' : 'Archive Task'}
+            <Archive size={14} color="#DC2626" /> {currentTask.isArchived ? 'Unarchive' : 'Archive'}
           </button>
 
           <button 
             onClick={() => onEditTask(currentTask)}
             className="btn-secondary"
-            style={{ padding: '8px 16px', fontSize: '12px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{ padding: '8px 14px', fontSize: '12px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '5px' }}
           >
-            <Edit3 size={14} color="#0F172A" /> Edit Task
+            <Edit3 size={14} color="#0F172A" /> Edit
           </button>
 
           <button 
             onClick={() => onDeleteTask(currentTask.id)}
             className="btn-secondary"
-            style={{ color: '#DC2626', borderColor: '#FCA5A5', padding: '8px 16px', fontSize: '12px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{ color: '#DC2626', borderColor: '#FCA5A5', padding: '8px 14px', fontSize: '12px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '5px' }}
           >
-            <Trash2 size={14} color="#DC2626" /> Delete Task
+            <Trash2 size={14} color="#DC2626" /> Delete
           </button>
         </div>
 
@@ -571,15 +556,21 @@ export default function TaskDedicatedPageView({
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', background: '#F1F5F9', padding: '6px 14px', borderRadius: '20px', border: '1px solid #CBD5E1' }}>
-            Total Window Duration: <strong>{totalWindowDays} Days</strong>
-          </span>
+          <div style={{ background: '#F1F5F9', padding: '10px 16px', borderRadius: '14px', border: '1px solid #CBD5E1', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '220px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A' }}>
+              Total Window Duration: <strong>{totalWindowDays} Days</strong>
+            </span>
+            <div style={{ display: 'flex', gap: '14px', marginTop: '2px', fontSize: '11px', fontWeight: 800 }}>
+              <span style={{ color: '#2563EB' }}>• Days Elapsed: <strong>{elapsedDays} Days</strong></span>
+              <span style={{ color: '#DC2626' }}>• Days Left: <strong>{remainingDays} Days</strong></span>
+            </div>
+          </div>
 
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', background: '#F1F5F9', padding: '6px 14px', borderRadius: '20px', border: '1px solid #CBD5E1' }}>
+          <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', background: '#F1F5F9', padding: '8px 14px', borderRadius: '14px', border: '1px solid #CBD5E1', alignSelf: 'center' }}>
             Repetition Pattern: <strong>{currentTask.recurrencePattern || 'Daily'}</strong>
           </span>
 
-          <span style={{ fontSize: '11px', fontWeight: 800, color: currentTask.reminderTime ? '#2563EB' : '#64748B', background: currentTask.reminderTime ? '#EFF6FF' : '#F1F5F9', padding: '6px 14px', borderRadius: '20px', border: currentTask.reminderTime ? '1px solid #BFDBFE' : '1px solid #CBD5E1' }}>
+          <span style={{ fontSize: '11px', fontWeight: 800, color: currentTask.reminderTime ? '#2563EB' : '#64748B', background: currentTask.reminderTime ? '#EFF6FF' : '#F1F5F9', padding: '8px 14px', borderRadius: '14px', border: currentTask.reminderTime ? '1px solid #BFDBFE' : '1px solid #CBD5E1', alignSelf: 'center' }}>
             Reminder: <strong>{currentTask.reminderTime ? `Active at ${currentTask.reminderTime}` : 'No reminder configured'}</strong>
           </span>
         </div>
@@ -702,31 +693,84 @@ export default function TaskDedicatedPageView({
       {/* ========================================================================= */}
       {/* 7. COMPLETION ANALYTICS PANEL */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* 7. COMPLETION & FAILURE ANALYTICS PANEL (DONUT CHART MODEL) */}
+      {/* ========================================================================= */}
       <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
         <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Percent size={18} color="#16A34A" /> Completion & Failure Analytics
+          <PieChart size={18} color="#16A34A" /> Completion & Failure Analytics Donut Chart
         </h3>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
-          <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>Successful Days</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#15803D' }}>{currentCount} Days</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap', justifyContent: 'center' }}>
+          
+          {/* SVG DONUT CHART */}
+          <div style={{ position: 'relative', width: '150px', height: '150px', flexShrink: 0 }}>
+            <svg width="150" height="150" viewBox="0 0 150 150">
+              {/* Background Circle Track (Missed / Failed - Red Track) */}
+              <circle 
+                cx="75" 
+                cy="75" 
+                r="58" 
+                fill="none" 
+                stroke="#FEE2E2" 
+                strokeWidth="16" 
+              />
+              
+              {/* Success Rate Arc (Vibrant Emerald Green) */}
+              <circle 
+                cx="75" 
+                cy="75" 
+                r="58" 
+                fill="none" 
+                stroke="#16A34A" 
+                strokeWidth="16" 
+                strokeDasharray={`${(completionPercent / 100) * (2 * Math.PI * 58)} ${2 * Math.PI * 58}`}
+                strokeDashoffset="0"
+                strokeLinecap="round"
+                transform="rotate(-90 75 75)"
+                style={{ transition: 'stroke-dasharray 0.5s ease' }}
+              />
+            </svg>
+
+            {/* CENTER DONUT METRIC DISPLAY */}
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A' }}>{completionPercent}%</span>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase' }}>Success</span>
+            </div>
           </div>
 
-          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#DC2626', textTransform: 'uppercase', display: 'block' }}>Missed Days</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#991B1B' }}>{missedDaysCount} Days</span>
+          {/* METRIC CARDS & LEGEND */}
+          <div style={{ flex: 1, minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            
+            <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '10px 14px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: '#16A34A' }} />
+                <div>
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#14532D', display: 'block' }}>Successful Days (Completed)</span>
+                  <span style={{ fontSize: '10px', color: '#166534', fontWeight: 700 }}>Achieved target daily output</span>
+                </div>
+              </div>
+              <span style={{ fontSize: '15px', fontWeight: 900, color: '#15803D' }}>{currentCount} Days ({completionPercent}%)</span>
+            </div>
+
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: '10px 14px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: '#EF4444' }} />
+                <div>
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#7F1D1D', display: 'block' }}>Missed / Failed Days</span>
+                  <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 700 }}>Incomplete or 0 target logged</span>
+                </div>
+              </div>
+              <span style={{ fontSize: '15px', fontWeight: 900, color: '#DC2626' }}>{missedDaysCount} Days ({missRatePercent}%)</span>
+            </div>
+
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '8px 14px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, color: '#475569' }}>
+              <span>Timeline Window Log:</span>
+              <span style={{ color: '#0F172A', fontWeight: 900 }}>{elapsedDays} Days Elapsed of {totalWindowDays} Days</span>
+            </div>
+
           </div>
 
-          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Success Rate</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A' }}>{completionPercent}%</span>
-          </div>
-
-          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Miss Rate</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#DC2626' }}>{missRatePercent}%</span>
-          </div>
         </div>
       </div>
 
@@ -917,7 +961,9 @@ export default function TaskDedicatedPageView({
             <span style={{ fontSize: '15px', fontWeight: 900, color: '#15803D' }}>
               {projectedTotalMeasure} {measureUnit}
             </span>
-            <span style={{ fontSize: '9px', color: '#16A34A', fontWeight: 700, display: 'block' }}>(Can exceed target)</span>
+            <span style={{ fontSize: '8px', color: '#16A34A', fontWeight: 700, display: 'block' }}>
+              ({totalCompletedMeasure} achieved + {remainingDays} days left × {dailyAverageMeasureTillNow} avg/day)
+            </span>
           </div>
 
         </div>
@@ -1250,30 +1296,11 @@ export default function TaskDedicatedPageView({
 
           </svg>
 
-          {/* Floating Pill Badge over Active Data Point */}
-          <div style={{
-            position: 'absolute',
-            left: `${Math.min(75, Math.max(15, (elapsedDays / Math.max(1, totalWindowDays)) * 100))}%`,
-            top: `${Math.max(10, 80 - (totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 60)}%`,
-            background: '#2563EB',
-            color: '#FFF',
-            padding: '4px 10px',
-            borderRadius: '12px',
-            fontSize: '10px',
-            fontWeight: 900,
-            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)',
-            transform: 'translate(-50%, -100%)',
-            pointerEvents: 'none',
-            whiteSpace: 'nowrap'
-          }}>
-            {totalCompletedMeasure} {measureUnit} Achieved
-          </div>
-
-          {/* X-Axis Timeline Labels */}
-          <div style={{ position: 'absolute', left: '55px', right: '24px', bottom: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 800, color: '#475569' }}>
-            <span>Start Date ({currentTask.plannedStart || 'Day 0'})</span>
-            <span style={{ color: '#2563EB', fontWeight: 900 }}>Today: {elapsedDays} Days Elapsed ({totalCompletedMeasure} {measureUnit})</span>
-            <span>End Deadline ({currentTask.plannedEnd || 'End'})</span>
+          {/* X-Axis Timeline Labels (Crisp & Collision-Free on Mobile View) */}
+          <div style={{ position: 'absolute', left: '50px', right: '16px', bottom: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontWeight: 800, color: '#475569' }}>
+            <span>Start ({currentTask.plannedStart || 'Day 0'})</span>
+            <span style={{ color: '#2563EB', fontWeight: 900 }}>Today ({elapsedDays}d)</span>
+            <span>End ({currentTask.plannedEnd || 'End'})</span>
           </div>
 
         </div>
@@ -1285,13 +1312,13 @@ export default function TaskDedicatedPageView({
       {trackingMode === 'count_event' && (
         <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #CBD5E1', borderLeft: '6px solid #2563EB', boxShadow: '0 6px 24px rgba(0,0,0,0.04)' }}>
           
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #E2E8F0', paddingBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
             <div>
               <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <LineChart size={18} color="#2563EB" /> Cumulative Event Progress Destination Worm Graph (Image 2 Model)
+                <LineChart size={18} color="#2563EB" /> Cumulative Event Progress Destination Worm Graph
               </h3>
               <p style={{ fontSize: '11px', color: '#64748B', margin: '2px 0 0 0' }}>
-                X-Axis: Days (0 to {totalWindowDays}) | Y-Axis: Cumulative Events (0 to {targetCount}) with Red Dot Markers at Milestone Events
+                X-Axis: Days (0 to {totalWindowDays}) | Y-Axis: Cumulative Events (0 to {targetCount})
               </p>
             </div>
 
@@ -1346,13 +1373,10 @@ export default function TaskDedicatedPageView({
 
             </svg>
 
-            {/* X-Axis Day Markers */}
+            {/* X-Axis Day Markers (Crisp 3-Point Layout to prevent Mobile Text Collisions) */}
             <div style={{ position: 'absolute', left: '45px', right: '20px', bottom: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontWeight: 800, color: '#475569' }}>
               <span>Day 0</span>
-              <span>Day 10</span>
-              <span>Day 20</span>
-              <span>Day 30</span>
-              <span>Day 40</span>
+              <span>Day {Math.round(totalWindowDays / 2)}</span>
               <span>Day {totalWindowDays}</span>
             </div>
 

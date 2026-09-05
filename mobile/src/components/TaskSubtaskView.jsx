@@ -564,26 +564,55 @@ export default function TaskSubtaskView({
                         </span>
                       </div>
 
-                      {/* 1-CLICK DEDICATED PAGE OPEN BUTTON */}
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); if (onOpenDedicatedTaskPage) onOpenDedicatedTaskPage(task); }}
-                        title="Open Dedicated Task Analytics Page"
-                        style={{
-                          background: '#EFF6FF',
-                          color: '#2563EB',
-                          border: '1px solid #BFDBFE',
-                          padding: '4px 10px',
-                          borderRadius: '6px',
-                          fontSize: '11px',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
-                        <ExternalLink size={13} color="#2563EB" /> Open
-                      </button>
+                      {/* 1-CLICK DEDICATED PAGE OPEN BUTTON & EXTEND DEADLINE BUTTON */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const defaultNewEnd = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().split('T')[0];
+                            const newDate = prompt('Enter new extended deadline (YYYY-MM-DD):', task.plannedEnd || defaultNewEnd);
+                            if (newDate && onExtendTask) {
+                              onExtendTask(task.id, newDate);
+                            }
+                          }}
+                          title="Extend Task Deadline & Reactivate"
+                          style={{
+                            background: '#FEF3C7',
+                            color: '#B45309',
+                            border: '1px solid #FDE68A',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <Calendar size={13} color="#B45309" /> Extend
+                        </button>
+
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); if (onOpenDedicatedTaskPage) onOpenDedicatedTaskPage(task); }}
+                          title="Open Dedicated Task Analytics Page"
+                          style={{
+                            background: '#EFF6FF',
+                            color: '#2563EB',
+                            border: '1px solid #BFDBFE',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <ExternalLink size={13} color="#2563EB" /> Open
+                        </button>
+                      </div>
                     </div>
 
                     {/* CHILD SUBTASKS SECTION FOR MAIN TASKS */}
@@ -729,37 +758,7 @@ export default function TaskSubtaskView({
             <ExternalLink size={13} color="#DC2626" /> Open
           </button>
 
-          {/* 2. Extend Deadline Button */}
-          <button 
-            onClick={() => {
-              const defaultNewEnd = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().split('T')[0];
-              const newDate = prompt('Enter new extended deadline (YYYY-MM-DD):', defaultNewEnd);
-              if (newDate && onExtendTask) {
-                onExtendTask(selectedTaskObj.id, newDate);
-                setSelectedTaskId(null);
-              }
-            }}
-            title="Extend Task Deadline & Reactivate"
-            style={{
-              flex: 1,
-              background: '#FEF3C7',
-              color: '#B45309',
-              border: '1px solid #FDE68A',
-              padding: '6px 6px',
-              borderRadius: '8px',
-              fontSize: '11px',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justify: 'center',
-              gap: '3px',
-              whiteSpace: 'nowrap',
-              height: '31px'
-            }}
-          >
-            <Calendar size={13} color="#B45309" /> Extend
-          </button>
+          {/* 1. Open Dedicated Task Page Button */}
 
           {/* 2. Archive */}
           <button 
