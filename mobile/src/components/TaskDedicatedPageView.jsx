@@ -1222,25 +1222,29 @@ export default function TaskDedicatedPageView({
           </div>
         </div>
 
-        {/* SVG Daily Output Wave Line Chart Container */}
+        {/* SVG Cumulative Measure Slope Trajectory Line Chart Container */}
         <div style={{ height: '240px', background: '#FFFFFF', padding: '20px 20px 32px 45px', border: '1.5px solid #E2E8F0', borderRadius: '16px', position: 'relative', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)' }}>
           
           {/* Y-Axis Labels */}
           <div style={{ position: 'absolute', left: '6px', top: '20px', bottom: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '10px', fontWeight: 800, color: '#64748B', textAlign: 'right', width: '32px' }}>
-            <span>{Math.max(25, dailyTargetMeasure)}</span>
-            <span>{Math.round(Math.max(25, dailyTargetMeasure) * 0.75)}</span>
-            <span>{Math.round(Math.max(25, dailyTargetMeasure) * 0.50)}</span>
-            <span>{Math.round(Math.max(25, dailyTargetMeasure) * 0.25)}</span>
+            <span>{totalTargetedMeasure}</span>
+            <span>{Math.round(totalTargetedMeasure * 0.75)}</span>
+            <span>{Math.round(totalTargetedMeasure * 0.50)}</span>
+            <span>{Math.round(totalTargetedMeasure * 0.25)}</span>
             <span>0</span>
           </div>
 
-          {/* SVG Canvas for Up & Down Daily Output Curve */}
+          {/* SVG Canvas for Cumulative Trajectory Slope Curve */}
           <svg style={{ width: '100%', height: '100%', overflow: 'visible' }}>
             <defs>
-              <linearGradient id="upDownMeasureGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#2563EB" stopOpacity="0.25" />
+              <linearGradient id="cumulativeSlopeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#2563EB" stopOpacity="0.30" />
                 <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.01" />
               </linearGradient>
+              <filter id="glowLine" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="2.5" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
             </defs>
 
             {/* Horizontal Gridlines */}
@@ -1250,53 +1254,66 @@ export default function TaskDedicatedPageView({
             <line x1="0%" y1="75%" x2="100%" y2="75%" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
             <line x1="0%" y1="100%" x2="100%" y2="100%" stroke="#CBD5E1" strokeWidth="2" />
 
-            {/* Daily Target Baseline (Green Dotted Line) */}
+            {/* Expected Linear Target Trajectory Reference Line (Green Dotted Line) */}
             <line 
               x1="0%" 
-              y1={`${Math.max(10, 188 - (dailyTargetMeasure / Math.max(25, dailyTargetMeasure)) * 175)}`} 
+              y1="188" 
               x2="100%" 
-              y2={`${Math.max(10, 188 - (dailyTargetMeasure / Math.max(25, dailyTargetMeasure)) * 175)}`} 
+              y2="15" 
               stroke="#16A34A" 
               strokeWidth="2" 
               strokeDasharray="5,5" 
             />
 
-            {/* Compute SVG Up & Down Polyline Points from Daily Logged Output */}
+            {/* Compute Cumulative Slope Curve Points */}
             {(() => {
-              const maxVal = Math.max(25, dailyTargetMeasure * 1.2);
+              let runningTotal = 0;
+              const maxCum = Math.max(totalTargetedMeasure, totalCompletedMeasure * 1.1, 10);
+              
               const points = sampleDailyMeasures.map((d, i) => {
+                const dailyDelta = d.totalColumnVal;
+                runningTotal += dailyDelta;
                 const xPct = (i / (sampleDailyMeasures.length - 1)) * 100;
-                // Calculate y coordinate: 188 is bottom (0 measure), 15 is top (maxVal measure)
-                const y = Math.max(15, 188 - Math.round((d.totalColumnVal / maxVal) * 173));
-                return { xPct, y, val: d.totalColumnVal, dayLabel: d.dayLabel };
+                // Calculate y: 188 is bottom (0 cumulative), 15 is top (maxCum)
+                const y = Math.max(15, 188 - Math.round((runningTotal / maxCum) * 173));
+                return {
+                  xPct,
+                  y,
+                  runningTotal: Math.round(runningTotal * 10) / 10,
+                  dailyDelta,
+                  dayLabel: d.dayLabel
+                };
               });
 
-              const pointsSvgStr = points.map(p => `${p.xPct}%,${p.y}`).join(' ');
+              // Add starting origin point at Day 0
+              const originY = 188;
+              const pointsSvgStr = `0%,${originY} ` + points.map(p => `${p.xPct}%,${p.y}`).join(' ');
               const polygonSvgStr = `0%,188 ${pointsSvgStr} 100%,188 0%,188`;
 
               return (
                 <g>
-                  {/* Area Fill under Wave Curve */}
-                  <polygon fill="url(#upDownMeasureGradient)" points={polygonSvgStr} />
+                  {/* Area Fill under Cumulative Trajectory Line */}
+                  <polygon fill="url(#cumulativeSlopeGradient)" points={polygonSvgStr} />
 
-                  {/* Up & Down Solid Polyline */}
+                  {/* Cumulative Polyline Curve */}
                   <polyline 
                     fill="none" 
                     stroke="#2563EB" 
                     strokeWidth="3.5" 
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    filter="url(#glowLine)"
                     points={pointsSvgStr}
                   />
 
-                  {/* Individual Day Markers & Value Badges */}
+                  {/* Markers on each Data Point (Red for Missed/Flat, Blue for Active Output) */}
                   {points.map((p, i) => (
                     <g key={i}>
                       <circle 
                         cx={`${p.xPct}%`} 
                         cy={p.y} 
-                        r={p.val === 0 ? "5" : "6"} 
-                        fill={p.val === 0 ? "#DC2626" : "#2563EB"} 
+                        r={p.dailyDelta === 0 ? "5" : "6"} 
+                        fill={p.dailyDelta === 0 ? "#DC2626" : "#2563EB"} 
                         stroke="#FFF" 
                         strokeWidth="2.5" 
                       />
@@ -1307,11 +1324,11 @@ export default function TaskDedicatedPageView({
             })()}
           </svg>
 
-          {/* X-Axis Timeline Labels (Crisp 7-Day Labels) */}
+          {/* X-Axis Timeline Labels */}
           <div style={{ position: 'absolute', left: '45px', right: '16px', bottom: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontWeight: 800, color: '#475569' }}>
             {sampleDailyMeasures.map((d, i) => (
               <span key={i} style={{ color: d.totalColumnVal === 0 ? '#DC2626' : '#334155' }}>
-                {d.dayLabel} ({d.totalColumnVal})
+                {d.dayLabel} ({d.totalColumnVal > 0 ? `+${d.totalColumnVal}` : '0'})
               </span>
             ))}
           </div>
