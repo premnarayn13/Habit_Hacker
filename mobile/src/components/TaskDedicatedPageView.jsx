@@ -217,6 +217,7 @@ export default function TaskDedicatedPageView({
   const totalTargetLeft = Math.max(0, Math.round((totalTargetedMeasure - totalCompletedMeasure) * 10) / 10);
 
   // Target days left vs remaining calendar days
+  const effectiveTargetDays = trackingMode === 'end_date' ? totalWindowDays : targetCount;
   const effectiveRemainingTargetDays = trackingMode === 'end_date' ? remainingDays : Math.max(1, remainingTargetCount);
   
   const reqPaceRemTarget = remainingDays > 0 
@@ -403,6 +404,7 @@ export default function TaskDedicatedPageView({
   };
 
   const handleSubtaskClick = (subtaskItem) => {
+    if (!subtaskItem) return;
     setBreadcrumbStack(prev => [...prev, subtaskItem]);
     if (onNavigateToSubtask) {
       onNavigateToSubtask(subtaskItem);
@@ -410,7 +412,26 @@ export default function TaskDedicatedPageView({
   };
 
   const handleBreadcrumbClick = (index) => {
-    setBreadcrumbStack(prev => prev.slice(0, index + 1));
+    if (index >= 0 && index < breadcrumbStack.length) {
+      const targetItem = breadcrumbStack[index];
+      setBreadcrumbStack(prev => prev.slice(0, index + 1));
+      if (onNavigateToSubtask && targetItem) {
+        onNavigateToSubtask(targetItem);
+      }
+    }
+  };
+
+  const handleBackClick = () => {
+    if (breadcrumbStack && breadcrumbStack.length > 1) {
+      const prevStack = breadcrumbStack.slice(0, -1);
+      const parentTarget = prevStack[prevStack.length - 1];
+      setBreadcrumbStack(prevStack);
+      if (onNavigateToSubtask && parentTarget) {
+        onNavigateToSubtask(parentTarget);
+      }
+    } else {
+      if (onBack) onBack();
+    }
   };
 
   // Filter subtasks
@@ -465,7 +486,7 @@ export default function TaskDedicatedPageView({
           
           {/* 1. BACK */}
           <button 
-            onClick={onBack}
+            onClick={handleBackClick}
             className="btn-secondary"
             style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: 800, padding: '7px 4px', fontSize: '11px', background: '#F1F5F9', border: '1px solid #CBD5E1', color: '#0F172A', whiteSpace: 'nowrap' }}
           >

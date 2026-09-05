@@ -529,7 +529,16 @@ export default function App() {
 
   const [availableCapacityMinutes, setAvailableCapacityMinutes] = useState(480);
 
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState(() => {
+    try {
+      const globalCached = localStorage.getItem('habit_hacker_tasks_global_v2');
+      if (globalCached) {
+        const parsed = JSON.parse(globalCached);
+        if (parsed && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return INITIAL_DEFAULT_TASKS;
+  });
   const [subtasks, setSubtasks] = useState([]);
   const [habits, setHabits] = useState([]);
 
@@ -538,6 +547,8 @@ export default function App() {
       if (session?.user) {
         setCurrentUser(session.user);
         fetchUserData(session.user.id, session.user.email);
+      } else {
+        fetchUserData('default-user', '');
       }
     });
 
@@ -547,6 +558,7 @@ export default function App() {
         fetchUserData(session.user.id, session.user.email);
       } else {
         setCurrentUser(null);
+        fetchUserData('default-user', '');
       }
     });
 
