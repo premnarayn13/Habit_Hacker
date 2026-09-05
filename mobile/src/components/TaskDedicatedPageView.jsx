@@ -169,22 +169,41 @@ export default function TaskDedicatedPageView({
 
   // Subtask Contribution Palette
   const subtaskColors = ['#4338CA', '#F59E0B', '#10B981', '#EF4444', '#06B6D4', '#8B5CF6', '#EC4899'];
-  const measureUnit = currentTask.measureUnit || 'units';
-  const measureTarget = currentTask.measureTarget || 15;
-  const dailyTargetMeasure = measureTarget;
-  
-  // For Start-End Date daily tasks, targetCount is the total calendar window duration
-  const effectiveTargetDays = trackingMode === 'end_date' ? totalWindowDays : (targetCount || totalWindowDays);
-  const totalTargetedMeasure = Math.round((effectiveTargetDays * dailyTargetMeasure) * 10) / 10;
-  
-  const totalCompletedMeasure = Math.round((currentCount * dailyTargetMeasure * 0.86) * 10) / 10;
+  const measureUnit = currentTask.measureUnit || currentTask.eventUnitName || 'units';
+  const eventUnitTarget = Number(currentTask.eventUnitTarget || currentTask.measureTarget || 10);
+  const measureTarget = currentTask.measureTarget || eventUnitTarget || 15;
+
+  // Total Targeted Measure Calculation by Task Type
+  const totalTargetedMeasure = trackingMode === 'count_event'
+    ? (targetCount > 50 ? targetCount : Math.round(targetCount * eventUnitTarget * 10) / 10)
+    : (trackingMode === 'count_days'
+        ? Math.round(targetCount * measureTarget * 10) / 10
+        : Math.round(totalWindowDays * measureTarget * 10) / 10);
+
+  // Daily Target Measure Rate
+  const dailyTargetMeasure = trackingMode === 'count_event'
+    ? Math.round((totalTargetedMeasure / Math.max(1, totalWindowDays)) * 10) / 10
+    : measureTarget;
+
+  // Total Completed Measure Calculation by Task Type
+  const currentWorkInProgress = calculateCurrentEventWork(directChildSubtasks);
+  const totalCompletedMeasure = trackingMode === 'count_event'
+    ? Math.round(((currentCount * eventUnitTarget) + currentWorkInProgress) * 10) / 10
+    : (trackingMode === 'count_days'
+        ? Math.round(currentCount * measureTarget * 10) / 10
+        : Math.round(currentCount * measureTarget * 0.86 * 10) / 10);
+
   const totalTargetLeft = Math.max(0, Math.round((totalTargetedMeasure - totalCompletedMeasure) * 10) / 10);
-  
-  // For Start-End Date daily tasks, target days left equals calendar days left (remainingDays)
+
+  // Target days left vs remaining calendar days
   const effectiveRemainingTargetDays = trackingMode === 'end_date' ? remainingDays : Math.max(1, remainingTargetCount);
   
-  const reqPaceRemTarget = remainingDays > 0 ? (totalTargetLeft / Math.max(1, effectiveRemainingTargetDays)).toFixed(1) : 0;
-  const reqPaceUntilEndDate = remainingDays > 0 ? (totalTargetLeft / Math.max(1, remainingDays)).toFixed(1) : 0;
+  const reqPaceRemTarget = remainingDays > 0 
+    ? (totalTargetLeft / Math.max(1, effectiveRemainingTargetDays)).toFixed(1) 
+    : 0;
+  const reqPaceUntilEndDate = remainingDays > 0 
+    ? (totalTargetLeft / Math.max(1, remainingDays)).toFixed(1) 
+    : 0;
   
   // Product of remaining days to target & average of measure daily till now
   const dailyAverageMeasureTillNow = elapsedDays > 0 
@@ -193,7 +212,7 @@ export default function TaskDedicatedPageView({
   const projectedRemainingOutput = Math.round((remainingDays * dailyAverageMeasureTillNow) * 10) / 10;
   const projectedTotalMeasure = Math.round((totalCompletedMeasure + projectedRemainingOutput) * 10) / 10;
 
-  const expectedMeasureTillToday = Math.round((elapsedDays * dailyTargetMeasure) * 10) / 10;
+  const expectedMeasureTillToday = Math.min(totalTargetedMeasure, Math.round((elapsedDays * dailyTargetMeasure) * 10) / 10);
   const targetVarianceTillToday = Math.round((totalCompletedMeasure - expectedMeasureTillToday) * 10) / 10;
 
   // DYNAMIC STREAK CALCULATION ENGINE BASED ON TASK DATA & COMPLETION LOGS
@@ -257,19 +276,32 @@ export default function TaskDedicatedPageView({
     };
   });
 
-  // Event Count Daily Cluster Data (Multiple Touching Event Bars per Day)
+  // Event Count Daily Cluster Data (Multiple Touching Vertical Stacked Bars per Day)
   const eventClusterDailyData = Array.from({ length: 7 }).map((_, idx) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - idx));
     const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
-    const eventCountToday = (idx % 2 === 0) ? 3 : (idx % 3 === 0 ? 4 : 2);
+    const eventCountToday = (idx % 2 === 0) ? 2 : (idx % 3 === 0 ? 3 : 1);
     
-    const events = Array.from({ length: eventCountToday }).map((_, eIdx) => ({
-      eventId: eIdx + 1,
-      height: 25 + ((eIdx * 15 + idx * 10) % 55),
-      color: subtaskColors[eIdx % subtaskColors.length],
-      label: `Event #${eIdx + 1}`
-    }));
+    const events = Array.from({ length: eventCountToday }).map((_, eIdx) => {
+      const subtaskSegments = directChildSubtasks.map((st, sIdx) => {
+        const color = subtaskColors[sIdx % subtaskColors.length];
+        const val = Number(st.measureTarget || (sIdx === 0 ? 6 : (sIdx === 1 ? 3 : 1)));
+        return {
+          subtaskId: st.id,
+          title: st.title,
+          val,
+          color,
+          pct: Math.round((val / Math.max(1, eventUnitTarget)) * 100)
+        };
+      });
+
+      return {
+        eventId: eIdx + 1,
+        label: `Ev #${eIdx + 1}`,
+        subtaskSegments
+      };
+    });
 
     return {
       date: d.toISOString().split('T')[0],
@@ -852,42 +884,75 @@ export default function TaskDedicatedPageView({
       {/* ========================================================================= */}
       {/* EVENT COUNT HISTOGRAM / MULTI-EVENT CLUSTER BAR GRAPH (TYPE 1 ONLY) */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* EVENT COUNT STACKED BAR CHART (SUBTASK CONTRIBUTIONS PER EVENT) */}
+      {/* ========================================================================= */}
       {trackingMode === 'count_event' && (
         <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', borderLeft: '6px solid #2563EB', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
           <div style={{ marginBottom: '16px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <BarChart3 size={18} color="#2563EB" /> Daily Multi-Event Session Histogram (Adjacent Touching Event Bars per Day)
+              <BarChart3 size={18} color="#2563EB" /> Daily Multi-Event Completion Stacked Bar Chart (Subtask Contributions)
             </h3>
             <p style={{ fontSize: '11px', color: '#64748B', margin: '4px 0 0 0' }}>
-              Individual adjacent touching bars represent distinct event completions executed on that day, separated by day gaps.
+              Each vertical stacked bar represents 1 completed event with its subtask contributions. Days with multiple completed events render multiple bars side-by-side.
             </p>
           </div>
 
-          <div style={{ height: '180px', display: 'flex', alignItems: 'flex-end', gap: '16px', padding: '16px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #E2E8F0', overflowX: 'auto' }}>
-            {eventClusterDailyData.map((d, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', height: '100%', justifyContent: 'flex-end' }}>
-                <span style={{ fontSize: '9px', fontWeight: 900, color: '#2563EB' }}>{d.eventCountToday} Events</span>
-                
-                {/* Adjacent Touching Bars Cluster */}
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '120px', padding: '4px', background: '#E2E8F0', borderRadius: '8px' }}>
-                  {d.events.map((ev, evIdx) => (
-                    <div 
-                      key={evIdx}
-                      style={{
-                        width: '14px',
-                        height: `${ev.height}%`,
-                        background: ev.color,
-                        borderRadius: '4px 4px 0 0',
-                        transition: 'all 0.3s ease'
-                      }}
-                      title={`${d.dayLabel} — ${ev.label}: Completed`}
-                    />
-                  ))}
-                </div>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            {/* STACKED BARS CANVAS AREA */}
+            <div style={{ flex: 1, minWidth: '280px', height: '210px', display: 'flex', alignItems: 'flex-end', gap: '18px', padding: '16px 14px 12px 14px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #E2E8F0', overflowX: 'auto' }}>
+              {eventClusterDailyData.map((d, i) => (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', height: '100%', justifyContent: 'flex-end' }}>
+                  
+                  <span style={{ fontSize: '9px', fontWeight: 900, color: '#2563EB', whiteSpace: 'nowrap' }}>
+                    {d.eventCountToday} Event{d.eventCountToday > 1 ? 's' : ''}
+                  </span>
+                  
+                  {/* Adjacent Vertical Stacked Event Bars */}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '140px', padding: '4px 6px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                    {d.events.map((ev, evIdx) => (
+                      <div key={evIdx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', height: '100%', justifyContent: 'flex-end' }}>
+                        <span style={{ fontSize: '8px', fontWeight: 800, color: '#64748B' }}>#{ev.eventId}</span>
+                        
+                        {/* Single Vertical Stacked Bar */}
+                        <div style={{ width: '22px', height: '115px', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column-reverse', background: '#E2E8F0', border: '1px solid #CBD5E1' }}>
+                          {ev.subtaskSegments.map((seg, sIdx) => (
+                            <div 
+                              key={sIdx} 
+                              style={{ 
+                                width: '100%', 
+                                flex: seg.val, 
+                                background: seg.color, 
+                                transition: 'all 0.3s ease',
+                                borderBottom: sIdx > 0 ? '1px solid rgba(255,255,255,0.4)' : 'none'
+                              }}
+                              title={`${ev.label} • ${seg.title}: ${seg.val} ${measureUnit} (${seg.pct}%)`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
-                <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569' }}>{d.dayLabel}</span>
+                  <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569', marginTop: '2px' }}>{d.dayLabel}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* SUBTASK CONTRIBUTIONS LEGEND */}
+            <div style={{ background: '#F8FAFC', padding: '14px 16px', borderRadius: '14px', border: '1px solid #E2E8F0', width: '220px', flexShrink: 0 }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block', marginBottom: '8px', borderBottom: '1px solid #CBD5E1', paddingBottom: '4px' }}>
+                Subtask Contribution Key
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {directChildSubtasks.map((st, i) => (
+                  <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#1E293B' }}>
+                    <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: subtaskColors[i % subtaskColors.length], flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st.title}</span>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         </div>
       )}
@@ -1224,291 +1289,190 @@ export default function TaskDedicatedPageView({
         </div>
 
         {/* SVG Cumulative Measure Slope Trajectory Line Chart Container */}
-        <div style={{ height: '240px', background: '#FFFFFF', padding: '16px 14px 28px 45px', border: '1.5px solid #CBD5E1', borderRadius: '16px', position: 'relative', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
-          
-          {/* Y-Axis Labels */}
-          <div style={{ position: 'absolute', left: '6px', top: '16px', bottom: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '9px', fontWeight: 800, color: '#64748B', textAlign: 'right', width: '32px' }}>
-            <span>{totalTargetedMeasure}</span>
-            <span>{Math.round(totalTargetedMeasure * 0.75)}</span>
-            <span>{Math.round(totalTargetedMeasure * 0.50)}</span>
-            <span>{Math.round(totalTargetedMeasure * 0.25)}</span>
-            <span>0</span>
-          </div>
-
-          {/* SVG Canvas with ViewBox for Precise Responsive Scaling (No mobile screen overflow!) */}
-          <svg viewBox="0 0 500 180" preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
-            <defs>
-              <linearGradient id="cumOrangeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#EA580C" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="#F97316" stopOpacity="0.02" />
-              </linearGradient>
-              <filter id="glowOrangeLine" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="2" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-            </defs>
-
-            {/* Math Graph Paper Grid Lines (Horizontal & Vertical) */}
-            <line x1="20" y1="20" x2="480" y2="20" stroke="#F1F5F9" strokeWidth="1.5" />
-            <line x1="20" y1="55" x2="480" y2="55" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
-            <line x1="20" y1="90" x2="480" y2="90" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
-            <line x1="20" y1="125" x2="480" y2="125" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
-            <line x1="20" y1="160" x2="480" y2="160" stroke="#CBD5E1" strokeWidth="2" />
-
-            {/* Vertical Day Gridlines */}
-            {sampleDailyMeasures.map((_, i) => {
-              const x = Math.round(20 + (i / Math.max(1, sampleDailyMeasures.length - 1)) * 460);
-              return <line key={i} x1={x} y1="20" x2={x} y2="160" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="3,3" />;
-            })}
-
-            {/* 1. AVERAGE TARGET LINE (45 DEGREE LINE FROM BOTTOM-LEFT (20,160) TO TOP-RIGHT (480,20)) */}
-            <line 
-              x1="20" 
-              y1="160" 
-              x2="480" 
-              y2="20" 
-              stroke="#16A34A" 
-              strokeWidth="2.5" 
-              strokeDasharray="6,6" 
-            />
-
-            {/* 2. ACTUAL CUMULATIVE MEASURE LINE (MONOTONICALLY INCREASING, NEVER GOES DOWN) */}
-            {(() => {
-              let runningTotal = 0;
-              const maxCum = Math.max(totalTargetedMeasure, totalCompletedMeasure * 1.05, 10);
+        {(() => {
+          const maxCumDomain = Math.max(Math.ceil(Math.max(totalCompletedMeasure, expectedMeasureTillToday, 10) * 1.25), 10);
+          return (
+            <div style={{ height: '240px', background: '#FFFFFF', padding: '16px 14px 28px 45px', border: '1.5px solid #CBD5E1', borderRadius: '16px', position: 'relative', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
               
-              const points = sampleDailyMeasures.map((d, i) => {
-                const dailyDelta = d.totalColumnVal;
-                runningTotal += dailyDelta;
-                const x = Math.round(20 + (i / Math.max(1, sampleDailyMeasures.length - 1)) * 460);
-                // Calculate y: y=160 is 0 cumulative, y=20 is maxCum
-                const y = Math.max(20, 160 - Math.round((runningTotal / maxCum) * 140));
-                return {
-                  x,
-                  y,
-                  runningTotal: Math.round(runningTotal * 10) / 10,
-                  dailyDelta,
-                  dayLabel: d.dayLabel
-                };
-              });
-
-              const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
-              const polygonPoints = `20,160 ${polylinePoints} 480,160 20,160`;
-
-              return (
-                <g>
-                  {/* Shaded Area under Monotonically Increasing Cumulative Line */}
-                  <polygon fill="url(#cumOrangeGradient)" points={polygonPoints} />
-
-                  {/* Actual Cumulative Polyline */}
-                  <polyline 
-                    fill="none" 
-                    stroke="#EA580C" 
-                    strokeWidth="3.5" 
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    filter="url(#glowOrangeLine)"
-                    points={polylinePoints}
-                  />
-
-                  {/* Node Markers & Data Labels */}
-                  {points.map((p, i) => (
-                    <g key={i}>
-                      <circle 
-                        cx={p.x} 
-                        cy={p.y} 
-                        r={p.dailyDelta === 0 ? "4.5" : "6"} 
-                        fill={p.dailyDelta === 0 ? "#F97316" : "#EA580C"} 
-                        stroke="#FFFFFF" 
-                        strokeWidth="2" 
-                      />
-                      {/* Cumulative Value Text Label above Node */}
-                      <text 
-                        x={p.x} 
-                        y={p.y - 8} 
-                        textAnchor="middle" 
-                        fontSize="9" 
-                        fontWeight="800" 
-                        fill="#C2410C"
-                      >
-                        {p.runningTotal}
-                      </text>
-                    </g>
-                  ))}
-                </g>
-              );
-            })()}
-          </svg>
-
-          {/* X-Axis Timeline Labels */}
-          <div style={{ position: 'absolute', left: '45px', right: '16px', bottom: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', fontWeight: 800, color: '#475569' }}>
-            {sampleDailyMeasures.map((d, i) => (
-              <span key={i} style={{ color: d.totalColumnVal === 0 ? '#94A3B8' : '#0F172A' }}>
-                {d.dayLabel} ({d.totalColumnVal > 0 ? `+${d.totalColumnVal}` : '0'})
-              </span>
-            ))}
-          </div>
-
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 13. EVENT-COUNT TASK SYSTEM: CURRENT EVENT CARD & SEGMENTED BARS HISTORY */}
-      {/* ========================================================================= */}
-      {trackingMode === 'count_event' && (() => {
-        const eventUnitTarget = Number(currentTask.eventUnitTarget || currentTask.measureTarget || 10);
-        const eventUnitName = currentTask.eventUnitName || currentTask.measureUnit || 'units';
-        const currentWork = calculateCurrentEventWork(directChildSubtasks);
-        const currentProgressPct = Math.min(100, Math.round((currentWork / eventUnitTarget) * 100));
-
-        // Sample Historical Finalized Events Grouped by Date (Demonstrates 2 Bars on Same Day)
-        const mockFinalizedEvents = [
-          {
-            id: 'ev-sample-1',
-            eventNumber: 1,
-            completionDate: '2026-09-05',
-            eventUnitTarget,
-            eventUnitName,
-            totalWorkAccumulated: 10,
-            subtaskContributions: [
-              { subtaskId: '1', subtaskTitle: 'LeetCode Problems', workAmount: 6, color: '#4F46E5', percentage: 60 },
-              { subtaskId: '2', subtaskTitle: 'GFG Problems', workAmount: 3, color: '#F59E0B', percentage: 30 },
-              { subtaskId: '3', subtaskTitle: 'Codeforces', workAmount: 1, color: '#10B981', percentage: 10 }
-            ]
-          },
-          {
-            id: 'ev-sample-2',
-            eventNumber: 2,
-            completionDate: '2026-09-05',
-            eventUnitTarget,
-            eventUnitName,
-            totalWorkAccumulated: 10,
-            subtaskContributions: [
-              { subtaskId: '1', subtaskTitle: 'LeetCode Problems', workAmount: 4, color: '#4F46E5', percentage: 40 },
-              { subtaskId: '2', subtaskTitle: 'GFG Problems', workAmount: 3, color: '#F59E0B', percentage: 30 },
-              { subtaskId: '3', subtaskTitle: 'Codeforces', workAmount: 3, color: '#10B981', percentage: 30 }
-            ]
-          }
-        ];
-
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            
-            {/* 13A. CURRENT EVENT ACCUMULATION CARD */}
-            <div style={{ padding: '24px', background: 'linear-gradient(135deg, #EFF6FF, #F8FAFC)', borderRadius: '24px', border: '1.5px solid #BFDBFE', borderLeft: '6px solid #2563EB', boxShadow: '0 8px 24px rgba(37, 99, 235, 0.08)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-                <div>
-                  <h3 style={{ fontSize: '17px', fontWeight: 900, color: '#1E3A8A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Zap size={20} color="#2563EB" /> Current Event Accumulation ({currentWork} / {eventUnitTarget} {eventUnitName})
-                  </h3>
-                  <p style={{ fontSize: '11px', color: '#475569', margin: '4px 0 0 0' }}>
-                    Work accumulates across subtasks and days. Event finalizes automatically when total reaches <strong>{eventUnitTarget} {eventUnitName}</strong>.
-                  </p>
-                </div>
-
-                <div style={{ background: '#DBEAFE', padding: '6px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: 900, color: '#1D4ED8' }}>
-                  {currentProgressPct}% Towards Event #{ (currentTask.completedEventCount || 0) + 1 }
-                </div>
+              {/* Y-Axis Labels */}
+              <div style={{ position: 'absolute', left: '6px', top: '16px', bottom: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '9px', fontWeight: 800, color: '#64748B', textAlign: 'right', width: '32px' }}>
+                <span>{maxCumDomain}</span>
+                <span>{Math.round(maxCumDomain * 0.75)}</span>
+                <span>{Math.round(maxCumDomain * 0.50)}</span>
+                <span>{Math.round(maxCumDomain * 0.25)}</span>
+                <span>0</span>
               </div>
 
-              {/* Progress Bar for Active Current Event */}
-              <div style={{ height: '14px', background: '#E2E8F0', borderRadius: '7px', overflow: 'hidden', marginBottom: '14px', border: '1px solid #CBD5E1' }}>
-                <div style={{ width: `${currentProgressPct}%`, height: '100%', background: 'linear-gradient(90deg, #3B82F6, #2563EB)', borderRadius: '7px', transition: 'width 0.4s ease' }} />
-              </div>
+              {/* SVG Canvas with ViewBox for Precise Responsive Scaling (No mobile screen overflow!) */}
+              <svg viewBox="0 0 500 180" preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+                <defs>
+                  <linearGradient id="cumOrangeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#EA580C" stopOpacity="0.25" />
+                    <stop offset="100%" stopColor="#F97316" stopOpacity="0.02" />
+                  </linearGradient>
+                  <filter id="glowOrangeLine" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="2" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                  </filter>
+                </defs>
 
-              {/* Live Subtask Contributions for Active Current Event */}
-              <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>Subtask Work Contributed to Current Event:</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {directChildSubtasks.map((st, idx) => {
-                  const work = Number(st.currentEventWork || st.loggedMeasureVal || 0);
-                  const color = DEFAULT_SUBTASK_COLORS[idx % DEFAULT_SUBTASK_COLORS.length];
-                  return (
-                    <div key={st.id} style={{ background: '#FFF', border: '1px solid #CBD5E1', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: color }} />
-                      <span>{st.title}: <strong>{work} {eventUnitName}</strong></span>
-                    </div>
-                  );
+                {/* Math Graph Paper Grid Lines (Horizontal & Vertical) */}
+                <line x1="20" y1="20" x2="480" y2="20" stroke="#F1F5F9" strokeWidth="1.5" />
+                <line x1="20" y1="55" x2="480" y2="55" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+                <line x1="20" y1="90" x2="480" y2="90" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+                <line x1="20" y1="125" x2="480" y2="125" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+                <line x1="20" y1="160" x2="480" y2="160" stroke="#CBD5E1" strokeWidth="2" />
+
+                {/* Vertical Day Gridlines */}
+                {sampleDailyMeasures.map((_, i) => {
+                  const x = Math.round(20 + (i / Math.max(1, sampleDailyMeasures.length - 1)) * 460);
+                  return <line key={i} x1={x} y1="20" x2={x} y2="160" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="3,3" />;
                 })}
-              </div>
-            </div>
 
-            {/* 13B. FINALIZED EVENTS HISTORY & SEGMENTED HORIZONTAL BARS */}
-            <div style={{ padding: '24px', background: '#FFFFFF', borderRadius: '24px', border: '1.5px solid #E2E8F0', borderLeft: '6px solid #10B981', boxShadow: '0 8px 24px rgba(16, 185, 129, 0.08)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-                <div>
-                  <h3 style={{ fontSize: '17px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <BarChart3 size={20} color="#10B981" /> Finalized Event History & Segmented Bars
-                  </h3>
-                  <p style={{ fontSize: '11px', color: '#64748B', margin: '4px 0 0 0' }}>
-                    Each bar represents exactly 1 finalized event. Multiple events completed on the same day produce separate bars.
-                  </p>
-                </div>
+                {/* 1. AVERAGE TARGET LINE (45 DEGREE LINE FROM BOTTOM-LEFT (20,160) TO TARGET POINT AT TODAY) */}
+                {(() => {
+                  const targetY = Math.max(20, 160 - Math.round((expectedMeasureTillToday / maxCumDomain) * 140));
+                  return (
+                    <line 
+                      x1="20" 
+                      y1="160" 
+                      x2="480" 
+                      y2={targetY} 
+                      stroke="#16A34A" 
+                      strokeWidth="2.5" 
+                      strokeDasharray="6,6" 
+                    />
+                  );
+                })()}
 
-                <div style={{ background: '#ECFDF5', border: '1px solid #A7F3D0', padding: '6px 14px', borderRadius: '10px', fontSize: '11px', fontWeight: 900, color: '#047857' }}>
-                  {mockFinalizedEvents.length} Finalized Events
-                </div>
-              </div>
+                {/* 2. ACTUAL CUMULATIVE MEASURE LINE (MONOTONICALLY INCREASING, NEVER GOES DOWN) */}
+                {(() => {
+                  let runningTotal = 0;
+                  
+                  const points = sampleDailyMeasures.map((d, i) => {
+                    const dailyDelta = d.totalColumnVal;
+                    runningTotal += dailyDelta;
+                    const x = Math.round(20 + (i / Math.max(1, sampleDailyMeasures.length - 1)) * 460);
+                    // Calculate y: y=160 is 0 cumulative, y=20 is maxCumDomain
+                    const y = Math.max(20, 160 - Math.round((runningTotal / maxCumDomain) * 140));
+                    return {
+                      x,
+                      y,
+                      runningTotal: Math.round(runningTotal * 10) / 10,
+                      dailyDelta,
+                      dayLabel: d.dayLabel
+                    };
+                  });
 
-              {/* List of Finalized Events as Segmented Horizontal Bars */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {mockFinalizedEvents.map((ev) => (
-                  <div key={ev.id} style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', padding: '16px', borderRadius: '16px' }}>
-                    
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', fontSize: '12px', fontWeight: 900, color: '#0F172A' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ background: '#10B981', color: '#FFF', padding: '2px 8px', borderRadius: '6px', fontSize: '10px' }}>
-                          Event #{ev.eventNumber}
-                        </span>
-                        <span>Completed {ev.completionDate}</span>
-                      </span>
-                      <span style={{ color: '#059669' }}>
-                        Total Contribution: <strong>{ev.totalWorkAccumulated} {ev.eventUnitName}</strong>
-                      </span>
-                    </div>
+                  const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
+                  const polygonPoints = `20,160 ${polylinePoints} 480,160 20,160`;
 
-                    {/* Multi-Color Segmented Horizontal Bar */}
-                    <div style={{ display: 'flex', height: '22px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #CBD5E1', background: '#E2E8F0', marginBottom: '10px' }}>
-                      {ev.subtaskContributions.map((seg, sIdx) => (
-                        <div 
-                          key={sIdx} 
-                          style={{ 
-                            width: `${seg.percentage}%`, 
-                            background: seg.color, 
-                            height: '100%',
-                            transition: 'width 0.3s ease',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#FFF',
-                            fontSize: '10px',
-                            fontWeight: 900
-                          }}
-                          title={`${seg.subtaskTitle}: ${seg.workAmount} ${ev.eventUnitName} (${seg.percentage}%)`}
-                        >
-                          {seg.percentage >= 15 && `${seg.workAmount}`}
-                        </div>
+                  return (
+                    <g>
+                      {/* Shaded Area under Monotonically Increasing Cumulative Line */}
+                      <polygon fill="url(#cumOrangeGradient)" points={polygonPoints} />
+
+                      {/* Actual Cumulative Polyline */}
+                      <polyline 
+                        fill="none" 
+                        stroke="#EA580C" 
+                        strokeWidth="3.5" 
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        filter="url(#glowOrangeLine)"
+                        points={polylinePoints}
+                      />
+
+                      {/* Node Markers & Data Labels */}
+                      {points.map((p, i) => (
+                        <g key={i}>
+                          <circle 
+                            cx={p.x} 
+                            cy={p.y} 
+                            r={p.dailyDelta === 0 ? "4.5" : "6"} 
+                            fill={p.dailyDelta === 0 ? "#F97316" : "#EA580C"} 
+                            stroke="#FFFFFF" 
+                            strokeWidth="2" 
+                          />
+                          {/* Cumulative Value Text Label above Node */}
+                          <text 
+                            x={p.x} 
+                            y={p.y - 8} 
+                            textAnchor="middle" 
+                            fontSize="9" 
+                            fontWeight="800" 
+                            fill="#C2410C"
+                          >
+                            {p.runningTotal}
+                          </text>
+                        </g>
                       ))}
-                    </div>
+                    </g>
+                  );
+                })()}
+              </svg>
 
-                    {/* Subtask Contribution Legend */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '11px', fontWeight: 800 }}>
-                      {ev.subtaskContributions.map((seg, sIdx) => (
-                        <div key={sIdx} style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#334155' }}>
-                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: seg.color }} />
-                          <span>{seg.subtaskTitle}: <strong>{seg.workAmount} ({seg.percentage}%)</strong></span>
-                        </div>
-                      ))}
-                    </div>
-
-                  </div>
+              {/* X-Axis Timeline Labels */}
+              <div style={{ position: 'absolute', left: '45px', right: '16px', bottom: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', fontWeight: 800, color: '#475569' }}>
+                {sampleDailyMeasures.map((d, i) => (
+                  <span key={i} style={{ color: d.totalColumnVal === 0 ? '#94A3B8' : '#0F172A' }}>
+                    {d.dayLabel} ({d.totalColumnVal > 0 ? `+${d.totalColumnVal}` : '0'})
+                  </span>
                 ))}
               </div>
 
             </div>
+          );
+        })()}
+      </div>
 
+      {/* ========================================================================= */}
+      {/* 13. EVENT-COUNT TASK SYSTEM: CURRENT EVENT ACCUMULATION CARD */}
+      {/* ========================================================================= */}
+      {trackingMode === 'count_event' && (() => {
+        const currentWork = calculateCurrentEventWork(directChildSubtasks);
+        const currentProgressPct = Math.min(100, Math.round((currentWork / Math.max(1, eventUnitTarget)) * 100));
+
+        return (
+          <div style={{ padding: '24px', background: 'linear-gradient(135deg, #EFF6FF, #F8FAFC)', borderRadius: '24px', border: '1.5px solid #BFDBFE', borderLeft: '6px solid #2563EB', boxShadow: '0 8px 24px rgba(37, 99, 235, 0.08)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3 style={{ fontSize: '17px', fontWeight: 900, color: '#1E3A8A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Zap size={20} color="#2563EB" /> Current Event Accumulation ({currentWork} / {eventUnitTarget} {measureUnit})
+                </h3>
+                <p style={{ fontSize: '11px', color: '#475569', margin: '4px 0 0 0' }}>
+                  Work accumulates across subtasks and days. Event finalizes automatically when total reaches <strong>{eventUnitTarget} {measureUnit}</strong>.
+                </p>
+              </div>
+
+              <div style={{ background: '#DBEAFE', padding: '6px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: 900, color: '#1D4ED8' }}>
+                {currentProgressPct}% Towards Event #{ (currentTask.completedEventCount || 0) + 1 }
+              </div>
+            </div>
+
+            {/* Progress Bar for Active Current Event */}
+            <div style={{ height: '14px', background: '#E2E8F0', borderRadius: '7px', overflow: 'hidden', marginBottom: '14px', border: '1px solid #CBD5E1' }}>
+              <div style={{ width: `${currentProgressPct}%`, height: '100%', background: 'linear-gradient(90deg, #3B82F6, #2563EB)', borderRadius: '7px', transition: 'width 0.4s ease' }} />
+            </div>
+
+            {/* Live Subtask Contributions for Active Current Event */}
+            <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>Subtask Work Contributed to Current Event:</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {directChildSubtasks.map((st, idx) => {
+                const work = Number(st.currentEventWork || st.loggedMeasureVal || 0);
+                const color = DEFAULT_SUBTASK_COLORS[idx % DEFAULT_SUBTASK_COLORS.length];
+                return (
+                  <div key={st.id} style={{ background: '#FFF', border: '1px solid #CBD5E1', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: color }} />
+                    <span>{st.title}: <strong>{work} {measureUnit}</strong></span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         );
       })()}
+
 
       {/* ========================================================================= */}
       {/* 14. STREAK ANALYTICS PANEL */}
