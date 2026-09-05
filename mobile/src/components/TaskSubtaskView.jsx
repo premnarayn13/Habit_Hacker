@@ -444,17 +444,23 @@ export default function TaskSubtaskView({
                     </button>
 
                     {/* Completion Checkmark */}
-                    <button 
-                      onClick={(e) => handleCheckmarkClick(e, task)}
-                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
-                      title={isTaskDone ? "Mark Turn Incomplete" : "Mark Turn Complete"}
-                    >
-                      {isTaskDone ? (
-                        <CheckCircle2 size={22} color={isSubtaskEntity ? '#D97706' : '#DC2626'} />
-                      ) : (
-                        <Circle size={22} color="#94A3B8" />
-                      )}
-                    </button>
+                    {isTaskOverallFinished(task) ? (
+                      <span title="Task Fully Completed" style={{ display: 'inline-flex', alignItems: 'center', cursor: 'default' }}>
+                        <CheckCircle2 size={22} color="#16A34A" />
+                      </span>
+                    ) : (
+                      <button 
+                        onClick={(e) => handleCheckmarkClick(e, task)}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                        title={isTaskDone ? "Mark Turn Incomplete" : "Mark Turn Complete"}
+                      >
+                        {isTaskDone ? (
+                          <CheckCircle2 size={22} color={isSubtaskEntity ? '#D97706' : '#DC2626'} />
+                        ) : (
+                          <Circle size={22} color="#94A3B8" />
+                        )}
+                      </button>
+                    )}
 
                     {/* Task Title, Parent Reference & Attachment Pill (Emoji & Category removed) */}
                     <div style={{ flex: 1 }}>
@@ -479,8 +485,8 @@ export default function TaskSubtaskView({
                         )}
                       </div>
 
-                      {/* Quick Event Log Button if Event Count Task */}
-                      {task.trackingMode === 'count_event' && (
+                      {/* Quick Event Log Button if Event Count Task (Hidden for Completed Tasks) */}
+                      {task.trackingMode === 'count_event' && !isTaskOverallFinished(task) && (
                         <div style={{ marginTop: '6px' }}>
                           <button
                             onClick={(e) => { e.stopPropagation(); onLogEventCount(task.id); }}
