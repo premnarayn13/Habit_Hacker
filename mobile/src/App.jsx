@@ -44,11 +44,13 @@ const INITIAL_DEFAULT_TASKS = [
     trackingMode: 'end_date',
     plannedStart: '2026-08-01',
     plannedEnd: '2026-09-15',
+    targetCount: 46,
+    currentCount: 28,
     measureTarget: 15.0,
     measureUnit: 'units',
     isOptional: false,
     isDoneToday: false,
-    progressPercent: 55,
+    progressPercent: 61,
     parentTaskId: ''
   },
   {
@@ -63,9 +65,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 4.0,
     measureUnit: 'problems',
     loggedMeasureVal: 4.0,
+    targetCount: 46,
+    currentCount: 31,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 67,
     parentTaskId: 'task-1-enddate'
   },
   {
@@ -80,9 +84,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 2.0,
     measureUnit: 'days',
     loggedMeasureVal: 2.0,
+    targetCount: 46,
+    currentCount: 29,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 63,
     parentTaskId: 'task-1-enddate'
   },
   {
@@ -97,9 +103,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 5.0,
     measureUnit: 'events',
     loggedMeasureVal: 5.0,
+    targetCount: 46,
+    currentCount: 30,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 65,
     parentTaskId: 'task-1-enddate'
   },
   {
@@ -114,9 +122,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 0.0,
     measureUnit: 'units',
     loggedMeasureVal: 0.0,
+    targetCount: 46,
+    currentCount: 28,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 61,
     parentTaskId: 'task-1-enddate'
   },
   {
@@ -131,9 +141,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 0.0,
     measureUnit: 'units',
     loggedMeasureVal: 0.0,
+    targetCount: 46,
+    currentCount: 14,
     isOptional: true,
     isDoneToday: false,
-    progressPercent: 0,
+    progressPercent: 30,
     parentTaskId: 'task-1-enddate'
   },
 
@@ -166,10 +178,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 5.0,
     measureUnit: 'km',
     loggedMeasureVal: 5.0,
-    currentCount: 18,
+    targetCount: 30,
+    currentCount: 22,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 73,
     parentTaskId: 'task-2-daycount'
   },
   {
@@ -183,10 +196,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 3.0,
     measureUnit: 'days',
     loggedMeasureVal: 3.0,
-    currentCount: 18,
+    targetCount: 30,
+    currentCount: 20,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 67,
     parentTaskId: 'task-2-daycount'
   },
   {
@@ -200,10 +214,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 4.0,
     measureUnit: 'events',
     loggedMeasureVal: 4.0,
-    currentCount: 18,
+    targetCount: 30,
+    currentCount: 19,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 63,
     parentTaskId: 'task-2-daycount'
   },
   {
@@ -217,10 +232,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 0.0,
     measureUnit: 'units',
     loggedMeasureVal: 0.0,
+    targetCount: 30,
     currentCount: 18,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 60,
     parentTaskId: 'task-2-daycount'
   },
   {
@@ -234,10 +250,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 0.0,
     measureUnit: 'units',
     loggedMeasureVal: 0.0,
-    currentCount: 0,
+    targetCount: 30,
+    currentCount: 8,
     isOptional: true,
     isDoneToday: false,
-    progressPercent: 0,
+    progressPercent: 27,
     parentTaskId: 'task-2-daycount'
   },
 
@@ -272,9 +289,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 6.0,
     measureUnit: 'questions',
     currentEventWork: 6.0,
+    targetCount: 10,
+    currentCount: 5,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 50,
     parentTaskId: 'task-3-eventcount'
   },
   {
@@ -288,9 +307,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 3.0,
     measureUnit: 'questions',
     currentEventWork: 3.0,
+    targetCount: 10,
+    currentCount: 4,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 40,
     parentTaskId: 'task-3-eventcount'
   },
   {
@@ -304,9 +325,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 1.0,
     measureUnit: 'questions',
     currentEventWork: 1.0,
+    targetCount: 10,
+    currentCount: 3,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 30,
     parentTaskId: 'task-3-eventcount'
   },
   {
@@ -320,9 +343,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 0.0,
     measureUnit: 'units',
     currentEventWork: 0.0,
+    targetCount: 10,
+    currentCount: 3,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 30,
     parentTaskId: 'task-3-eventcount'
   },
   {
@@ -336,9 +361,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 0.0,
     measureUnit: 'units',
     currentEventWork: 0.0,
+    targetCount: 10,
+    currentCount: 1,
     isOptional: true,
     isDoneToday: false,
-    progressPercent: 0,
+    progressPercent: 10,
     parentTaskId: 'task-3-eventcount'
   },
 
@@ -370,9 +397,11 @@ const INITIAL_DEFAULT_TASKS = [
     priority: 'LOW',
     trackingMode: 'end_date',
     hasMeasureTracking: false,
+    targetCount: 42,
+    currentCount: 12,
     isOptional: true,
     isDoneToday: false,
-    progressPercent: 0,
+    progressPercent: 29,
     parentTaskId: 'task-4-singleoptional'
   },
 
@@ -428,9 +457,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 8.0,
     measureUnit: 'pull_requests',
     loggedMeasureVal: 8.0,
+    targetCount: 56,
+    currentCount: 44,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 79,
     parentTaskId: 'task-6-parent-nomeasure'
   },
   {
@@ -444,9 +475,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 5.0,
     measureUnit: 'test_suites',
     loggedMeasureVal: 5.0,
+    targetCount: 56,
+    currentCount: 41,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 73,
     parentTaskId: 'task-6-parent-nomeasure'
   },
   {
@@ -460,9 +493,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 3.0,
     measureUnit: 'benchmarks',
     loggedMeasureVal: 3.0,
+    targetCount: 56,
+    currentCount: 40,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 71,
     parentTaskId: 'task-6-parent-nomeasure'
   },
   {
@@ -476,9 +511,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 0.0,
     measureUnit: 'units',
     loggedMeasureVal: 0.0,
+    targetCount: 56,
+    currentCount: 38,
     isOptional: false,
     isDoneToday: true,
-    progressPercent: 100,
+    progressPercent: 68,
     parentTaskId: 'task-6-parent-nomeasure'
   },
   {
@@ -492,9 +529,11 @@ const INITIAL_DEFAULT_TASKS = [
     measureTarget: 0.0,
     measureUnit: 'units',
     loggedMeasureVal: 0.0,
+    targetCount: 56,
+    currentCount: 15,
     isOptional: true,
     isDoneToday: false,
-    progressPercent: 0,
+    progressPercent: 27,
     parentTaskId: 'task-6-parent-nomeasure'
   },
 

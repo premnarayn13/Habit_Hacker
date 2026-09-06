@@ -69,11 +69,11 @@ export default function TaskSubtaskView({
   };
 
   const calculateSpanDays = (start, end) => {
-    if (!start || !end) return 50;
+    if (!start || !end) return 30;
     const s = new Date(start);
     const e = new Date(end);
     const diffTime = e - s;
-    if (isNaN(diffTime)) return 50;
+    if (isNaN(diffTime)) return 30;
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
     return diffDays;
   };
@@ -386,7 +386,7 @@ export default function TaskSubtaskView({
 
             // Calculations for Task Row KPI Badges
             const spanDays = calculateSpanDays(task.plannedStart, task.plannedEnd);
-            const targetCount = task.targetCount || task.targetDayCount || task.targetEventCount || spanDays || 50;
+            const targetCount = task.targetCount || task.targetDayCount || task.targetEventCount || spanDays || 30;
             const currentCount = task.currentCount || task.currentDayCount || task.currentEventCount || (isTaskDone ? targetCount : 0);
             const calculatedProgPercent = task.progressPercent || (targetCount > 0 ? Math.round((currentCount / targetCount) * 100) : 0);
             const countRatioStr = `${currentCount}:${targetCount}`;
@@ -655,9 +655,10 @@ export default function TaskSubtaskView({
                           </div>
                         ) : (
                           childTasks.map(child => {
-                            const childTarget = child.targetCount || child.targetDayCount || child.targetEventCount || 50;
-                            const childDone = child.currentCount || (child.isDoneToday || child.progressPercent >= 100 ? childTarget : 0);
-                            const childProg = Math.round((childDone / childTarget) * 100);
+                            const parentTarget = task.targetCount || task.targetDayCount || calculateSpanDays(task.plannedStart, task.plannedEnd) || 30;
+                            const childTarget = child.targetCount || child.targetDayCount || parentTarget;
+                            const childDone = (child.currentCount !== undefined && child.currentCount !== null) ? child.currentCount : (child.isDoneToday ? childTarget : 0);
+                            const childProg = (child.progressPercent !== undefined && child.progressPercent !== null) ? child.progressPercent : (childTarget > 0 ? Math.round((childDone / childTarget) * 100) : 0);
 
                             return (
                               <div 
