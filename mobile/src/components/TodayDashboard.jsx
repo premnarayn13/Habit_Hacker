@@ -30,7 +30,8 @@ import {
   CalendarDays,
   Target,
   Trophy,
-  Maximize2
+  Maximize2,
+  Lock as LockIcon
 } from 'lucide-react';
 import { 
   isParentTaskWithChildren, 
@@ -58,7 +59,6 @@ export default function TodayDashboard({
 
   // Filters State
   const [taskTypeFilter, setTaskTypeFilter] = useState('ALL'); // 'ALL', 'end_date', 'count_days', 'count_event'
-  const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'PENDING', 'COMPLETED'
   const [categoryFilter, setCategoryFilter] = useState('ALL'); // 'ALL', 'Academics', 'Coding', 'Fitness', etc.
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -66,7 +66,7 @@ export default function TodayDashboard({
   const [expandedParents, setExpandedParents] = useState({});
   const [expandedCategories, setExpandedCategories] = useState({});
 
-  // Measure Edit Modal State
+  // Measure Edit / Completion Prompt Modal State
   const [measureModalTask, setMeasureModalTask] = useState(null);
 
   // Early Completion Confirmation Modal State
@@ -79,7 +79,6 @@ export default function TodayDashboard({
     return d;
   }, [dateOffset]);
 
-  const selectedDateStr = selectedDateObj.toISOString().split('T')[0];
   const dateDisplayFormatted = selectedDateObj.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
@@ -112,7 +111,7 @@ export default function TodayDashboard({
   };
 
   // Determine Applicable Tasks for Selected Date
-  const applicableTasks = useMemo(() => {
+  const filteredParentTasks = useMemo(() => {
     return parentTasks.filter(p => {
       // Check category filter
       if (categoryFilter !== 'ALL' && p.category !== categoryFilter) return false;
@@ -132,7 +131,7 @@ export default function TodayDashboard({
     let pendingSubtasksCount = 0;
     let totalMeasuresVal = 0;
 
-    applicableTasks.forEach(p => {
+    filteredParentTasks.forEach(p => {
       const children = subtasksMap[p.id] || [];
       const parentStatus = calculateParentCompletionStatus(p, children);
 
@@ -158,7 +157,7 @@ export default function TodayDashboard({
       }
     });
 
-    const totalCount = applicableTasks.length;
+    const totalCount = filteredParentTasks.length;
     const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
     return {
@@ -169,26 +168,39 @@ export default function TodayDashboard({
       completionRate,
       totalMeasuresVal
     };
-  }, [applicableTasks, subtasksMap]);
+  }, [filteredParentTasks, subtasksMap]);
+
+  // Distinct Lists for Sections
+  const pendingParentTasks = useMemo(() => {
+    return filteredParentTasks.filter(p => {
+      const children = subtasksMap[p.id] || [];
+      const parentStatus = calculateParentCompletionStatus(p, children);
+      return !parentStatus.isCompleted;
+    });
+  }, [filteredParentTasks, subtasksMap]);
+
+  const completedParentTasks = useMemo(() => {
+    return filteredParentTasks.filter(p => {
+      const children = subtasksMap[p.id] || [];
+      const parentStatus = calculateParentCompletionStatus(p, children);
+      return parentStatus.isCompleted;
+    });
+  }, [filteredParentTasks, subtasksMap]);
 
   // Find Next Up Action Task (Highest Priority Pending Task/Subtask)
   const nextUpItem = useMemo(() => {
-    for (const p of applicableTasks) {
+    for (const p of pendingParentTasks) {
       const children = subtasksMap[p.id] || [];
-      const parentStatus = calculateParentCompletionStatus(p, children);
-
-      if (!parentStatus.isCompleted) {
-        if (children.length > 0) {
-          const pendingMandatory = children.find(st => !st.isDoneToday && !st.isOptional);
-          if (pendingMandatory) {
-            return { item: pendingMandatory, parent: p, type: 'SUBTASK' };
-          }
+      if (children.length > 0) {
+        const pendingMandatory = children.find(st => !st.isDoneToday && !st.isOptional);
+        if (pendingMandatory) {
+          return { item: pendingMandatory, parent: p, type: 'SUBTASK' };
         }
-        return { item: p, parent: null, type: 'PARENT' };
       }
+      return { item: p, parent: null, type: 'PARENT' };
     }
     return null;
-  }, [applicableTasks, subtasksMap]);
+  }, [pendingParentTasks, subtasksMap]);
 
   // Task Type Breakdown Counts
   const typeBreakdown = useMemo(() => {
@@ -215,7 +227,7 @@ export default function TodayDashboard({
     return {
       endDate: { total: endDateCount, done: endDateDone, pending: endDateCount - endDateDone },
       dayCount: { total: dayCountCount, done: dayCountDone, pending: dayCountCount - dayCountDone },
-      eventCount: { total: eventCountCount, done: eventCountDone, pending: eventCountCount - eventCountDone }
+      eventCount: { total: eventCountCount, done: eventCountDone, pending: eventCountDone - eventCountDone }
     };
   }, [parentTasks, subtasksMap]);
 
@@ -237,18 +249,49 @@ export default function TodayDashboard({
     setExpandedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
   };
 
+  // Complete Pending Task Trigger (Checks if Measure Modal is needed)
+  const handleInitiateTaskCompletion = (task) => {
+    const isMeasureTask = task.hasMeasureTracking || (task.measureTarget && Number(task.measureTarget) > 0) || task.trackingMode === 'measure';
+    if (isMeasureTask && !task.isDoneToday) {
+      setMeasureModalTask(task);
+    } else {
+      onToggleTask(task.id);
+    }
+  };
+
+  // Save Measure Value Handler
+  const handleSaveMeasureValue = (taskId, value) => {
+    if (onUpdateTaskProgress) {
+      onUpdateTaskProgress(taskId, 100);
+    }
+    onToggleTask(taskId, value);
+  };
+
   // Complete Early Trigger Handler
   const handleConfirmEarlyComplete = () => {
     if (!earlyCompleteTask) return;
-    onToggleTask(earlyCompleteTask.id);
+    handleInitiateTaskCompletion(earlyCompleteTask);
     setEarlyCompleteTask(null);
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '70px', background: '#F8FAFC' }}>
       
+      {/* Global Style Tag to Hide Native Scrollbars & Prevent Collisions */}
+      <style>{`
+        * {
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+        }
+        *::-webkit-scrollbar {
+          display: none !important;
+          width: 0 !important;
+          height: 0 !important;
+        }
+      `}</style>
+
       {/* ========================================================================= */}
-      {/* 1. TODAY HEADER & DATE NAVIGATOR */}
+      {/* TODAY HEADER & DATE NAVIGATOR */}
       {/* ========================================================================= */}
       <div style={{ padding: '20px 24px', background: '#FFF', borderRadius: '24px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
@@ -299,35 +342,29 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. DAILY OVERVIEW SCORECARD (5 COMPACT STAT CARDS) */}
+      {/* TOP SUMMARY SCORECARD (CLEAN ACCURATE COUNTS) */}
       {/* ========================================================================= */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
         
-        {/* Card 1: Total Tasks */}
+        {/* Card 1: Total Tasks Today */}
         <div style={{ background: '#FFF', padding: '14px 16px', borderRadius: '16px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-          <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Total Tasks</span>
+          <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Total Tasks Today</span>
           <span style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>{stats.totalCount}</span>
         </div>
 
-        {/* Card 2: Completed */}
+        {/* Card 2: Completed Tasks */}
         <div style={{ background: '#F0FDF4', padding: '14px 16px', borderRadius: '16px', border: '1px solid #BBF7D0', boxShadow: '0 2px 8px rgba(22,163,74,0.04)' }}>
-          <span style={{ fontSize: '10px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>Completed</span>
+          <span style={{ fontSize: '10px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>Completed Tasks</span>
           <span style={{ fontSize: '22px', fontWeight: 900, color: '#15803D', marginTop: '2px', display: 'block' }}>{stats.completedCount}</span>
         </div>
 
-        {/* Card 3: Pending */}
+        {/* Card 3: Pending Tasks */}
         <div style={{ background: '#FEF3C7', padding: '14px 16px', borderRadius: '16px', border: '1px solid #FDE68A', boxShadow: '0 2px 8px rgba(217,119,6,0.04)' }}>
-          <span style={{ fontSize: '10px', fontWeight: 800, color: '#B45309', textTransform: 'uppercase', display: 'block' }}>Pending</span>
+          <span style={{ fontSize: '10px', fontWeight: 800, color: '#B45309', textTransform: 'uppercase', display: 'block' }}>Pending Tasks</span>
           <span style={{ fontSize: '22px', fontWeight: 900, color: '#D97706', marginTop: '2px', display: 'block' }}>{stats.pendingCount}</span>
         </div>
 
-        {/* Card 4: Pending Subtasks */}
-        <div style={{ background: '#FEF2F2', padding: '14px 16px', borderRadius: '16px', border: '1px solid #FECACA', boxShadow: '0 2px 8px rgba(220,38,38,0.04)' }}>
-          <span style={{ fontSize: '10px', fontWeight: 800, color: '#DC2626', textTransform: 'uppercase', display: 'block' }}>Pending Subtasks</span>
-          <span style={{ fontSize: '22px', fontWeight: 900, color: '#991B1B', marginTop: '2px', display: 'block' }}>{stats.pendingSubtasksCount}</span>
-        </div>
-
-        {/* Card 5: Completion Rate */}
+        {/* Card 4: Completion Rate */}
         <div style={{ background: '#EFF6FF', padding: '14px 16px', borderRadius: '16px', border: '1px solid #BFDBFE', boxShadow: '0 2px 8px rgba(37,99,235,0.04)' }}>
           <span style={{ fontSize: '10px', fontWeight: 800, color: '#1E40AF', textTransform: 'uppercase', display: 'block' }}>Completion Rate</span>
           <span style={{ fontSize: '22px', fontWeight: 900, color: '#2563EB', marginTop: '2px', display: 'block' }}>{stats.completionRate}%</span>
@@ -335,186 +372,36 @@ export default function TodayDashboard({
 
       </div>
 
-      {/* ========================================================================= */}
-      {/* 3. TODAY'S OVERALL PROGRESS & LOGGED MEASURE OUTPUT */}
-      {/* Dynamic progress bar tracking task completion % and total daily measure output */}
-      {/* ========================================================================= */}
-      <div style={{ padding: '20px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>Today's Progress</span>
-          <span style={{ fontSize: '14px', fontWeight: 900, color: '#EA580C' }}>
-            {stats.completedCount} / {stats.totalCount} Tasks Completed ({stats.completionRate}%)
+      {/* SEARCH AND CATEGORY FILTER CHIPS */}
+      <div style={{ padding: '16px 20px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', background: '#F8FAFC', padding: '8px 14px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+          <Search size={16} color="#64748B" style={{ marginRight: '8px' }} />
+          <input 
+            type="text" 
+            placeholder="Search tasks for today..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ border: 'none', background: 'transparent', fontSize: '13px', color: '#0F172A', outline: 'none', width: '100%', fontWeight: 600 }}
+          />
+        </div>
+
+        {/* Category Chips Bar */}
+        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', display: 'flex', alignItems: 'center', marginRight: '4px' }}>
+            <Filter size={12} style={{ marginRight: '4px' }} /> Category:
           </span>
-        </div>
-
-        {/* Progress Bar Track */}
-        <div style={{ height: '12px', background: '#F1F5F9', borderRadius: '8px', overflow: 'hidden', border: '1px solid #CBD5E1' }}>
-          <div style={{ width: `${stats.completionRate}%`, height: '100%', background: 'linear-gradient(90deg, #F97316, #EA580C)', borderRadius: '8px', transition: 'width 0.4s ease' }} />
-        </div>
-
-        {/* Separate Measures Total Row */}
-        {stats.totalMeasuresVal > 0 && (
-          <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', fontWeight: 800, color: '#1E293B' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#EC4899' }}>
-              <Ruler size={16} /> Today's Total Logged Measure Output:
-            </span>
-            <span style={{ fontSize: '14px', fontWeight: 900, color: '#EC4899' }}>
-              {stats.totalMeasuresVal} units
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. NEXT UP HERO ACTION BANNER (PRIORITY URGENCY CARDS) */}
-      {/* High-visibility top priority task card with 1-tap completion & measure input */}
-      {/* ========================================================================= */}
-      {nextUpItem && (
-        <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #FFF7ED, #FFFFFF)', borderRadius: '20px', border: '1.5px solid #FFEDD5', borderLeft: '6px solid #EA580C', boxShadow: '0 8px 24px rgba(234, 88, 12, 0.08)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            <div>
-              <span style={{ fontSize: '10px', fontWeight: 900, color: '#C2410C', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Zap size={14} color="#EA580C" /> Next Up Priority Action
-              </span>
-              <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '4px 0 0 0' }}>
-                {nextUpItem.item.title}
-              </h3>
-              <p style={{ fontSize: '11px', color: '#64748B', margin: '2px 0 0 0', fontWeight: 600 }}>
-                {nextUpItem.type === 'SUBTASK' ? `Parent Task: ${nextUpItem.parent.title}` : `Category: ${nextUpItem.item.category}`}
-              </p>
-            </div>
-
-            <button
-              onClick={() => onToggleTask(nextUpItem.item.id)}
-              style={{
-                padding: '10px 20px',
-                background: '#EA580C',
-                color: '#FFF',
-                border: 'none',
-                borderRadius: '12px',
-                fontSize: '12px',
-                fontWeight: 900,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                boxShadow: '0 4px 14px rgba(234, 88, 12, 0.3)'
-              }}
-            >
-              <Check size={16} /> Complete Now
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 5. TASK TYPE BREAKDOWN & FILTER ROW */}
-      {/* Interactive breakdown cards and horizontal scrollable filter chips */}
-      {/* ========================================================================= */}
-      <div style={{ padding: '20px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Layers size={18} color="#2563EB" /> Tasks by Type Breakdown
-        </h3>
-
-        {/* Task Type Summary Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '14px' }}>
-          <div 
-            onClick={() => setTaskTypeFilter(taskTypeFilter === 'end_date' ? 'ALL' : 'end_date')}
-            style={{ padding: '12px 14px', borderRadius: '12px', background: taskTypeFilter === 'end_date' ? '#EFF6FF' : '#F8FAFC', border: taskTypeFilter === 'end_date' ? '1.5px solid #2563EB' : '1px solid #E2E8F0', cursor: 'pointer' }}
-          >
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#1E40AF', display: 'block' }}>Start Date → End Date</span>
-            <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>{typeBreakdown.endDate.total} tasks</span>
-            <span style={{ fontSize: '10px', color: '#64748B', display: 'block', fontWeight: 600 }}>{typeBreakdown.endDate.done} completed • {typeBreakdown.endDate.pending} pending</span>
-          </div>
-
-          <div 
-            onClick={() => setTaskTypeFilter(taskTypeFilter === 'count_days' ? 'ALL' : 'count_days')}
-            style={{ padding: '12px 14px', borderRadius: '12px', background: taskTypeFilter === 'count_days' ? '#F0FDF4' : '#F8FAFC', border: taskTypeFilter === 'count_days' ? '1.5px solid #16A34A' : '1px solid #E2E8F0', cursor: 'pointer' }}
-          >
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#15803D', display: 'block' }}>Day Count Tasks</span>
-            <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>{typeBreakdown.dayCount.total} tasks</span>
-            <span style={{ fontSize: '10px', color: '#64748B', display: 'block', fontWeight: 600 }}>{typeBreakdown.dayCount.done} completed • {typeBreakdown.dayCount.pending} pending</span>
-          </div>
-
-          <div 
-            onClick={() => setTaskTypeFilter(taskTypeFilter === 'count_event' ? 'ALL' : 'count_event')}
-            style={{ padding: '12px 14px', borderRadius: '12px', background: taskTypeFilter === 'count_event' ? '#FAF5FF' : '#F8FAFC', border: taskTypeFilter === 'count_event' ? '1.5px solid #8B5CF6' : '1px solid #E2E8F0', cursor: 'pointer' }}
-          >
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#7E22CE', display: 'block' }}>Event Count Tasks</span>
-            <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>{typeBreakdown.eventCount.total} tasks</span>
-            <span style={{ fontSize: '10px', color: '#64748B', display: 'block', fontWeight: 600 }}>{typeBreakdown.eventCount.done} events completed today</span>
-          </div>
-        </div>
-
-        {/* Task Type Filter Buttons */}
-        <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
-          {[
-            { id: 'ALL', label: 'All Types' },
-            { id: 'end_date', label: 'Date Range' },
-            { id: 'count_days', label: 'Day Count' },
-            { id: 'count_event', label: 'Event Count' }
-          ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTaskTypeFilter(t.id)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '20px',
-                fontSize: '11px',
-                fontWeight: 800,
-                border: taskTypeFilter === t.id ? 'none' : '1px solid #CBD5E1',
-                background: taskTypeFilter === t.id ? '#EA580C' : '#F1F5F9',
-                color: taskTypeFilter === t.id ? '#FFF' : '#475569',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 6. MATRIX FILTERS (STATUS & CATEGORY) */}
-      {/* ========================================================================= */}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-        {/* Status Filters */}
-        <div style={{ display: 'flex', gap: '4px', background: '#FFF', padding: '4px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-          {['ALL', 'PENDING', 'COMPLETED'].map(st => (
-            <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '8px',
-                fontSize: '11px',
-                fontWeight: 800,
-                border: 'none',
-                background: statusFilter === st ? '#0F172A' : 'transparent',
-                color: statusFilter === st ? '#FFF' : '#64748B',
-                cursor: 'pointer'
-              }}
-            >
-              {st}
-            </button>
-          ))}
-        </div>
-
-        {/* Category Filters */}
-        <div style={{ display: 'flex', gap: '4px', overflowX: 'auto' }}>
           {['ALL', ...categoriesList].map(cat => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
               style={{
-                padding: '6px 12px',
-                borderRadius: '12px',
+                padding: '5px 12px',
+                borderRadius: '10px',
                 fontSize: '11px',
                 fontWeight: 800,
-                border: categoryFilter === cat ? '1.5px solid #2563EB' : '1px solid #CBD5E1',
-                background: categoryFilter === cat ? '#EFF6FF' : '#FFF',
-                color: categoryFilter === cat ? '#2563EB' : '#475569',
+                border: categoryFilter === cat ? '1.5px solid #EA580C' : '1px solid #CBD5E1',
+                background: categoryFilter === cat ? '#FFF7ED' : '#FFF',
+                color: categoryFilter === cat ? '#EA580C' : '#475569',
                 cursor: 'pointer',
                 whiteSpace: 'nowrap'
               }}
@@ -526,240 +413,238 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* 7. PENDING TODAY MAIN TASK LIST (SECTION 10, 11, 12, 13, 14, 15, 37, 38) */}
+      {/* 1. ALL SCHEDULED TASKS FOR TODAY (OVERVIEW LIST WITH MARKS) */}
       {/* ========================================================================= */}
       <div style={{ padding: '20px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '17px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Activity size={18} color="#EA580C" /> Pending Today
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CalendarDays size={18} color="#2563EB" /> 1. All Tasks Scheduled for Today
           </h2>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#EA580C', background: '#FFF7ED', padding: '4px 10px', borderRadius: '10px', border: '1px solid #FFEDD5' }}>
-            {stats.pendingCount} Pending Tasks
+          <span style={{ fontSize: '11px', fontWeight: 800, color: '#2563EB', background: '#EFF6FF', padding: '4px 10px', borderRadius: '10px', border: '1px solid #BFDBFE' }}>
+            {filteredParentTasks.length} Tasks Total
           </span>
         </div>
 
-        {/* Pending Task Cards */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {applicableTasks.filter(p => {
-            const children = subtasksMap[p.id] || [];
-            const parentStatus = calculateParentCompletionStatus(p, children);
-            if (statusFilter === 'COMPLETED') return parentStatus.isCompleted;
-            if (statusFilter === 'PENDING') return !parentStatus.isCompleted;
-            return !parentStatus.isCompleted; // Default show pending in Pending section
-          }).length === 0 ? (
-            <div style={{ padding: '24px', textAlign: 'center', background: '#F8FAFC', borderRadius: '16px', color: '#64748B', fontWeight: 700, fontSize: '13px' }}>
-              🎉 No pending tasks found! All applicable tasks completed for this filter.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {filteredParentTasks.length === 0 ? (
+            <div style={{ padding: '20px', textAlign: 'center', background: '#F8FAFC', borderRadius: '14px', color: '#64748B', fontSize: '12px', fontWeight: 600 }}>
+              No tasks found for today matching your filter.
             </div>
           ) : (
-            applicableTasks.filter(p => {
-              const children = subtasksMap[p.id] || [];
-              const parentStatus = calculateParentCompletionStatus(p, children);
-              if (statusFilter === 'COMPLETED') return parentStatus.isCompleted;
-              if (statusFilter === 'PENDING') return !parentStatus.isCompleted;
-              return !parentStatus.isCompleted;
-            }).map(parent => {
-              const children = subtasksMap[parent.id] || [];
-              const isExpanded = !!expandedParents[parent.id];
-              const parentStatus = calculateParentCompletionStatus(parent, children);
-              const isCompletable = canManuallyCompleteTask(parent, children);
-              const freqLabel = getFrequencyLabel(parent);
-
-              const mandatoryChildren = children.filter(c => !c.isOptional);
-              const completedMandatory = mandatoryChildren.filter(c => c.isDoneToday).length;
+            filteredParentTasks.map(task => {
+              const children = subtasksMap[task.id] || [];
+              const status = calculateParentCompletionStatus(task, children);
 
               return (
-                <div 
-                  key={parent.id} 
-                  style={{
-                    background: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
-                    borderRadius: '16px',
-                    padding: '16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px'
-                  }}
-                >
-                  {/* Task Card Header Row */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flex: 1 }}>
-                      {/* Checkbox for Standalone or Manually Completable Parent */}
-                      {isCompletable ? (
-                        <button
-                          onClick={() => onToggleTask(parent.id)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: '2px' }}
-                        >
-                          <Circle size={22} color="#CBD5E1" />
-                        </button>
-                      ) : (
-                        <div style={{ marginTop: '2px' }} title="Parent auto-completes when mandatory subtasks finish">
-                          <LockIcon size={20} color="#94A3B8" />
-                        </div>
-                      )}
+                <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: status.isCompleted ? '#F0FDF4' : '#F8FAFC', border: status.isCompleted ? '1px solid #BBF7D0' : '1px solid #E2E8F0', padding: '12px 16px', borderRadius: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {status.isCompleted ? (
+                      <CheckCircle2 size={20} color="#16A34A" />
+                    ) : (
+                      <Circle size={20} color="#D97706" />
+                    )}
+                    <div>
+                      <span style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A', textDecoration: status.isCompleted ? 'line-through' : 'none' }}>
+                        {task.title}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 800, color: '#2563EB', background: '#EFF6FF', padding: '2px 6px', borderRadius: '4px' }}>
+                          {task.category || 'General'}
+                        </span>
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#64748B' }}>
+                          {getFrequencyLabel(task)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>{parent.title}</span>
-                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#2563EB', background: '#EFF6FF', padding: '2px 8px', borderRadius: '6px' }}>
-                            {parent.category || 'General'}
-                          </span>
-                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#7E22CE', background: '#FAF5FF', padding: '2px 8px', borderRadius: '6px' }}>
-                            {freqLabel}
-                          </span>
-                        </div>
+                  <div>
+                    {status.isCompleted ? (
+                      <span style={{ fontSize: '10px', fontWeight: 900, color: '#16A34A', background: '#DCFCE7', padding: '4px 10px', borderRadius: '8px', border: '1px solid #86EFAC' }}>
+                        ✓ Completed
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '10px', fontWeight: 900, color: '#D97706', background: '#FEF3C7', padding: '4px 10px', borderRadius: '8px', border: '1px solid #FDE68A' }}>
+                        ⏳ Pending
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
 
-                        {/* Subtask Progress Counter */}
-                        {children.length > 0 && (
-                          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 700, marginTop: '4px' }}>
-                            {completedMandatory} / {mandatoryChildren.length} mandatory subtasks completed
-                            {mandatoryChildren.length - completedMandatory > 0 && (
-                              <span style={{ color: '#DC2626', marginLeft: '6px', fontWeight: 800 }}>
-                                ({mandatoryChildren.length - completedMandatory} remaining)
-                              </span>
-                            )}
-                          </div>
+      {/* ========================================================================= */}
+      {/* 2. PENDING TASKS LIST (SIMPLIFIED & ACTIONABLE WITH MEASURE MODAL) */}
+      {/* ========================================================================= */}
+      <div style={{ padding: '20px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Activity size={18} color="#EA580C" /> 2. Pending Tasks
+          </h2>
+          <span style={{ fontSize: '11px', fontWeight: 800, color: '#EA580C', background: '#FFF7ED', padding: '4px 10px', borderRadius: '10px', border: '1px solid #FFEDD5' }}>
+            {pendingParentTasks.length} Pending
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {pendingParentTasks.length === 0 ? (
+            <div style={{ padding: '20px', textAlign: 'center', background: '#F0FDF4', borderRadius: '14px', border: '1px solid #BBF7D0', color: '#16A34A', fontSize: '13px', fontWeight: 800 }}>
+              🎉 All tasks are completed for today! Great job!
+            </div>
+          ) : (
+            pendingParentTasks.map(task => {
+              const children = subtasksMap[task.id] || [];
+              const isCompletable = canManuallyCompleteTask(task, children);
+              const isMeasureTask = task.hasMeasureTracking || (task.measureTarget && Number(task.measureTarget) > 0) || task.trackingMode === 'measure';
+
+              return (
+                <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFF7ED', border: '1px solid #FFEDD5', padding: '14px 16px', borderRadius: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EA580C' }} />
+                    <div>
+                      <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>
+                        {task.title}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 800, color: '#EA580C', background: '#FFF', padding: '2px 6px', borderRadius: '4px', border: '1px solid #FFEDD5' }}>
+                          {task.category || 'General'}
+                        </span>
+                        {isMeasureTask && (
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#EC4899', background: '#FDF2F8', padding: '2px 6px', borderRadius: '4px', border: '1px solid #FBCFE8' }}>
+                            <Ruler size={10} style={{ display: 'inline', marginRight: '2px' }} /> Target: {task.measureTarget || 0} {task.measureUnit || 'units'}
+                          </span>
                         )}
                       </div>
                     </div>
-
-                    {/* View Details Button */}
-                    <button
-                      onClick={() => onNavigateToTaskDedicated && onNavigateToTaskDedicated(parent)}
-                      style={{ background: '#FFF', border: '1px solid #CBD5E1', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, color: '#0F172A', cursor: 'pointer' }}
-                    >
-                      View
-                    </button>
                   </div>
 
-                  {/* Subtask Completion Progress Bar */}
-                  {children.length > 0 && (
-                    <div style={{ height: '8px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ width: `${Math.round((completedMandatory / Math.max(1, mandatoryChildren.length)) * 100)}%`, height: '100%', background: '#2563EB', borderRadius: '4px' }} />
-                    </div>
-                  )}
-
-                  {/* Expand/Collapse Hierarchy Toggle */}
-                  {children.length > 0 && (
-                    <div>
+                  <div>
+                    {isCompletable ? (
                       <button
-                        onClick={() => toggleParentExpand(parent.id)}
-                        style={{ background: 'transparent', border: 'none', color: '#2563EB', fontSize: '11px', fontWeight: 800, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onClick={() => handleInitiateTaskCompletion(task)}
+                        style={{
+                          background: 'linear-gradient(135deg, #F97316, #EA580C)',
+                          color: '#FFF',
+                          border: 'none',
+                          padding: '8px 16px',
+                          borderRadius: '10px',
+                          fontSize: '11px',
+                          fontWeight: 900,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          boxShadow: '0 2px 8px rgba(234, 88, 12, 0.2)'
+                        }}
                       >
-                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                        {isExpanded ? 'Hide Subtasks' : `Show Subtasks (${children.length})`}
+                        <Check size={14} /> Complete
                       </button>
+                    ) : (
+                      <div style={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '4px', background: '#F1F5F9', padding: '6px 10px', borderRadius: '8px' }}>
+                        <LockIcon size={12} /> Pending Subtasks
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
 
-                      {/* Expandable Subtasks List */}
-                      {isExpanded && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', paddingLeft: '12px', borderLeft: '2px solid #BFDBFE' }}>
-                          {children.map(st => (
-                            <div key={st.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFF', padding: '8px 12px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <button
-                                  onClick={() => onToggleTask(st.id)}
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                                >
-                                  {st.isDoneToday ? <CheckCircle2 size={18} color="#16A34A" /> : <Circle size={18} color="#CBD5E1" />}
-                                </button>
-                                <span style={{ fontSize: '12px', fontWeight: 800, color: st.isDoneToday ? '#16A34A' : '#0F172A', textDecoration: st.isDoneToday ? 'line-through' : 'none' }}>
-                                  {st.title} {st.isOptional && <span style={{ fontSize: '10px', color: '#94A3B8', fontStyle: 'italic' }}>(Optional)</span>}
+      {/* ========================================================================= */}
+      {/* 3. CATEGORY-WISE TASKS & SUBTASKS LIST */}
+      {/* ========================================================================= */}
+      <div style={{ padding: '20px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Layers size={18} color="#7E22CE" /> 3. Tasks & Subtasks by Category
+        </h2>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {categoriesList.map(cat => {
+            const catTasks = parentTasks.filter(p => p.category === cat);
+            const catDone = catTasks.filter(p => calculateParentCompletionStatus(p, subtasksMap[p.id] || []).isCompleted).length;
+            const catPct = Math.round((catDone / Math.max(1, catTasks.length)) * 100);
+
+            return (
+              <div key={cat} style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '16px', padding: '14px 16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>{cat}</span>
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#7E22CE', background: '#FAF5FF', padding: '2px 8px', borderRadius: '6px' }}>
+                      {catTasks.length} Tasks
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '12px', fontWeight: 900, color: '#16A34A' }}>
+                    {catDone}/{catTasks.length} Done ({catPct}%)
+                  </span>
+                </div>
+
+                {/* List of Tasks & Subtasks under Category */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '8px', borderTop: '1px dashed #CBD5E1' }}>
+                  {catTasks.map(task => {
+                    const children = subtasksMap[task.id] || [];
+                    const status = calculateParentCompletionStatus(task, children);
+
+                    return (
+                      <div key={task.id} style={{ background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '10px 12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', textDecoration: status.isCompleted ? 'line-through' : 'none' }}>
+                            {task.title}
+                          </span>
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: status.isCompleted ? '#16A34A' : '#D97706' }}>
+                            {status.isCompleted ? '✓ Done' : 'Pending'}
+                          </span>
+                        </div>
+
+                        {/* List Child Subtasks */}
+                        {children.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px', paddingLeft: '10px', borderLeft: '2px solid #E2E8F0' }}>
+                            {children.map(st => (
+                              <div key={st.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#475569' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <button onClick={() => onToggleTask(st.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                                    {st.isDoneToday ? <CheckCircle2 size={14} color="#16A34A" /> : <Circle size={14} color="#CBD5E1" />}
+                                  </button>
+                                  <span style={{ textDecoration: st.isDoneToday ? 'line-through' : 'none', fontWeight: 600 }}>
+                                    {st.title}
+                                  </span>
+                                </div>
+                                <span style={{ fontSize: '10px', color: '#94A3B8', fontWeight: 700 }}>
+                                  {st.hasMeasureTracking ? `${st.loggedMeasureVal || st.measureTarget || 0} ${st.measureUnit || ''}` : 'Standard'}
                                 </span>
                               </div>
-
-                              <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B' }}>
-                                {st.hasMeasureTracking ? `${st.measureTarget || 0} ${st.measureUnit || ''}` : 'Standard'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 8. PENDING SUBTASKS DEDICATED SECTION (SECTION 16) */}
-      {/* ========================================================================= */}
-      <div style={{ padding: '20px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <CornerDownRight size={18} color="#DC2626" /> Pending Mandatory Subtasks
-        </h3>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {applicableTasks.filter(p => {
-            const children = subtasksMap[p.id] || [];
-            return children.some(c => !c.isDoneToday && !c.isOptional);
-          }).length === 0 ? (
-            <div style={{ padding: '16px', background: '#F0FDF4', borderRadius: '12px', border: '1px solid #BBF7D0', color: '#16A34A', fontSize: '12px', fontWeight: 800 }}>
-              ✓ All mandatory subtasks completed across all tasks today!
-            </div>
-          ) : (
-            applicableTasks.filter(p => {
-              const children = subtasksMap[p.id] || [];
-              return children.some(c => !c.isDoneToday && !c.isOptional);
-            }).map(p => {
-              const children = subtasksMap[p.id] || [];
-              const pendingSubtasks = children.filter(c => !c.isDoneToday && !c.isOptional);
-
-              return (
-                <div key={p.id} style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: '14px 16px', borderRadius: '14px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 900, color: '#991B1B', marginBottom: '8px' }}>
-                    {p.title} ({children.filter(c => c.isDoneToday).length} / {children.length} subtasks completed)
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {pendingSubtasks.map(st => (
-                      <div key={st.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFF', padding: '8px 12px', borderRadius: '8px', border: '1px solid #FCA5A5' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <button onClick={() => onToggleTask(st.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                            <Circle size={18} color="#DC2626" />
-                          </button>
-                          <span style={{ fontSize: '12px', fontWeight: 800, color: '#7F1D1D' }}>{st.title}</span>
-                        </div>
-                        <button
-                          onClick={() => onToggleTask(st.id)}
-                          style={{ background: '#DC2626', color: '#FFF', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 900, cursor: 'pointer' }}
-                        >
-                          Complete
-                        </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              );
-            })
-          )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 9. COMPLETED TODAY SECTION (SECTION 18, 19, 20) */}
+      {/* 4. COMPLETED TASKS TODAY SECTION */}
       {/* ========================================================================= */}
       <div style={{ padding: '20px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
         <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <CheckCircle2 size={18} color="#16A34A" /> Completed Today
+          <CheckCircle2 size={18} color="#16A34A" /> 4. Completed Today
         </h3>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {applicableTasks.filter(p => {
-            const children = subtasksMap[p.id] || [];
-            const parentStatus = calculateParentCompletionStatus(p, children);
-            return parentStatus.isCompleted;
-          }).length === 0 ? (
+          {completedParentTasks.length === 0 ? (
             <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0', color: '#64748B', fontSize: '12px', fontWeight: 700, fontStyle: 'italic' }}>
               No tasks completed yet today.
             </div>
           ) : (
-            applicableTasks.filter(p => {
-              const children = subtasksMap[p.id] || [];
-              const parentStatus = calculateParentCompletionStatus(p, children);
-              return parentStatus.isCompleted;
-            }).map(parent => (
+            completedParentTasks.map(parent => (
               <div key={parent.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '14px 16px', borderRadius: '14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <button onClick={() => onToggleTask(parent.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
@@ -768,7 +653,7 @@ export default function TodayDashboard({
                   <div>
                     <span style={{ fontSize: '13px', fontWeight: 900, color: '#15803D', textDecoration: 'line-through' }}>{parent.title}</span>
                     <div style={{ fontSize: '11px', color: '#16A34A', fontWeight: 700 }}>
-                      Completed • {parent.hasMeasureTracking ? `Measure: ${parent.loggedMeasureVal || parent.measureTarget || 0} ${parent.measureUnit || ''}` : 'Standard Task'}
+                      Completed • {parent.hasMeasureTracking ? `Logged: ${parent.loggedMeasureVal || parent.measureTarget || 0} ${parent.measureUnit || ''}` : 'Standard Task'}
                     </div>
                   </div>
                 </div>
@@ -796,129 +681,84 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* 10. COMING UP & EARLY COMPLETION SECTION (SECTION 7, 8, 9) */}
+      {/* 5. DAILY ANALYTICS & BREAKDOWN SECTION */}
       {/* ========================================================================= */}
-      <div style={{ padding: '20px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <CalendarDays size={18} color="#8B5CF6" /> Coming Up & Early Completion
+      <div style={{ padding: '20px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <TrendingUp size={18} color="#EA580C" /> 5. Daily Performance & Output Analytics
         </h3>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {parentTasks.slice(0, 2).map(t => (
-            <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FAF5FF', border: '1px solid #E9D5FF', padding: '12px 16px', borderRadius: '12px' }}>
-              <div>
-                <span style={{ fontSize: '13px', fontWeight: 900, color: '#6B21A8' }}>{t.title}</span>
-                <span style={{ fontSize: '10px', color: '#7E22CE', display: 'block', fontWeight: 700 }}>
-                  Scheduled: Tomorrow • Frequency: {getFrequencyLabel(t)}
-                </span>
-              </div>
+        {/* Overall Completion Bar */}
+        <div style={{ background: '#F8FAFC', padding: '14px 16px', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>Overall Completion Bar</span>
+            <span style={{ fontSize: '13px', fontWeight: 900, color: '#EA580C' }}>{stats.completionRate}%</span>
+          </div>
+          <div style={{ height: '10px', background: '#E2E8F0', borderRadius: '6px', overflow: 'hidden' }}>
+            <div style={{ width: `${stats.completionRate}%`, height: '100%', background: 'linear-gradient(90deg, #F97316, #EA580C)', borderRadius: '6px' }} />
+          </div>
 
-              <button
-                onClick={() => setEarlyCompleteTask(t)}
-                style={{ background: '#8B5CF6', color: '#FFF', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: 900, cursor: 'pointer' }}
-              >
-                Complete Early
-              </button>
+          {stats.totalMeasuresVal > 0 && (
+            <div style={{ marginTop: '10px', fontSize: '12px', fontWeight: 800, color: '#EC4899', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Ruler size={14} /> Total Logged Measure Output Today: {stats.totalMeasuresVal} units
             </div>
-          ))}
+          )}
+        </div>
+
+        {/* Task Type Breakdown Grid */}
+        <div>
+          <span style={{ fontSize: '12px', fontWeight: 800, color: '#64748B', display: 'block', marginBottom: '8px' }}>Task Type Breakdown</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+            <div style={{ padding: '10px 12px', borderRadius: '12px', background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#1E40AF', display: 'block' }}>Date Range</span>
+              <span style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>{typeBreakdown.endDate.total} tasks</span>
+              <span style={{ fontSize: '10px', color: '#64748B', display: 'block', fontWeight: 600 }}>{typeBreakdown.endDate.done} done</span>
+            </div>
+
+            <div style={{ padding: '10px 12px', borderRadius: '12px', background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#15803D', display: 'block' }}>Day Count</span>
+              <span style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>{typeBreakdown.dayCount.total} tasks</span>
+              <span style={{ fontSize: '10px', color: '#64748B', display: 'block', fontWeight: 600 }}>{typeBreakdown.dayCount.done} done</span>
+            </div>
+
+            <div style={{ padding: '10px 12px', borderRadius: '12px', background: '#FAF5FF', border: '1px solid #E9D5FF' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#7E22CE', display: 'block' }}>Event Count</span>
+              <span style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>{typeBreakdown.eventCount.total} tasks</span>
+              <span style={{ fontSize: '10px', color: '#64748B', display: 'block', fontWeight: 600 }}>{typeBreakdown.eventCount.done} done</span>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 11. TASKS BY CATEGORY ACCORDION (EXPANDABLE CATEGORY CARDS) */}
+      {/* MOTIVATIONAL SUMMARY FOOTER */}
       {/* ========================================================================= */}
-      <div style={{ padding: '20px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Trophy size={18} color="#F59E0B" /> Tasks by Category
-        </h3>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {categoriesList.map(cat => {
-            const catTasks = parentTasks.filter(p => p.category === cat);
-            const catDone = catTasks.filter(p => calculateParentCompletionStatus(p, subtasksMap[p.id] || []).isCompleted).length;
-            const catPct = Math.round((catDone / Math.max(1, catTasks.length)) * 100);
-            const isCatExpanded = !!expandedCategories[cat];
-
-            return (
-              <div key={cat} style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '14px 16px' }}>
-                <div onClick={() => toggleCategoryExpand(cat)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
-                  <div>
-                    <span style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>{cat}</span>
-                    <span style={{ fontSize: '11px', color: '#64748B', marginLeft: '8px', fontWeight: 700 }}>
-                      {catTasks.length} tasks • {catDone} completed
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 900, color: '#2563EB' }}>{catPct}%</span>
-                    {isCatExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                  </div>
-                </div>
-
-                {isCatExpanded && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #CBD5E1' }}>
-                    {catTasks.map(t => (
-                      <div key={t.id} style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>• {t.title}</span>
-                        <span style={{ color: t.isDoneToday ? '#16A34A' : '#D97706' }}>
-                          {t.isDoneToday ? '✓ Done' : 'Pending'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+      <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #FFF7ED, #EFF6FF)', borderRadius: '24px', border: '1px solid #FED7AA', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <span style={{ fontSize: '11px', fontWeight: 900, color: '#C2410C', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Sparkles size={14} color="#EA580C" /> Daily Discipline Summary
+          </span>
+          <h4 style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', margin: '4px 0 0 0' }}>
+            {stats.completionRate === 100 ? '🔥 Perfect Day! 100% Workload Completed!' : `Keep going! You have completed ${stats.completedCount} of ${stats.totalCount} tasks.`}
+          </h4>
         </div>
+
+        <button 
+          onClick={onOpenQuickAdd}
+          style={{ background: '#EA580C', color: '#FFF', border: 'none', padding: '10px 18px', borderRadius: '12px', fontSize: '12px', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+        >
+          <Plus size={16} /> Quick Add Task
+        </button>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 12. MOTIVATIONAL FOOTER & STREAK INFO (SECTION 33, 34) */}
-      {/* ========================================================================= */}
-      <div style={{ padding: '16px 20px', background: stats.completionRate === 100 ? '#F0FDF4' : '#FFF7ED', borderRadius: '16px', border: stats.completionRate === 100 ? '1px solid #BBF7D0' : '1px solid #FFEDD5', textAlign: 'center' }}>
-        <div style={{ fontSize: '13px', fontWeight: 900, color: stats.completionRate === 100 ? '#15803D' : '#C2410C' }}>
-          {stats.completionRate === 100 
-            ? '🎉 Everything completed for today! Great job!' 
-            : `Great work — you've completed ${stats.completionRate}% of today's tasks. ${stats.pendingCount} remaining. Finish strong!`}
-        </div>
-      </div>
-
-      {/* Measure Edit Modal */}
+      {/* MEASURE LOGGING & EDITING MODAL */}
       <TodayMeasureEditModal 
         isOpen={!!measureModalTask}
         task={measureModalTask}
         onClose={() => setMeasureModalTask(null)}
-        onSaveMeasure={(taskId, val) => {
-          if (onUpdateTaskProgress) onUpdateTaskProgress(taskId, val);
-        }}
+        onSaveMeasure={handleSaveMeasureValue}
       />
 
-      {/* Complete Early Confirmation Modal */}
-      {earlyCompleteTask && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px' }}>
-          <div style={{ background: '#FFF', padding: '24px', borderRadius: '20px', maxWidth: '380px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.15)' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0 }}>Complete Early Confirmation</h3>
-            <p style={{ fontSize: '12px', color: '#64748B', marginTop: '8px' }}>
-              Complete <strong>{earlyCompleteTask.title}</strong> today in advance? Original schedule rules will remain intact.
-            </p>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '16px' }}>
-              <button onClick={() => setEarlyCompleteTask(null)} style={{ padding: '8px 16px', background: '#FFF', border: '1px solid #CBD5E1', borderRadius: '10px', fontSize: '12px', fontWeight: 800, color: '#475569', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleConfirmEarlyComplete} style={{ padding: '8px 16px', background: '#8B5CF6', border: 'none', borderRadius: '10px', fontSize: '12px', fontWeight: 900, color: '#FFF', cursor: 'pointer' }}>Confirm Early Completion</button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
-  );
-}
-
-// Lock Icon Helper Component for Auto-Completing Parent Tasks
-function LockIcon({ size = 18, color = "#94A3B8" }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
   );
 }
