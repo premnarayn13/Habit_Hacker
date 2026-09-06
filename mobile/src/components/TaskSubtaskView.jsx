@@ -84,12 +84,12 @@ export default function TaskSubtaskView({
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // Helper: Is task overall finished (e.g. 30 days period over or 100% target count met)
+  // Helper: Is task overall finished (Refers exclusively to tasks whose planned period/end date has reached)
   const isTaskOverallFinished = (t) => {
     if (!t || t.isArchived) return false;
-    const isTargetMet = (t.progressPercent && t.progressPercent >= 100) || (t.targetCount && t.currentCount >= t.targetCount);
-    const isPeriodOver = Boolean(t.plannedEnd && t.plannedEnd < todayStr);
-    return isTargetMet || isPeriodOver;
+    const isPeriodEnded = Boolean(t.plannedEnd && t.plannedEnd < todayStr);
+    const isTargetMetAndEnded = Boolean(t.progressPercent >= 100 && (!t.plannedEnd || t.plannedEnd <= todayStr));
+    return isPeriodEnded || isTargetMetAndEnded;
   };
 
   // Filter Type: Parents vs Subtasks vs Completed

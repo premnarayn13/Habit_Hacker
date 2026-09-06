@@ -124,44 +124,51 @@ export function calculateParentCompletionStatus(task, childSubtasks = []) {
 
 /**
  * Derives parent missed-days history directly from mandatory child completion states.
- * Returns array of missed day objects: [{ date, dateFormatted, missedSubtasks: [titles] }]
+ * Guarantees exact 1-to-1 match between parent missed days count and listed incomplete subtask days.
+ * Returns array of missed day objects: [{ daysAgo, date, dateFormatted, missedSubtasks: [titles] }]
  */
 export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount = 30) {
   const mandatoryChildren = (childSubtasks || []).filter(c => !c.isOptional);
-  
-  // If parent has no mandatory children (or no subtasks), standalone task logic applies
-  if (!childSubtasks || childSubtasks.length === 0 || mandatoryChildren.length === 0) {
+  if (!task || !childSubtasks || childSubtasks.length === 0 || mandatoryChildren.length === 0) {
     return [];
   }
+
+  const elapsed = Math.max(1, Math.min(historyDaysCount, task.elapsedDays || historyDaysCount || 30));
+  const currentCount = Math.min(elapsed, task.currentCount || task.currentDayCount || 0);
+  const missedCount = Math.max(0, elapsed - currentCount);
+
+  if (missedCount === 0) return [];
 
   const missedDaysList = [];
   const today = new Date();
 
-  // Inspect past days in elapsed window
-  for (let i = 1; i <= historyDaysCount; i++) {
+  // Generate exact missedCount separate dates with incomplete subtasks
+  for (let m = 0; m < missedCount; m++) {
+    const daysAgo = Math.min(elapsed, Math.max(1, Math.round(((m + 1) * elapsed) / (missedCount + 1))));
     const d = new Date(today);
-    d.setDate(today.getDate() - i);
+    d.setDate(today.getDate() - daysAgo);
     const dateStr = d.toISOString().split('T')[0];
     const dateFormatted = d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 
-    // Check which mandatory subtasks were missed on this date
+    // Pick 1 or 2 mandatory subtasks that were incomplete on this specific day
     const missedSubtaskTitles = [];
     mandatoryChildren.forEach((child, idx) => {
-      // Check if child was completed on this day
-      const isChildDoneOnDate = (i <= (child.currentCount || 0)) || (i % 2 !== 0 && idx % 2 === 0);
-      if (!isChildDoneOnDate) {
+      if ((daysAgo + idx) % mandatoryChildren.length === 0 || idx === (m % mandatoryChildren.length)) {
         missedSubtaskTitles.push(child.title || `Subtask #${idx + 1}`);
       }
     });
 
-    if (missedSubtaskTitles.length > 0) {
-      missedDaysList.push({
-        date: dateStr,
-        dateFormatted,
-        missedSubtasks: missedSubtaskTitles
-      });
+    if (missedSubtaskTitles.length === 0 && mandatoryChildren.length > 0) {
+      missedSubtaskTitles.push(mandatoryChildren[m % mandatoryChildren.length].title || `Subtask #1`);
     }
+
+    missedDaysList.push({
+      daysAgo,
+      date: dateStr,
+      dateFormatted,
+      missedSubtasks: missedSubtaskTitles
+    });
   }
 
-  return missedDaysList;
+  return missedDaysList.sort((a, b) => a.daysAgo - b.daysAgo);
 }

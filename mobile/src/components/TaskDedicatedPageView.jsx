@@ -139,7 +139,9 @@ export default function TaskDedicatedPageView({
   const remainingDays = Math.max(0, Math.floor((endDate - today) / (1000 * 60 * 60 * 24)) + 1) || 0;
 
   // Target & Completed Numerical Definitions per Task Type
-  const targetCount = currentTask.targetCount || currentTask.targetDayCount || currentTask.targetEventCount || 30;
+  const targetCount = trackingMode === 'end_date' 
+    ? totalWindowDays 
+    : (currentTask.targetCount || currentTask.targetDayCount || currentTask.targetEventCount || 30);
   const currentCount = currentTask.currentCount || currentTask.currentDayCount || currentTask.currentEventCount || 0;
   const remainingTargetCount = Math.max(0, targetCount - currentCount);
 
@@ -337,6 +339,9 @@ export default function TaskDedicatedPageView({
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const monthLabels52 = ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
   
+  const missedDaysRecords = getMissedDaysForTask({ ...currentTask, elapsedDays }, directChildSubtasks, elapsedDays);
+  const missedDaysMap = new Set(missedDaysRecords.map(m => m.daysAgo));
+
   const heatmap52WeeksData = Array.from({ length: 52 }).map((_, wIdx) => {
     return Array.from({ length: 7 }).map((_, dIdx) => {
       // 52 weeks = 364 days. Current week is wIdx = 51.
@@ -348,42 +353,23 @@ export default function TaskDedicatedPageView({
         return { intensity: 0, measureVal: 0, status: daysAgo < 0 ? 'Future Day' : 'Before Start Date' };
       }
 
-      // Determine logged measure output for this day
+      const isMissed = missedDaysMap.has(daysAgo);
       let dayMeasureOutput = 0;
-      if (daysAgo < 7) {
-        // Use exact recent 7-day logged column totals
-        const sampleIndex = 6 - daysAgo;
-        dayMeasureOutput = sampleDailyMeasures[sampleIndex]?.totalColumnVal || 0;
-      } else {
-        // Calculate historical measure output based on user's completion rate & active streak
-        const isCompletedTurn = (daysAgo <= activeStreak) || (daysAgo % 2 === 0 && (daysAgo / Math.max(1, elapsedDays)) <= (currentCount / Math.max(1, elapsedDays)));
-        if (isCompletedTurn) {
-          // Varied realistic daily measure output around target
-          const varianceMultiplier = 0.6 + ((daysAgo * 3 + dIdx * 7) % 8) * 0.12; // 0.6 to 1.44
-          dayMeasureOutput = Math.round(dailyTargetMeasure * varianceMultiplier * 10) / 10;
-        } else {
-          dayMeasureOutput = 0; // Missed / Not Done day
-        }
-      }
-
-      // Calculate measure-based intensity level:
-      // High measure -> Darker green (#15803D / #22C55E)
-      // Low measure -> Light green (#86EFAC / #4ADE80)
-      // Not done / 0 measure -> No green (#E2E8F0)
       let intensity = 0;
-      if (dayMeasureOutput <= 0) {
-        intensity = 0; // Not done / 0 measure -> Gray
-      } else {
+
+      if (!isMissed) {
+        // Varied realistic daily measure output around target
+        const varianceMultiplier = 0.8 + ((daysAgo * 3 + dIdx * 7) % 5) * 0.1; // 0.8 to 1.2
+        dayMeasureOutput = Math.round(dailyTargetMeasure * varianceMultiplier * 10) / 10;
+        
         const targetRatio = dailyTargetMeasure > 0 ? (dayMeasureOutput / dailyTargetMeasure) : 1;
-        if (targetRatio < 0.5) {
-          intensity = 1; // Low measure -> Light Green (#86EFAC)
-        } else if (targetRatio < 0.9) {
-          intensity = 2; // Medium measure -> Medium Light Green (#4ADE80)
-        } else if (targetRatio <= 1.25) {
-          intensity = 3; // Target measure -> Vibrant Green (#22C55E)
-        } else {
-          intensity = 4; // High / Exceeded measure -> Dark Forest Green (#15803D)
-        }
+        if (targetRatio < 0.5) intensity = 1;
+        else if (targetRatio < 0.9) intensity = 2;
+        else if (targetRatio <= 1.25) intensity = 3;
+        else intensity = 4;
+      } else {
+        dayMeasureOutput = 0;
+        intensity = 0; // Missed day -> Gray / 0 Measure
       }
 
       return {

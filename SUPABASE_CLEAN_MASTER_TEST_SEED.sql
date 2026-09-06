@@ -134,33 +134,33 @@ VALUES
   ('st-3-5', 'task-3-eventcount', 'default-user', 'Subtask 3.5 — Optional Subtask',    'count_event', FALSE,0.0, 'units',     0.0, TRUE,  FALSE, 0);
 
 -- -------------------------------------------------------------------------
--- TASK 4: Parent with ONLY ONE Optional Subtask (Edge Case 10)
+-- TASK 4: Parent with ONLY ONE Optional Subtask (Reading Plan)
 -- -------------------------------------------------------------------------
-INSERT INTO public.tasks (id, user_id, title, description, category, priority, tracking_mode, planned_start, planned_end, measure_target, measure_unit, is_optional, is_done_today, progress_percent)
-VALUES ('task-4-singleoptional', 'default-user', 'Task 4 — Single Optional Subtask Parent', 'Edge Case 10: Parent with only 1 optional child behaves standalone', 'General', 'MEDIUM', 'end_date', '2026-08-01', '2026-09-30', 20.0, 'pages', FALSE, FALSE, 40);
+INSERT INTO public.tasks (id, user_id, title, description, category, priority, tracking_mode, planned_start, planned_end, target_count, current_count, measure_target, measure_unit, is_optional, is_done_today, progress_percent)
+VALUES ('task-4-singleoptional', 'default-user', 'Task 4 — Single Optional Subtask Parent', 'Edge Case 10: Parent with only 1 optional child behaves standalone', 'Reading', 'HIGH', 'end_date', '2026-08-10', '2026-09-20', 42, 28, 25.0, 'pages', FALSE, FALSE, 67);
 
 INSERT INTO public.subtasks (id, parent_task_id, user_id, title, tracking_mode, has_measure_tracking, is_optional, is_done_today, progress_percent)
-VALUES ('st-4-1', 'task-4-singleoptional', 'default-user', 'Subtask 4.1 — Optional Child', 'end_date', FALSE, TRUE, FALSE, 0);
+VALUES ('st-4-1', 'task-4-singleoptional', 'default-user', 'Subtask 4.1 — Optional Notes Summary', 'end_date', FALSE, TRUE, FALSE, 0);
 
 -- -------------------------------------------------------------------------
--- TASK 5: Standalone Task with No Measure & No Child Tasks (Edge Case 11)
+-- TASK 5: Standalone Task with No Measure & No Child Tasks (Mindfulness Challenge)
 -- -------------------------------------------------------------------------
-INSERT INTO public.tasks (id, user_id, title, description, category, priority, tracking_mode, planned_start, planned_end, has_measure_tracking, measure_target, is_optional, is_done_today, progress_percent)
-VALUES ('task-5-standalone-nomeasure', 'default-user', 'Task 5 — Standalone No Measure', 'Edge Case 11: Task with 0 children and no measure tracking', 'General', 'LOW', 'end_date', '2026-08-01', '2026-09-10', FALSE, 0.0, FALSE, FALSE, 50);
+INSERT INTO public.tasks (id, user_id, title, description, category, priority, tracking_mode, planned_start, planned_end, target_count, current_count, has_measure_tracking, measure_target, is_optional, is_done_today, progress_percent)
+VALUES ('task-5-standalone-nomeasure', 'default-user', 'Task 5 — Standalone No Measure', 'Edge Case 11: Task with 0 children and no measure tracking', 'Mindfulness', 'MEDIUM', 'count_days', '2026-08-15', '2026-09-30', 30, 18, FALSE, 0.0, FALSE, FALSE, 60);
 
 -- -------------------------------------------------------------------------
--- TASK 6: Parent Task with No Measure with 5 Child Tasks
+-- TASK 6: Parent Task with No Measure with 5 Child Tasks (Software Engineering)
 -- -------------------------------------------------------------------------
-INSERT INTO public.tasks (id, user_id, title, description, category, priority, tracking_mode, planned_start, planned_end, has_measure_tracking, measure_target, is_optional, is_done_today, progress_percent)
-VALUES ('task-6-parent-nomeasure', 'default-user', 'Task 6 — Parent No Measure with 5 Children', 'Parent task has no independent measure; measure derived from subtasks', 'Projects', 'HIGH', 'end_date', '2026-08-01', '2026-09-25', FALSE, 0.0, FALSE, FALSE, 70);
+INSERT INTO public.tasks (id, user_id, title, description, category, priority, tracking_mode, planned_start, planned_end, target_count, current_count, has_measure_tracking, measure_target, is_optional, is_done_today, progress_percent)
+VALUES ('task-6-parent-nomeasure', 'default-user', 'Task 6 — Parent No Measure with 5 Children', 'Parent task has no independent measure; measure derived from subtasks', 'Engineering', 'CRITICAL', 'end_date', '2026-08-01', '2026-09-25', 56, 38, FALSE, 0.0, FALSE, FALSE, 68);
 
 INSERT INTO public.subtasks (id, parent_task_id, user_id, title, tracking_mode, has_measure_tracking, measure_target, measure_unit, logged_measure_val, is_optional, is_done_today, progress_percent)
 VALUES 
-  ('st-6-1', 'task-6-parent-nomeasure', 'default-user', 'Subtask 6.1 — Measured End Date',   'end_date',   TRUE,  6.0, 'tasks', 6.0, FALSE, TRUE,  100),
-  ('st-6-2', 'task-6-parent-nomeasure', 'default-user', 'Subtask 6.2 — Measured Day Count',  'count_days', TRUE,  4.0, 'days',  4.0, FALSE, TRUE,  100),
-  ('st-6-3', 'task-6-parent-nomeasure', 'default-user', 'Subtask 6.3 — Measured Event Count','count_event',TRUE,  2.0, 'events',2.0, FALSE, TRUE,  100),
-  ('st-6-4', 'task-6-parent-nomeasure', 'default-user', 'Subtask 6.4 — No Measure Subtask',  'end_date',   FALSE, 0.0, 'units', 0.0, FALSE, TRUE,  100), -- Derives Avg: (6+4+2)/3 = 4.0
-  ('st-6-5', 'task-6-parent-nomeasure', 'default-user', 'Subtask 6.5 — Optional Subtask',    'end_date',   FALSE, 0.0, 'units', 0.0, TRUE,  FALSE, 0);
+  ('st-6-1', 'task-6-parent-nomeasure', 'default-user', 'Subtask 6.1 — Pull Request Code Reviews',    'end_date',   TRUE,  8.0, 'pull_requests', 8.0, FALSE, TRUE,  100),
+  ('st-6-2', 'task-6-parent-nomeasure', 'default-user', 'Subtask 6.2 — API Integration Test Suites',  'count_days', TRUE,  5.0, 'test_suites',   5.0, FALSE, TRUE,  100),
+  ('st-6-3', 'task-6-parent-nomeasure', 'default-user', 'Subtask 6.3 — Database Performance Profiling','count_event',TRUE,  3.0, 'benchmarks',    3.0, FALSE, TRUE,  100),
+  ('st-6-4', 'task-6-parent-nomeasure', 'default-user', 'Subtask 6.4 — Architecture Documentation',   'end_date',   FALSE, 0.0, 'units',         0.0, FALSE, TRUE,  100),
+  ('st-6-5', 'task-6-parent-nomeasure', 'default-user', 'Subtask 6.5 — Optional Demo Video Recording', 'end_date',   FALSE, 0.0, 'units',         0.0, TRUE,  FALSE, 0);
 
 -- -------------------------------------------------------------------------
 -- TASK 7: Day Count Task — COMPLETED (For Testing Extend Functionality)
