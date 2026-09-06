@@ -825,7 +825,7 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* 11. TASKS BY CATEGORY ACCORDION (SECTION 24, 25) */}
+      {/* 11. TASKS BY CATEGORY ACCORDION (EXPANDABLE CATEGORY CARDS) */}
       {/* ========================================================================= */}
       <div style={{ padding: '20px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
         <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
