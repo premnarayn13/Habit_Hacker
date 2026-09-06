@@ -409,6 +409,7 @@ export default function TodayDashboard({
 
       {/* ========================================================================= */}
       {/* 5. TASK TYPE BREAKDOWN & FILTER ROW */}
+      {/* Interactive breakdown cards and horizontal scrollable filter chips */}
       {/* ========================================================================= */}
       <div style={{ padding: '20px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
