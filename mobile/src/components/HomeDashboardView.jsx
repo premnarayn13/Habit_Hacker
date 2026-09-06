@@ -218,16 +218,20 @@ export default function HomeDashboardView({
     const needsAttentionCategory = categoryStats.length > 0 ? categoryStats[categoryStats.length - 1] : { category: 'None', rate: 0 };
     const mostActiveCategory = categoryStats.slice().sort((a, b) => b.total - a.total)[0] || { category: 'None', total: 0 };
 
-    // Accumulated Measures
+    // Accumulated Measures & Category Distribution
     let questionsSolved = 0;
     let pagesRead = 0;
     let exerciseMins = 0;
     let studyHours = 0;
+    const measureCategoryTotals = {};
 
     periodFilteredTasks.forEach(t => {
-      if (t.hasMeasureTracking || t.loggedMeasureVal || t.currentEventWork) {
-        const val = Number(t.loggedMeasureVal || t.currentEventWork || 0);
+      if (t && (t.hasMeasureTracking || t.loggedMeasureVal || t.currentEventWork || t.measureUnit)) {
+        const val = Number(t.loggedMeasureVal || t.currentEventWork || 1);
         const unit = (t.measureUnit || '').toLowerCase();
+        const cat = t.category || 'General';
+        measureCategoryTotals[cat] = (measureCategoryTotals[cat] || 0) + val;
+
         if (unit.includes('question') || unit.includes('problem')) questionsSolved += val;
         else if (unit.includes('page')) pagesRead += val;
         else if (unit.includes('min') || unit.includes('exercise')) exerciseMins += val;
@@ -236,10 +240,44 @@ export default function HomeDashboardView({
       }
     });
 
+    const totalMeasureUnits = questionsSolved + pagesRead + exerciseMins + studyHours || 100;
+    const measureCategoryShare = Object.entries(measureCategoryTotals).map(([cat, val]) => ({
+      category: cat,
+      val,
+      percent: Math.round((val / totalMeasureUnits) * 100)
+    })).sort((a, b) => b.val - a.val);
+
     // Event Count Specifics
     const totalEventsTarget = 30;
     const completedEventsCount = eventCountTasks.reduce((acc, t) => acc + (t.currentCount || 0), 0);
-    const activeCurrentEventProgress = eventCountTasks.find(t => t.currentEventWork > 0) || null;
+    const activeCurrentEventProgress = eventCountTasks.find(t => t.currentEventWork > 0 || (t.progressPercent > 0 && t.progressPercent < 100)) || eventCountTasks[0] || {
+      id: 'mock_active_event',
+      title: 'Solve 10 Physics Problem Sets',
+      category: 'Academics',
+      currentCount: 7,
+      targetCount: 10
+    };
+
+    // Segmented Event History
+    const segmentedEvents = (eventCountTasks.length > 0 ? eventCountTasks.slice(0, 3) : [
+      { id: 'ev_1', title: 'Daily Coding Exercises', category: 'Coding', currentCount: 8, targetCount: 10, isDoneToday: false },
+      { id: 'ev_2', title: 'Read Research Papers', category: 'Academics', currentCount: 5, targetCount: 5, isDoneToday: true },
+      { id: 'ev_3', title: 'Workout Reps', category: 'Health', currentCount: 12, targetCount: 15, isDoneToday: false }
+    ]).map(t => {
+      const children = subtasksMap[t.id] || [];
+      const current = t.currentCount || (t.progressPercent ? Math.round(t.progressPercent / 10) : 7);
+      const target = t.targetCount || 10;
+      return {
+        id: t.id,
+        title: t.title,
+        category: t.category || 'General',
+        currentCount: current,
+        targetCount: target,
+        subtasksCount: children.length,
+        isDone: t.isDoneToday || t.progressPercent >= 100,
+        progressPercent: Math.min(100, Math.round((current / target) * 100))
+      };
+    });
 
     return {
       totalParents,
@@ -291,7 +329,12 @@ export default function HomeDashboardView({
         questionsSolved: Math.round(questionsSolved || 142),
         pagesRead: Math.round(pagesRead || 280),
         exerciseMins: Math.round(exerciseMins || 640),
-        studyHours: Math.round(studyHours || 32)
+        studyHours: Math.round(studyHours || 32),
+        categoryShare: measureCategoryShare.length > 0 ? measureCategoryShare : [
+          { category: 'Academics', percent: 45, val: 180 },
+          { category: 'Coding', percent: 35, val: 140 },
+          { category: 'Personal', percent: 20, val: 80 }
+        ]
       },
       events: {
         completed: completedEventsCount || 18,
@@ -299,7 +342,8 @@ export default function HomeDashboardView({
         rate: Math.min(100, Math.round(((completedEventsCount || 18) / totalEventsTarget) * 100)),
         completedThisWeek: 7,
         completedToday: 2,
-        activeCurrent: activeCurrentEventProgress
+        activeCurrent: activeCurrentEventProgress,
+        segmentedEvents
       }
     };
   }, [periodFilteredTasks, parentTasks, subtasksMap, disciplineScore]);
@@ -974,7 +1018,7 @@ export default function HomeDashboardView({
         </div>
       </div>
 
-      {/* 6. MOMENTUM, STREAKS & CONSISTENCY HEATMAP */}
+      {/* 7. LAYER D: 12-WEEK CONSISTENCY HEATMAP, STREAKS & MOMENTUM (PHASE 7) */}
       <div style={{
         background: '#FFFFFF',
         border: '1px solid #E2E8F0',
@@ -984,10 +1028,10 @@ export default function HomeDashboardView({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <div>
             <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Flame size={18} color="#DC2626" /> Streak & Consistency Heatmap
+              <Flame size={18} color="#DC2626" /> Consistency Heatmap, Streaks & Momentum
             </h3>
             <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
-              Visualizing historical consistency over the last 12 weeks.
+              12-week activity matrix and habit streak compliance performance.
             </p>
           </div>
           <button 
@@ -998,28 +1042,38 @@ export default function HomeDashboardView({
           </button>
         </div>
 
-        {/* Streaks Banner Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+        {/* Streaks & Momentum Banner Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '16px' }}>
           <div style={{ padding: '12px', background: 'linear-gradient(135deg, #FEF2F2, #FFF)', borderRadius: '12px', border: '1px solid #FCA5A5' }}>
             <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 800, display: 'block' }}>CURRENT STREAK</span>
-            <span style={{ fontSize: '24px', fontWeight: 900, color: '#DC2626', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              🔥 12 <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 700 }}>Days</span>
+            <span style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              🔥 12 <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>Days</span>
             </span>
+            <span style={{ fontSize: '10px', color: '#DC2626', fontWeight: 700, display: 'block' }}>15 days to longest</span>
           </div>
 
           <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
             <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>LONGEST STREAK</span>
-            <span style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A' }}>
-              27 <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 700 }}>Days</span>
+            <span style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A' }}>
+              27 <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>Days</span>
             </span>
+            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 600, display: 'block' }}>Personal record</span>
           </div>
 
           <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>WEEKLY MOMENTUM</span>
-            <span style={{ fontSize: '16px', fontWeight: 900, color: '#16A34A', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>AVERAGE STREAK</span>
+            <span style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A' }}>
+              8 <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>Days</span>
+            </span>
+            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 600, display: 'block' }}>System baseline</span>
+          </div>
+
+          <div style={{ padding: '12px', background: '#F0FDF4', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
+            <span style={{ fontSize: '10px', color: '#15803D', fontWeight: 800, display: 'block' }}>WEEKLY MOMENTUM</span>
+            <span style={{ fontSize: '16px', fontWeight: 900, color: '#16A34A', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
               <TrendingUp size={16} /> ↑ 12 pts
             </span>
-            <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700 }}>Better than last week</span>
+            <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>Improving momentum</span>
           </div>
         </div>
 
@@ -1074,77 +1128,204 @@ export default function HomeDashboardView({
         </div>
       </div>
 
-      {/* 7. EVENT-COUNT & ACCUMULATED MEASURE INTELLIGENCE */}
+      {/* 8. LAYER C & D: MEASURED WORK & EVENT-COUNT INTELLIGENCE (PHASE 8) */}
       {(visibility.hasMeasures || visibility.hasEventTasks) && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-          
-          {/* Measures Overview */}
-          {visibility.hasMeasures && (
-            <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '16px', padding: '20px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Activity size={18} color="#DC2626" /> Accumulated Measures
+        <div style={{
+          background: '#FFFFFF',
+          border: '1px solid #E2E8F0',
+          borderRadius: '16px',
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                <Activity size={18} color="#DC2626" /> Measured Work & Event-Count Intelligence
               </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>QUESTIONS SOLVED</span>
-                  <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.questionsSolved}</span>
-                  <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 18% vs prev period</span>
-                </div>
-
-                <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>PAGES READ</span>
-                  <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.pagesRead}</span>
-                  <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 9% vs prev period</span>
-                </div>
-
-                <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>EXERCISE MINS</span>
-                  <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.exerciseMins}m</span>
-                  <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>→ Stable</span>
-                </div>
-
-                <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>STUDY HOURS</span>
-                  <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.studyHours}h</span>
-                  <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 14% vs prev period</span>
-                </div>
-              </div>
+              <p style={{ fontSize: '12px', color: '#64748B', margin: '2px 0 0 0' }}>
+                Accumulated units, dynamic metric tracking, live event accumulation, and segmented milestone history.
+              </p>
             </div>
-          )}
+            <button 
+              onClick={() => onNavigateToTab?.('analytics')}
+              style={{ background: 'transparent', border: 'none', color: '#DC2626', fontSize: '12px', fontWeight: 800, cursor: 'pointer' }}
+            >
+              Measures & Events Analytics →
+            </button>
+          </div>
 
-          {/* Events Progress */}
-          {visibility.hasEventTasks && (
-            <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '16px', padding: '20px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Zap size={18} color="#7E22CE" /> Event-Count Progress
-              </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+            
+            {/* Measured Work Unit Cards & Distribution */}
+            {visibility.hasMeasures && (
+              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>
+                  ACCUMULATED WORK BY UNIT TYPE
+                </div>
 
-              <div style={{ padding: '14px', background: '#FAF5FF', borderRadius: '12px', border: '1px solid #E9D5FF', marginBottom: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: '#7E22CE', marginBottom: '4px' }}>
-                  <span>Completed Events Target</span>
-                  <span>{stats.events.completed} / {stats.events.target} ({stats.events.rate}%)</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                  <div style={{ padding: '12px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                    <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>QUESTIONS SOLVED</span>
+                    <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.questionsSolved}</span>
+                    <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 18% vs prev period</span>
+                  </div>
+
+                  <div style={{ padding: '12px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                    <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>PAGES READ</span>
+                    <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.pagesRead}</span>
+                    <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 9% vs prev period</span>
+                  </div>
+
+                  <div style={{ padding: '12px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                    <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>EXERCISE MINS</span>
+                    <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.exerciseMins}m</span>
+                    <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>→ Stable</span>
+                  </div>
+
+                  <div style={{ padding: '12px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                    <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>STUDY HOURS</span>
+                    <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.studyHours}h</span>
+                    <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 14% vs prev period</span>
+                  </div>
                 </div>
-                <div style={{ height: '8px', borderRadius: '4px', background: '#F3E8FF', overflow: 'hidden' }}>
-                  <div style={{ width: `${stats.events.rate}%`, height: '100%', background: '#7E22CE', borderRadius: '4px' }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748B', fontWeight: 700, marginTop: '6px' }}>
-                  <span>Today: +{stats.events.completedToday}</span>
-                  <span>This Week: +{stats.events.completedThisWeek}</span>
+
+                {/* Category Share of Measured Work */}
+                <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, color: '#0F172A', marginBottom: '6px' }}>
+                    <span>Measured Work Category Share</span>
+                    <span style={{ color: '#64748B' }}>
+                      {stats.measures.categoryShare.map(c => `${c.category}: ${c.percent}%`).join(' · ')}
+                    </span>
+                  </div>
+                  <div style={{ height: '6px', borderRadius: '3px', background: '#E2E8F0', display: 'flex', overflow: 'hidden' }}>
+                    {stats.measures.categoryShare.map((c, idx) => {
+                      const palette = ['#DC2626', '#2563EB', '#16A34A', '#7E22CE', '#D97706'];
+                      return (
+                        <div key={c.category} style={{ width: `${c.percent}%`, background: palette[idx % palette.length] }} title={`${c.category} ${c.percent}%`} />
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
+            )}
 
-              {stats.events.activeCurrent && (
-                <div style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>CURRENT EVENT ACCUMULATION</span>
-                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>{stats.events.activeCurrent.title}</span>
-                  <span style={{ fontSize: '11px', color: '#7E22CE', fontWeight: 800, display: 'block' }}>
-                    Progress: {stats.events.activeCurrent.currentCount} / {stats.events.activeCurrent.targetCount || 10} units accumulated
+            {/* Event-Count Analytics & Live Target Grid */}
+            {visibility.hasEventTasks && (
+              <div style={{ padding: '16px', background: '#FAF5FF', borderRadius: '14px', border: '1px solid #E9D5FF', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#7E22CE', letterSpacing: '0.05em' }}>
+                    EVENT-COUNT ANALYTICS & TARGET PROGRESS
+                  </span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#7E22CE', background: '#F3E8FF', padding: '2px 8px', borderRadius: '6px' }}>
+                    {stats.events.rate}% Target Complete
                   </span>
                 </div>
-              )}
+
+                {/* Event Target Progress Bar */}
+                <div style={{ padding: '12px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E9D5FF' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: '#7E22CE', marginBottom: '4px' }}>
+                    <span>Events Goal Accumulation</span>
+                    <span>{stats.events.completed} / {stats.events.target} Events</span>
+                  </div>
+                  <div style={{ height: '8px', borderRadius: '4px', background: '#F3E8FF', overflow: 'hidden' }}>
+                    <div style={{ width: `${stats.events.rate}%`, height: '100%', background: '#7E22CE', borderRadius: '4px' }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748B', fontWeight: 700, marginTop: '6px' }}>
+                    <span>Completed Today: +{stats.events.completedToday}</span>
+                    <span>Completed This Week: +{stats.events.completedThisWeek}</span>
+                  </div>
+                </div>
+
+                {/* Active Current Event Accumulation Card */}
+                {stats.events.activeCurrent && (
+                  <div style={{ padding: '12px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E9D5FF' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '10px', color: '#7E22CE', fontWeight: 800 }}>LIVE CURRENT ACCUMULATING EVENT</span>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#7E22CE', background: '#F3E8FF', padding: '1px 6px', borderRadius: '4px' }}>
+                        {stats.events.activeCurrent.category || 'General'}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', display: 'block', marginBottom: '4px' }}>
+                      {stats.events.activeCurrent.title}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ flex: 1, height: '6px', borderRadius: '3px', background: '#F3E8FF', overflow: 'hidden' }}>
+                        <div style={{
+                          width: `${Math.min(100, Math.round(((stats.events.activeCurrent.currentCount || stats.events.activeCurrent.currentEventWork || 7) / (stats.events.activeCurrent.targetCount || 10)) * 100))}%`,
+                          height: '100%',
+                          background: '#7E22CE',
+                          borderRadius: '3px'
+                        }} />
+                      </div>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#7E22CE' }}>
+                        {stats.events.activeCurrent.currentCount || stats.events.activeCurrent.currentEventWork || 7} / {stats.events.activeCurrent.targetCount || 10}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
+
+          </div>
+
+          {/* Segmented Event History Visualizer */}
+          <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '14px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', marginBottom: '10px', letterSpacing: '0.05em' }}>
+              SEGMENTED EVENT HISTORY & MILESTONE BLOCKS (TAP TO VIEW DEDICATED TASK)
             </div>
-          )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {stats.events.segmentedEvents.map(ev => (
+                <div 
+                  key={ev.id}
+                  onClick={() => onNavigateToTaskDedicated?.(ev)}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '10px',
+                    background: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Zap size={14} color="#7E22CE" />
+                      <span style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A' }}>{ev.title}</span>
+                      <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 600 }}>({ev.category})</span>
+                    </div>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: ev.isDone ? '#16A34A' : '#7E22CE' }}>
+                      {ev.currentCount} / {ev.targetCount} Units ({ev.progressPercent}%)
+                    </span>
+                  </div>
+
+                  {/* Discrete Segmented Blocks Visualizer */}
+                  <div style={{ display: 'flex', gap: '4px', width: '100%' }}>
+                    {Array.from({ length: ev.targetCount || 10 }).map((_, blockIdx) => {
+                      const isFilled = blockIdx < ev.currentCount;
+                      return (
+                        <div
+                          key={blockIdx}
+                          style={{
+                            flex: 1,
+                            height: '8px',
+                            borderRadius: '2px',
+                            background: isFilled ? (ev.isDone ? '#16A34A' : '#7E22CE') : '#E2E8F0',
+                            transition: 'all 0.15s ease'
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
         </div>
       )}
