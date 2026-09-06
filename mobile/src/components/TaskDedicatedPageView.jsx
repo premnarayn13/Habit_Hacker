@@ -52,7 +52,11 @@ import {
   Timer,
   Repeat,
   Crosshair,
-  TrendingUp as TrendUpIcon
+  TrendingUp as TrendUpIcon,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  RotateCcw
 } from 'lucide-react';
 import { 
   isParentTaskWithChildren, 
@@ -93,6 +97,8 @@ export default function TaskDedicatedPageView({
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null); // Selected Date Analysis Panel
   const [subtaskFilter, setSubtaskFilter] = useState('ALL'); // 'ALL', 'REQUIRED', 'OPTIONAL'
   const [subtaskSearchQuery, setSubtaskSearchQuery] = useState('');
+  const [graphZoomLevel, setGraphZoomLevel] = useState(1); // 1x, 1.25x, 1.5x, 2x, 2.5x
+  const [isFullscreenGraph, setIsFullscreenGraph] = useState(false);
 
   const currentTask = (breadcrumbStack && breadcrumbStack.length > 0) ? breadcrumbStack[breadcrumbStack.length - 1] : task;
 
@@ -1130,82 +1136,294 @@ export default function TaskDedicatedPageView({
           </div>
         </div>
       )}
-
+             {/* ========================================================================= */}
+      {/* 9. SCHEDULE MEASURE ANALYTICS SYSTEM (RE-DESIGNED VISUAL DASHBOARD) */}
       {/* ========================================================================= */}
-      {/* 9. MEASURE ANALYTICS PANEL */}
-      {/* ========================================================================= */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Ruler size={18} color="#EC4899" /> {trackingMode === 'count_event' ? 'EventCount & Schedule Measure Analytics System' : (trackingMode === 'count_days' ? 'DayCount & Schedule Measure Analytics System' : 'Start-End Date & Schedule Measure Analytics System')}
-        </h3>
+      <div style={{
+        padding: '24px',
+        background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+        borderRadius: '24px',
+        border: '1px solid #334155',
+        boxShadow: '0 20px 40px rgba(15, 23, 42, 0.4), 0 0 1px rgba(255, 255, 255, 0.1)',
+        color: '#F8FAFC',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        {/* Ambient background glow accents */}
+        <div style={{ position: 'absolute', top: '-60px', right: '-60px', width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(236,72,153,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '-60px', left: '-60px', width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+        {/* Header Title with Subtitle & Tracking Badge */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ background: 'linear-gradient(135deg, #EC4899, #8B5CF6)', padding: '8px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(236, 72, 153, 0.3)' }}>
+                <Gauge size={20} color="#FFF" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#FFF', margin: 0, letterSpacing: '-0.02em' }}>
+                  Schedule Measure Analytics Dashboard
+                </h3>
+                <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600 }}>
+                  {taskTypeLabel}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Hero Status Pill: Ahead / Behind / On Track */}
+          <div style={{
+            background: targetVarianceTillToday >= 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+            border: targetVarianceTillToday >= 0 ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+            padding: '8px 16px',
+            borderRadius: '30px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            backdropFilter: 'blur(8px)'
+          }}>
+            {targetVarianceTillToday >= 0 ? (
+              <TrendingUp size={16} color="#4ADE80" />
+            ) : (
+              <AlertCircle size={16} color="#F87171" />
+            )}
+            <span style={{ fontSize: '12px', fontWeight: 800, color: targetVarianceTillToday >= 0 ? '#4ADE80' : '#F87171' }}>
+              {targetVarianceTillToday >= 0 
+                ? `+${targetVarianceTillToday} ${measureUnit} Ahead of Pace` 
+                : `${targetVarianceTillToday} ${measureUnit} Behind Pace`}
+            </span>
+          </div>
+        </div>
+
+        {/* TIER 1: MULTI-SEGMENT GOAL COMPLETION VISUAL PROGRESS BAR */}
+        {(() => {
+          const overallPct = Math.min(100, Math.round((totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 100));
+          return (
+            <div style={{ background: 'rgba(30, 41, 59, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Overall Goal Measure Completion
+                </span>
+                <span style={{ fontSize: '18px', fontWeight: 900, color: '#38BDF8' }}>
+                  {overallPct}% <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>({totalCompletedMeasure} / {totalTargetedMeasure} {measureUnit})</span>
+                </span>
+              </div>
+
+              {/* Multi-Segment Track Bar */}
+              <div style={{ height: '14px', background: 'rgba(15, 23, 42, 0.8)', borderRadius: '10px', padding: '2px', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{
+                  width: `${overallPct}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #10B981 0%, #34D399 100%)',
+                  borderRadius: '8px',
+                  boxShadow: '0 0 12px rgba(52, 211, 153, 0.4)',
+                  transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                }} />
+              </div>
+
+              {/* Progress Bar Footer Legend */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '11px', fontWeight: 700, flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#34D399' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34D399' }} />
+                  <span>Completed: <strong>{totalCompletedMeasure} {measureUnit}</strong></span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#818CF8' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#818CF8' }} />
+                  <span>Expected Today: <strong>{expectedMeasureTillToday} {measureUnit}</strong></span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FBBF24' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FBBF24' }} />
+                  <span>Remaining Left: <strong>{totalTargetLeft} {measureUnit}</strong></span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* TIER 2 & 3: COLOR-CODED KPI VISUAL CARDS GRID */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
           
           {/* Card 1: Daily Target Measure */}
-          <div style={{ background: '#F8FAFC', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Daily Target Measure</span>
-            <span style={{ fontSize: '15px', fontWeight: 900, color: '#EC4899' }}>{dailyTargetMeasure} {measureUnit}/day</span>
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.12) 0%, rgba(219, 39, 119, 0.05) 100%)',
+            border: '1px solid rgba(236, 72, 153, 0.3)',
+            borderRadius: '16px',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            boxShadow: '0 4px 14px rgba(236, 72, 153, 0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#F472B6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Daily Target</span>
+              <Target size={16} color="#F472B6" />
+            </div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
+              {dailyTargetMeasure} <span style={{ fontSize: '12px', color: '#F472B6', fontWeight: 700 }}>{measureUnit}/day</span>
+            </div>
+            <span style={{ fontSize: '10px', color: '#CBD5E1', fontWeight: 600, marginTop: '6px' }}>Target daily pace benchmark</span>
           </div>
 
           {/* Card 2: Initial Total Targeted Measure */}
-          <div style={{ background: '#EFF6FF', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BFDBFE' }}>
-            <span style={{ fontSize: '9px', fontWeight: 800, color: '#1E40AF', textTransform: 'uppercase', display: 'block' }}>Initial Total Targeted Measure</span>
-            <span style={{ fontSize: '15px', fontWeight: 900, color: '#1E3A8A' }}>{totalTargetedMeasure} {measureUnit}</span>
-            <span style={{ fontSize: '9px', color: '#3B82F6', fontWeight: 700, display: 'block' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(29, 78, 216, 0.05) 100%)',
+            border: '1px solid rgba(59, 130, 246, 0.3)',
+            borderRadius: '16px',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            justify: 'space-between',
+            boxShadow: '0 4px 14px rgba(59, 130, 246, 0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#60A5FA', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Initial Targeted Goal</span>
+              <Award size={16} color="#60A5FA" />
+            </div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
+              {totalTargetedMeasure} <span style={{ fontSize: '12px', color: '#60A5FA', fontWeight: 700 }}>{measureUnit}</span>
+            </div>
+            <span style={{ fontSize: '9.5px', color: '#93C5FD', fontWeight: 700, marginTop: '6px' }}>
               {trackingMode === 'count_event' ? `(${targetCount} events × ${eventUnitTarget} ${measureUnit}/event)` : `(${effectiveTargetDays} days × ${dailyTargetMeasure} ${measureUnit})`}
             </span>
           </div>
 
           {/* Card 3: Total Completed Measure */}
-          <div style={{ background: '#F0FDF4', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
-            <span style={{ fontSize: '9px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>Total Completed Measure</span>
-            <span style={{ fontSize: '15px', fontWeight: 900, color: '#15803D' }}>{totalCompletedMeasure} {measureUnit}</span>
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.05) 100%)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            borderRadius: '16px',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            justify: 'space-between',
+            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#34D399', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Completed</span>
+              <CheckCircle2 size={16} color="#34D399" />
+            </div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
+              {totalCompletedMeasure} <span style={{ fontSize: '12px', color: '#34D399', fontWeight: 700 }}>{measureUnit}</span>
+            </div>
+            <span style={{ fontSize: '10px', color: '#A7F3D0', fontWeight: 700, marginTop: '6px' }}>
+              Achieved till today ({elapsedDays} days elapsed)
+            </span>
           </div>
 
-          {/* Card 4 (NEW): Expected Measure Till Today (If Target Followed) */}
-          <div style={{ background: '#EEF2FF', padding: '12px 16px', borderRadius: '12px', border: '1px solid #C7D2FE' }}>
-            <span style={{ fontSize: '9px', fontWeight: 800, color: '#3730A3', textTransform: 'uppercase', display: 'block' }}>Expected Till Today (On Target)</span>
-            <span style={{ fontSize: '15px', fontWeight: 900, color: '#312E81' }}>{expectedMeasureTillToday} {measureUnit}</span>
-            <span style={{ fontSize: '9px', color: targetVarianceTillToday >= 0 ? '#16A34A' : '#DC2626', fontWeight: 800, display: 'block' }}>
+          {/* Card 4: Expected Measure Till Today (If Target Followed) */}
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(67, 56, 202, 0.05) 100%)',
+            border: '1px solid rgba(99, 102, 241, 0.3)',
+            borderRadius: '16px',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            justify: 'space-between',
+            boxShadow: '0 4px 14px rgba(99, 102, 241, 0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#818CF8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expected Till Today</span>
+              <Activity size={16} color="#818CF8" />
+            </div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
+              {expectedMeasureTillToday} <span style={{ fontSize: '12px', color: '#818CF8', fontWeight: 700 }}>{measureUnit}</span>
+            </div>
+            <span style={{ fontSize: '9.5px', color: targetVarianceTillToday >= 0 ? '#4ADE80' : '#F87171', fontWeight: 800, marginTop: '6px' }}>
               {trackingMode === 'count_event'
-                ? `(Schedule Pace: ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * targetCount * 10) / 10} events) • ${targetVarianceTillToday >= 0 ? '+' : ''}${targetVarianceTillToday} ${measureUnit} ${targetVarianceTillToday >= 0 ? 'ahead' : 'behind'}`
+                ? `(Pace: ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * targetCount * 10) / 10} events) • ${targetVarianceTillToday >= 0 ? '+' : ''}${targetVarianceTillToday} ${measureUnit} ${targetVarianceTillToday >= 0 ? 'ahead' : 'behind'}`
                 : `(${elapsedDays} days × ${dailyTargetMeasure} ${measureUnit}) • ${targetVarianceTillToday >= 0 ? '+' : ''}${targetVarianceTillToday} ${measureUnit} ${targetVarianceTillToday >= 0 ? 'ahead' : 'behind'}`
               }
             </span>
           </div>
 
           {/* Card 5: Total Target Left */}
-          <div style={{ background: '#FEF3C7', padding: '12px 16px', borderRadius: '12px', border: '1px solid #FDE68A' }}>
-            <span style={{ fontSize: '9px', fontWeight: 800, color: '#B45309', textTransform: 'uppercase', display: 'block' }}>Total Target Left</span>
-            <span style={{ fontSize: '15px', fontWeight: 900, color: '#B45309' }}>{totalTargetLeft} {measureUnit}</span>
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.05) 100%)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            borderRadius: '16px',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            justify: 'space-between',
+            boxShadow: '0 4px 14px rgba(245, 158, 11, 0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#FBBF24', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Target Left</span>
+              <Clock size={16} color="#FBBF24" />
+            </div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
+              {totalTargetLeft} <span style={{ fontSize: '12px', color: '#FBBF24', fontWeight: 700 }}>{measureUnit}</span>
+            </div>
+            <span style={{ fontSize: '10px', color: '#FDE68A', fontWeight: 700, marginTop: '6px' }}>
+              Remaining measure to reach goal
+            </span>
           </div>
 
           {/* Card 6: Req Daily Avg (Target Days) */}
-          <div style={{ background: '#FAF5FF', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E9D5FF' }}>
-            <span style={{ fontSize: '9px', fontWeight: 800, color: '#7E22CE', textTransform: 'uppercase', display: 'block' }}>Req Daily Avg (Target Days)</span>
-            <span style={{ fontSize: '15px', fontWeight: 900, color: '#6B21A8' }}>
-              {reqPaceRemTarget} {measureUnit}/day
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(126, 34, 206, 0.05) 100%)',
+            border: '1px solid rgba(168, 85, 247, 0.3)',
+            borderRadius: '16px',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            justify: 'space-between',
+            boxShadow: '0 4px 14px rgba(168, 85, 247, 0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#C084FC', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Req Daily Avg (Target Days)</span>
+              <Zap size={16} color="#C084FC" />
+            </div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
+              {reqPaceRemTarget} <span style={{ fontSize: '12px', color: '#C084FC', fontWeight: 700 }}>{measureUnit}/day</span>
+            </div>
+            <span style={{ fontSize: '10px', color: '#E9D5FF', fontWeight: 700, marginTop: '6px' }}>
+              Required daily pace for remaining target days
             </span>
           </div>
 
           {/* Card 7: Req Daily Avg (End Date) */}
-          <div style={{ background: '#FFF1F2', padding: '12px 16px', borderRadius: '12px', border: '1px solid #FECDD3' }}>
-            <span style={{ fontSize: '9px', fontWeight: 800, color: '#BE123C', textTransform: 'uppercase', display: 'block' }}>Req Daily Avg (End Date)</span>
-            <span style={{ fontSize: '15px', fontWeight: 900, color: '#9F1239' }}>
-              {reqPaceUntilEndDate} {measureUnit}/day
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.12) 0%, rgba(190, 18, 60, 0.05) 100%)',
+            border: '1px solid rgba(244, 63, 94, 0.3)',
+            borderRadius: '16px',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            justify: 'space-between',
+            boxShadow: '0 4px 14px rgba(244, 63, 94, 0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#FB7185', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Req Daily Avg (End Date)</span>
+              <Calendar size={16} color="#FB7185" />
+            </div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
+              {reqPaceUntilEndDate} <span style={{ fontSize: '12px', color: '#FB7185', fontWeight: 700 }}>{measureUnit}/day</span>
+            </div>
+            <span style={{ fontSize: '9.5px', color: '#FECDD3', fontWeight: 700, marginTop: '6px' }}>
+              {trackingMode === 'end_date' ? '(Identical for Daily Schedule)' : `Pace until planned end date (${remainingDays} days left)`}
             </span>
-            {trackingMode === 'end_date' && (
-              <span style={{ fontSize: '8px', color: '#BE123C', fontWeight: 700, display: 'block' }}>(Identical for Daily Schedule)</span>
-            )}
           </div>
 
           {/* Card 8: Projected Total Measure */}
-          <div style={{ background: '#F0FDF4', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
-            <span style={{ fontSize: '9px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>Projected Total Measure</span>
-            <span style={{ fontSize: '15px', fontWeight: 900, color: '#15803D' }}>
-              {projectedTotalMeasure} {measureUnit}
-            </span>
-            <span style={{ fontSize: '8px', color: '#16A34A', fontWeight: 700, display: 'block' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.12) 0%, rgba(13, 148, 136, 0.05) 100%)',
+            border: '1px solid rgba(20, 184, 166, 0.3)',
+            borderRadius: '16px',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            justify: 'space-between',
+            boxShadow: '0 4px 14px rgba(20, 184, 166, 0.1)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, color: '#2DD4BF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Projected Total Measure</span>
+              <Sparkles size={16} color="#2DD4BF" />
+            </div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
+              {projectedTotalMeasure} <span style={{ fontSize: '12px', color: '#2DD4BF', fontWeight: 700 }}>{measureUnit}</span>
+            </div>
+            <span style={{ fontSize: '9px', color: '#99F6E4', fontWeight: 700, marginTop: '6px' }}>
               ({totalCompletedMeasure} achieved + {remainingDays} days left × {dailyAverageMeasureTillNow} avg/day)
             </span>
           </div>
@@ -1290,13 +1508,100 @@ export default function TaskDedicatedPageView({
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '11px', fontWeight: 800 }}>
-            <span style={{ color: '#EA580C', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '14px', height: '4px', background: '#EA580C', borderRadius: '2px', boxShadow: '0 0 8px rgba(234, 88, 12, 0.5)' }} /> Actual Cumulative Line
-            </span>
-            <span style={{ color: '#16A34A', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ width: '14px', height: '3px', background: '#16A34A', borderStyle: 'dashed' }} /> 45° Average Target Line
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', fontWeight: 800 }}>
+              <span style={{ color: '#EA580C', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '12px', height: '4px', background: '#EA580C', borderRadius: '2px' }} /> Actual
+              </span>
+              <span style={{ color: '#16A34A', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '12px', height: '3px', background: '#16A34A', borderStyle: 'dashed' }} /> Target
+              </span>
+            </div>
+
+            {/* INTERACTIVE ZOOM & FULLSCREEN CONTROLS TOOLBAR */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#F1F5F9', padding: '4px 8px', borderRadius: '12px', border: '1px solid #CBD5E1' }}>
+              <button
+                onClick={() => setGraphZoomLevel(prev => Math.max(1, prev - 0.25))}
+                disabled={graphZoomLevel <= 1}
+                title="Zoom Out"
+                style={{
+                  background: graphZoomLevel <= 1 ? '#E2E8F0' : '#FFF',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '6px',
+                  padding: '4px',
+                  cursor: graphZoomLevel <= 1 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: graphZoomLevel <= 1 ? '#94A3B8' : '#0F172A'
+                }}
+              >
+                <ZoomOut size={15} />
+              </button>
+
+              <span style={{ fontSize: '11px', fontWeight: 900, color: '#1E293B', minWidth: '38px', textAlign: 'center' }}>
+                {Math.round(graphZoomLevel * 100)}%
+              </span>
+
+              <button
+                onClick={() => setGraphZoomLevel(prev => Math.min(3, prev + 0.25))}
+                disabled={graphZoomLevel >= 3}
+                title="Zoom In"
+                style={{
+                  background: graphZoomLevel >= 3 ? '#E2E8F0' : '#FFF',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '6px',
+                  padding: '4px',
+                  cursor: graphZoomLevel >= 3 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: graphZoomLevel >= 3 ? '#94A3B8' : '#0F172A'
+                }}
+              >
+                <ZoomIn size={15} />
+              </button>
+
+              {graphZoomLevel !== 1 && (
+                <button
+                  onClick={() => setGraphZoomLevel(1)}
+                  title="Reset Zoom"
+                  style={{
+                    background: '#FFF',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '6px',
+                    padding: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: '#EA580C'
+                  }}
+                >
+                  <RotateCcw size={14} />
+                </button>
+              )}
+
+              <div style={{ width: '1px', height: '16px', background: '#CBD5E1', margin: '0 2px' }} />
+
+              <button
+                onClick={() => setIsFullscreenGraph(true)}
+                title="Fullscreen HD View"
+                style={{
+                  background: '#EA580C',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '4px 8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  color: '#FFF',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  boxShadow: '0 2px 6px rgba(234, 88, 12, 0.3)'
+                }}
+              >
+                <Maximize2 size={13} /> Fullscreen
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1313,7 +1618,7 @@ export default function TaskDedicatedPageView({
           </div>
         </div>
 
-        {/* SVG Cumulative Measure Slope Trajectory Line Chart Container (Static & Non-Scrollable) */}
+        {/* SVG Cumulative Measure Slope Trajectory Line Chart Container (Supports Smooth Zooming & Horizontal Scroll) */}
         {(() => {
           const maxCumDomain = Math.max(Math.ceil(Math.max(totalCompletedMeasure, expectedMeasureTillToday, 10) * 1.25), 10);
           const numDays = fullTimelineDailyData.length;
@@ -1370,7 +1675,8 @@ export default function TaskDedicatedPageView({
               borderRadius: '16px', 
               position: 'relative', 
               boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)', 
-              overflow: 'hidden',
+              overflowX: graphZoomLevel > 1 ? 'auto' : 'hidden',
+              overflowY: 'hidden',
               width: '100%',
               maxWidth: '100%',
               boxSizing: 'border-box'
@@ -1384,12 +1690,13 @@ export default function TaskDedicatedPageView({
                 bottom: '28px', 
                 display: 'flex', 
                 flexDirection: 'column', 
-                justifyContent: 'space-between', 
+                justify: 'space-between', 
                 fontSize: '9px', 
                 fontWeight: 800, 
                 color: '#64748B', 
                 textAlign: 'right', 
-                width: '32px' 
+                width: '32px',
+                zIndex: 10
               }}>
                 <span>{maxCumDomain}</span>
                 <span>{Math.round(maxCumDomain * 0.75)}</span>
@@ -1398,90 +1705,92 @@ export default function TaskDedicatedPageView({
                 <span>0</span>
               </div>
 
-              {/* STATIC RESPONSIVE SVG CANVAS (NON-SCROLLABLE, FITS 100% INSIDE SCREEN) */}
-              <svg viewBox="0 0 500 180" preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'hidden', display: 'block' }}>
-                <defs>
-                  <linearGradient id="cumOrangeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#EA580C" stopOpacity="0.25" />
-                    <stop offset="100%" stopColor="#F97316" stopOpacity="0.02" />
-                  </linearGradient>
-                  <filter id="glowOrangeLine" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="2" result="blur" />
-                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                  </filter>
-                </defs>
+              {/* INNER SCALABLE CANVAS WRAPPER */}
+              <div style={{ width: `${graphZoomLevel * 100}%`, height: '100%', position: 'relative', transition: 'width 0.2s ease-out' }}>
+                <svg viewBox="0 0 500 180" preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'visible', display: 'block' }}>
+                  <defs>
+                    <linearGradient id="cumOrangeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#EA580C" stopOpacity="0.25" />
+                      <stop offset="100%" stopColor="#F97316" stopOpacity="0.02" />
+                    </linearGradient>
+                    <filter id="glowOrangeLine" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="2" result="blur" />
+                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                  </defs>
 
-                {/* Horizontal Grid Lines */}
-                <line x1="20" y1="20" x2="480" y2="20" stroke="#F1F5F9" strokeWidth="1.5" />
-                <line x1="20" y1="55" x2="480" y2="55" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
-                <line x1="20" y1="90" x2="480" y2="90" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
-                <line x1="20" y1="125" x2="480" y2="125" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
-                <line x1="20" y1="160" x2="480" y2="160" stroke="#CBD5E1" strokeWidth="2" />
+                  {/* Horizontal Grid Lines */}
+                  <line x1="20" y1="20" x2="480" y2="20" stroke="#F1F5F9" strokeWidth="1.5" />
+                  <line x1="20" y1="55" x2="480" y2="55" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+                  <line x1="20" y1="90" x2="480" y2="90" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+                  <line x1="20" y1="125" x2="480" y2="125" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+                  <line x1="20" y1="160" x2="480" y2="160" stroke="#CBD5E1" strokeWidth="2" />
 
-                {/* Vertical Checkpoint Gridlines */}
-                {labelPoints.map((p, i) => (
-                  <line key={i} x1={p.x} y1="20" x2={p.x} y2="160" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="3,3" />
-                ))}
+                  {/* Vertical Checkpoint Gridlines */}
+                  {labelPoints.map((p, i) => (
+                    <line key={i} x1={p.x} y1="20" x2={p.x} y2="160" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="3,3" />
+                  ))}
 
-                {/* 1. AVERAGE TARGET LINE (GREEN DASHED LINE UP TO EXPECTED MEASURE TILL TODAY) */}
-                <polyline 
-                  fill="none" 
-                  stroke="#16A34A" 
-                  strokeWidth="2.5" 
-                  strokeDasharray="6,6" 
-                  points={targetPolylinePoints}
-                />
-
-                {/* 2. ACTUAL CUMULATIVE MEASURE LINE (SLOPES ON COMPLETED DAYS, PLAIN HORIZONTAL ON MISSED DAYS) */}
-                <g>
-                  {/* Shaded Area under Actual Cumulative Line */}
-                  <polygon fill="url(#cumOrangeGradient)" points={polygonPoints} />
-
-                  {/* Actual Cumulative Polyline */}
+                  {/* 1. AVERAGE TARGET LINE (GREEN DASHED LINE UP TO EXPECTED MEASURE TILL TODAY) */}
                   <polyline 
                     fill="none" 
-                    stroke="#EA580C" 
-                    strokeWidth="3.5" 
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    filter="url(#glowOrangeLine)"
-                    points={actualPolylinePoints}
+                    stroke="#16A34A" 
+                    strokeWidth="2.5" 
+                    strokeDasharray="6,6" 
+                    points={targetPolylinePoints}
                   />
 
-                  {/* Node Markers & Data Labels on Sampled Days & Missed Days (Gray dot for missed, Orange for completed) */}
-                  {sampledPoints.map((p, i) => (
-                    <g key={i}>
-                      <circle 
-                        cx={p.x} 
-                        cy={p.yActual} 
-                        r={p.isMissedDay ? "4.5" : "5.5"} 
-                        fill={p.isMissedDay ? "#94A3B8" : "#EA580C"} 
-                        stroke="#FFFFFF" 
-                        strokeWidth="2" 
-                      />
-                      {/* Cumulative Value Text Label above Node */}
-                      <text 
-                        x={p.x} 
-                        y={p.yActual - 7} 
-                        textAnchor="middle" 
-                        fontSize="9" 
-                        fontWeight="900" 
-                        fill={p.isMissedDay ? "#64748B" : "#C2410C"}
-                      >
-                        {p.actualCumulativeVal}
-                      </text>
-                    </g>
-                  ))}
-                </g>
-              </svg>
+                  {/* 2. ACTUAL CUMULATIVE MEASURE LINE (SLOPES ON COMPLETED DAYS, PLAIN HORIZONTAL ON MISSED DAYS) */}
+                  <g>
+                    {/* Shaded Area under Actual Cumulative Line */}
+                    <polygon fill="url(#cumOrangeGradient)" points={polygonPoints} />
 
-              {/* X-Axis Timeline Labels */}
-              <div style={{ position: 'absolute', left: '45px', right: '16px', bottom: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', fontWeight: 800, color: '#475569' }}>
-                {labelPoints.map((p, i) => (
-                  <span key={i} style={{ color: p.isMissedDay ? '#DC2626' : (i === labelPoints.length - 1 ? '#EA580C' : '#0F172A'), fontWeight: i === labelPoints.length - 1 ? 900 : 800 }}>
-                    {i === labelPoints.length - 1 ? `Today (${p.monthDayStr})` : (i === 0 ? `Start (${p.monthDayStr})` : p.monthDayStr)}
-                  </span>
-                ))}
+                    {/* Actual Cumulative Polyline */}
+                    <polyline 
+                      fill="none" 
+                      stroke="#EA580C" 
+                      strokeWidth="3.5" 
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      filter="url(#glowOrangeLine)"
+                      points={actualPolylinePoints}
+                    />
+
+                    {/* Node Markers & Data Labels on Sampled Days & Missed Days (Gray dot for missed, Orange for completed) */}
+                    {sampledPoints.map((p, i) => (
+                      <g key={i}>
+                        <circle 
+                          cx={p.x} 
+                          cy={p.yActual} 
+                          r={p.isMissedDay ? "4.5" : "5.5"} 
+                          fill={p.isMissedDay ? "#94A3B8" : "#EA580C"} 
+                          stroke="#FFFFFF" 
+                          strokeWidth="2" 
+                        />
+                        {/* Cumulative Value Text Label above Node */}
+                        <text 
+                          x={p.x} 
+                          y={p.yActual - 7} 
+                          textAnchor="middle" 
+                          fontSize="9" 
+                          fontWeight="900" 
+                          fill={p.isMissedDay ? "#64748B" : "#C2410C"}
+                        >
+                          {p.actualCumulativeVal}
+                        </text>
+                      </g>
+                    ))}
+                  </g>
+                </svg>
+
+                {/* X-Axis Timeline Labels */}
+                <div style={{ position: 'absolute', left: '20px', right: '20px', bottom: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', fontWeight: 800, color: '#475569' }}>
+                  {labelPoints.map((p, i) => (
+                    <span key={i} style={{ color: p.isMissedDay ? '#DC2626' : (i === labelPoints.length - 1 ? '#EA580C' : '#0F172A'), fontWeight: i === labelPoints.length - 1 ? 900 : 800 }}>
+                      {i === labelPoints.length - 1 ? `Today (${p.monthDayStr})` : (i === 0 ? `Start (${p.monthDayStr})` : p.monthDayStr)}
+                    </span>
+                  ))}
+                </div>
               </div>
 
             </div>
@@ -1765,6 +2074,199 @@ export default function TaskDedicatedPageView({
                   <span>{s.hasMeasureTracking ? `${s.measureTarget || 5} ${s.measureUnit || 'units'}` : 'Derived Avg'}</span>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================================================= */}
+      {/* 17. FULLSCREEN HD LINE GRAPH ZOOM MODAL */}
+      {/* ========================================================================= */}
+      {isFullscreenGraph && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 999999,
+          background: 'rgba(15, 23, 42, 0.96)',
+          backdropFilter: 'blur(16px)',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '24px',
+          boxSizing: 'border-box'
+        }}>
+          {/* Fullscreen Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', color: '#FFF' }}>
+            <div>
+              <h2 style={{ fontSize: '20px', fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: '10px', color: '#FFF' }}>
+                <LineChart size={24} color="#EA580C" /> {currentTask.title} — Trajectory Line Graph (HD Fullscreen)
+              </h2>
+              <span style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 600 }}>
+                Interactive High-Definition View • {fullTimelineDailyData.length} total timeline days plotted
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* Fullscreen Zoom Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(30, 41, 59, 0.9)', padding: '6px 14px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <button
+                  onClick={() => setGraphZoomLevel(prev => Math.max(1, prev - 0.25))}
+                  disabled={graphZoomLevel <= 1}
+                  style={{ background: 'none', border: 'none', color: graphZoomLevel <= 1 ? '#64748B' : '#FFF', cursor: graphZoomLevel <= 1 ? 'not-allowed' : 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                  title="Zoom Out"
+                >
+                  <ZoomOut size={18} />
+                </button>
+
+                <span style={{ fontSize: '13px', fontWeight: 900, color: '#EA580C', minWidth: '46px', textAlign: 'center' }}>
+                  {Math.round(graphZoomLevel * 100)}%
+                </span>
+
+                <button
+                  onClick={() => setGraphZoomLevel(prev => Math.min(4, prev + 0.25))}
+                  disabled={graphZoomLevel >= 4}
+                  style={{ background: 'none', border: 'none', color: graphZoomLevel >= 4 ? '#64748B' : '#FFF', cursor: graphZoomLevel >= 4 ? 'not-allowed' : 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                  title="Zoom In"
+                >
+                  <ZoomIn size={18} />
+                </button>
+
+                {graphZoomLevel !== 1 && (
+                  <button
+                    onClick={() => setGraphZoomLevel(1)}
+                    style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px', marginLeft: '4px', display: 'flex', alignItems: 'center' }}
+                    title="Reset Zoom (100%)"
+                  >
+                    <RotateCcw size={16} />
+                  </button>
+                )}
+              </div>
+
+              {/* Close Modal Button */}
+              <button
+                onClick={() => setIsFullscreenGraph(false)}
+                style={{
+                  background: '#EF4444',
+                  border: 'none',
+                  borderRadius: '12px',
+                  width: '40px',
+                  height: '40px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#FFF',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)'
+                }}
+                title="Close Fullscreen View"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Fullscreen Canvas Container */}
+          <div style={{
+            flex: 1,
+            background: '#0F172A',
+            borderRadius: '20px',
+            border: '1px solid #334155',
+            padding: '24px 20px 40px 60px',
+            position: 'relative',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Dynamic Y-Axis Scale Labels */}
+            <div style={{ position: 'absolute', left: '12px', top: '24px', bottom: '50px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '11px', fontWeight: 900, color: '#94A3B8', textAlign: 'right', width: '40px', zIndex: 10 }}>
+              <span>{Math.max(Math.ceil(Math.max(totalCompletedMeasure, expectedMeasureTillToday, 10) * 1.25), 10)}</span>
+              <span>{Math.round(Math.max(Math.ceil(Math.max(totalCompletedMeasure, expectedMeasureTillToday, 10) * 1.25), 10) * 0.75)}</span>
+              <span>{Math.round(Math.max(Math.ceil(Math.max(totalCompletedMeasure, expectedMeasureTillToday, 10) * 1.25), 10) * 0.50)}</span>
+              <span>{Math.round(Math.max(Math.ceil(Math.max(totalCompletedMeasure, expectedMeasureTillToday, 10) * 1.25), 10) * 0.25)}</span>
+              <span>0</span>
+            </div>
+
+            {/* Inner Scalable Container */}
+            <div style={{ width: `${graphZoomLevel * 100}%`, height: '100%', position: 'relative', minWidth: '100%', transition: 'width 0.2s ease-out' }}>
+              {(() => {
+                const maxCumDomain = Math.max(Math.ceil(Math.max(totalCompletedMeasure, expectedMeasureTillToday, 10) * 1.25), 10);
+                const numDays = fullTimelineDailyData.length;
+                let stepSize = 1;
+                if (numDays > 45) stepSize = 4;
+                else if (numDays > 25) stepSize = 3;
+                else if (numDays > 10) stepSize = 2;
+
+                const points = fullTimelineDailyData.map((d, idx) => {
+                  const frac = numDays > 1 ? idx / (numDays - 1) : 1;
+                  const x = Math.round(20 + frac * 960);
+                  const yActual = Math.max(20, 340 - Math.round((d.actualCumulativeVal / maxCumDomain) * 310));
+                  const yTarget = Math.max(20, 340 - Math.round((d.expectedTargetVal / maxCumDomain) * 310));
+                  return { ...d, idx, x, yActual, yTarget };
+                });
+
+                const actualPolylinePoints = points.map(p => `${p.x},${p.yActual}`).join(' ');
+                const targetPolylinePoints = points.map(p => `${p.x},${p.yTarget}`).join(' ');
+                const polygonPoints = `20,340 ${actualPolylinePoints} 980,340 20,340`;
+
+                const sampledPoints = points.filter((p, i) => i === 0 || i === numDays - 1 || p.isMissedDay || (i % stepSize === 0));
+                const numLabels = Math.min(12, sampledPoints.length);
+                const labelPoints = Array.from({ length: numLabels }).map((_, lIdx) => {
+                  const pIdx = Math.round(lIdx * (sampledPoints.length - 1) / Math.max(1, numLabels - 1));
+                  return sampledPoints[pIdx];
+                });
+
+                return (
+                  <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+                    <svg viewBox="0 0 1000 380" preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'visible', display: 'block' }}>
+                      <defs>
+                        <linearGradient id="cumOrangeGradientFS" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="#EA580C" stopOpacity="0.35" />
+                          <stop offset="100%" stopColor="#F97316" stopOpacity="0.02" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Gridlines */}
+                      <line x1="20" y1="20" x2="980" y2="20" stroke="#334155" strokeWidth="1" />
+                      <line x1="20" y1="100" x2="980" y2="100" stroke="#1E293B" strokeWidth="1" strokeDasharray="4,4" />
+                      <line x1="20" y1="180" x2="980" y2="180" stroke="#1E293B" strokeWidth="1" strokeDasharray="4,4" />
+                      <line x1="20" y1="260" x2="980" y2="260" stroke="#1E293B" strokeWidth="1" strokeDasharray="4,4" />
+                      <line x1="20" y1="340" x2="980" y2="340" stroke="#475569" strokeWidth="2" />
+
+                      {labelPoints.map((p, i) => (
+                        <line key={i} x1={p.x} y1="20" x2={p.x} y2="340" stroke="#1E293B" strokeWidth="1" strokeDasharray="3,3" />
+                      ))}
+
+                      {/* Target Pace Line */}
+                      <polyline fill="none" stroke="#22C55E" strokeWidth="3" strokeDasharray="8,8" points={targetPolylinePoints} />
+
+                      {/* Actual Cumulative Slope Line */}
+                      <g>
+                        <polygon fill="url(#cumOrangeGradientFS)" points={polygonPoints} />
+                        <polyline fill="none" stroke="#F97316" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" points={actualPolylinePoints} />
+                        {sampledPoints.map((p, i) => (
+                          <g key={i}>
+                            <circle cx={p.x} cy={p.yActual} r={p.isMissedDay ? "6" : "7.5"} fill={p.isMissedDay ? "#94A3B8" : "#F97316"} stroke="#FFF" strokeWidth="2.5" />
+                            <text x={p.x} y={p.yActual - 10} textAnchor="middle" fontSize="12" fontWeight="900" fill={p.isMissedDay ? "#CBD5E1" : "#FFEDD5"}>
+                              {p.actualCumulativeVal}
+                            </text>
+                          </g>
+                        ))}
+                      </g>
+                    </svg>
+
+                    {/* Fullscreen X-Axis Timeline Labels */}
+                    <div style={{ position: 'absolute', left: '20px', right: '20px', bottom: '-24px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, color: '#94A3B8' }}>
+                      {labelPoints.map((p, i) => (
+                        <span key={i} style={{ color: p.isMissedDay ? '#EF4444' : (i === labelPoints.length - 1 ? '#F97316' : '#E2E8F0'), fontWeight: i === labelPoints.length - 1 ? 900 : 800 }}>
+                          {i === labelPoints.length - 1 ? `Today (${p.monthDayStr})` : (i === 0 ? `Start (${p.monthDayStr})` : p.monthDayStr)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
