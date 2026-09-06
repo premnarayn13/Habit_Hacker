@@ -1290,6 +1290,7 @@ export default function App() {
         onClose={() => setIsSidebarOpen(false)} 
         activeTab={activeTab}
         setActiveTab={handleTabSwitch}
+        tasks={tasks}
       />
 
       {/* ANIMATIVE VIEW LOADING SPINNER */}

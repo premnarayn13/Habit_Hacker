@@ -190,9 +190,9 @@ export default function TodayDashboard({
   const getFrequencyLabel = (t) => {
     if (!t) return 'Daily';
     if (t.recurrencePattern) return t.recurrencePattern;
-    if (t.trackingMode === 'end_date') return 'Type-1 (Start-End Date)';
-    if (t.trackingMode === 'count_days') return 'Type-2 (Day Count)';
-    if (t.trackingMode === 'count_event') return 'Type-3 (Event Count)';
+    if (t.trackingMode === 'end_date') return 'Start-End Date';
+    if (t.trackingMode === 'count_days') return 'Day Count';
+    if (t.trackingMode === 'count_event') return 'Event Count';
     return 'Daily';
   };
 
@@ -393,9 +393,9 @@ export default function TodayDashboard({
 
   const taskTypeOptions = [
     { value: 'ALL', label: 'All Task Types' },
-    { value: 'end_date', label: 'Type-1 (Start-End Date)' },
-    { value: 'count_days', label: 'Type-2 (Day Count)' },
-    { value: 'count_event', label: 'Type-3 (Event Count)' }
+    { value: 'end_date', label: 'Start-End Date' },
+    { value: 'count_days', label: 'Day Count' },
+    { value: 'count_event', label: 'Event Count' }
   ];
 
   // Expand/Collapse Toggle Helper
@@ -1027,10 +1027,10 @@ export default function TodayDashboard({
           </span>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
             
-            {/* Type-1 Box */}
+            {/* Date Range Box */}
             <div style={{ padding: '8px 6px', borderRadius: '10px', background: '#EFF6FF', border: '1px solid #BFDBFE', textAlign: 'center' }}>
               <span style={{ fontSize: '9px', fontWeight: 800, color: '#1E40AF', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                Type-1 (Date Range)
+                Date Range
               </span>
               <span style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>
                 {typeBreakdown.endDate.done}/{typeBreakdown.endDate.total} Done
@@ -1040,10 +1040,10 @@ export default function TodayDashboard({
               </span>
             </div>
 
-            {/* Type-2 Box */}
+            {/* Day Count Box */}
             <div style={{ padding: '8px 6px', borderRadius: '10px', background: '#F0FDF4', border: '1px solid #BBF7D0', textAlign: 'center' }}>
               <span style={{ fontSize: '9px', fontWeight: 800, color: '#15803D', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                Type-2 (Day Count)
+                Day Count
               </span>
               <span style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>
                 {typeBreakdown.dayCount.done}/{typeBreakdown.dayCount.total} Done
@@ -1053,10 +1053,10 @@ export default function TodayDashboard({
               </span>
             </div>
 
-            {/* Type-3 Box */}
+            {/* Event Count Box */}
             <div style={{ padding: '8px 6px', borderRadius: '10px', background: '#FAF5FF', border: '1px solid #E9D5FF', textAlign: 'center' }}>
               <span style={{ fontSize: '9px', fontWeight: 800, color: '#7E22CE', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                Type-3 (Event Count)
+                Event Count
               </span>
               <span style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>
                 {typeBreakdown.eventCount.done}/{typeBreakdown.eventCount.total} Done
