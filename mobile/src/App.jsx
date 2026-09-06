@@ -598,7 +598,16 @@ export default function App() {
       const globalCached = localStorage.getItem('habit_hacker_tasks_global_v2');
       if (globalCached) {
         const parsed = JSON.parse(globalCached);
-        if (parsed && parsed.length > 0) return parsed;
+        if (parsed && parsed.length > 0) {
+          const existingIds = new Set(parsed.map(t => t.id));
+          const missingDefaults = INITIAL_DEFAULT_TASKS.filter(dt => !existingIds.has(dt.id));
+          if (missingDefaults.length > 0) {
+            const merged = [...parsed, ...missingDefaults];
+            try { localStorage.setItem('habit_hacker_tasks_global_v2', JSON.stringify(merged)); } catch (e) {}
+            return merged;
+          }
+          return parsed;
+        }
       }
     } catch (e) {}
     return INITIAL_DEFAULT_TASKS;

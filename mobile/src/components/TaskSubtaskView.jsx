@@ -84,14 +84,20 @@ export default function TaskSubtaskView({
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // Helper: Is task overall finished (Refers exclusively to tasks whose planned end date has passed)
+  // Helper: Is task overall finished (Refers to tasks whose planned end date has passed OR 100% target count reached)
   const isTaskOverallFinished = (t) => {
     if (!t || t.isArchived) return false;
+    if (t.progressPercent >= 100 || (t.targetCount > 0 && t.currentCount >= t.targetCount)) return true;
     const parentTask = t.parentTaskId ? tasks.find(p => p.id === t.parentTaskId) : null;
     const endDate = t.plannedEnd || parentTask?.plannedEnd;
     if (!endDate) return false;
     return endDate < todayStr;
   };
+
+  const completedTasksList = tasks.filter(t => !t.isArchived && isTaskOverallFinished(t));
+  const activeParentsCount = tasks.filter(t => !t.isArchived && !t.parentTaskId && !isTaskOverallFinished(t)).length;
+  const activeSubtasksCount = tasks.filter(t => !t.isArchived && t.parentTaskId && !isTaskOverallFinished(t)).length;
+  const totalActiveCount = activeParentsCount + activeSubtasksCount;
 
   // Filter Type: Parents vs Subtasks vs Completed
   if (filterType === 'PARENTS_ONLY') {
@@ -99,10 +105,8 @@ export default function TaskSubtaskView({
   } else if (filterType === 'SUBTASKS_ONLY') {
     displayedTasks = displayedTasks.filter(t => t.parentTaskId && !isTaskOverallFinished(t));
   } else if (filterType === 'COMPLETED') {
-    // Completed tasks: overall planned period over or 100% target achieved
-    displayedTasks = tasks.filter(t => !t.isArchived && isTaskOverallFinished(t));
+    displayedTasks = completedTasksList;
   } else if (filterType === 'ALL') {
-    // All active ongoing tasks
     displayedTasks = displayedTasks.filter(t => !isTaskOverallFinished(t));
   }
 
@@ -268,9 +272,41 @@ export default function TaskSubtaskView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: selectedTaskObj ? '90px' : '20px' }}>
       
-      {/* FILTER & CONTROL TOOLBAR (COMPACT 100% ZERO-SCROLL BUTTON TRIGGERS FOR SEARCHABLE DROPDOWNS) */}
+      {/* FILTER & CONTROL TOOLBAR */}
       <div className="glass-panel" style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         
+        {/* SEGMENTED DIRECT FILTER TABS (ALL, PARENTS, SUBTASKS, COMPLETED) */}
+        <div style={{ display: 'flex', gap: '4px', background: '#F1F5F9', padding: '4px', borderRadius: '10px', width: '100%' }}>
+          {[
+            { id: 'ALL', label: `All (${totalActiveCount})` },
+            { id: 'PARENTS_ONLY', label: `Parents (${activeParentsCount})` },
+            { id: 'SUBTASKS_ONLY', label: `Subtasks (${activeSubtasksCount})` },
+            { id: 'COMPLETED', label: `Completed (${completedTasksList.length})` }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setFilterType(tab.id)}
+              style={{
+                flex: 1,
+                padding: '6px 4px',
+                borderRadius: '8px',
+                border: 'none',
+                fontSize: '11px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                background: filterType === tab.id ? '#DC2626' : 'transparent',
+                color: filterType === tab.id ? '#FFFFFF' : '#475569',
+                boxShadow: filterType === tab.id ? '0 2px 6px rgba(220, 38, 38, 0.25)' : 'none',
+                transition: 'all 0.2s ease',
+                whiteSpace: 'nowrap',
+                textAlign: 'center'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         {/* SINGLE 100% ADAPTIVE HORIZONTAL ROW WITH SEARCHABLE DROPDOWN TRIGGERS */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px', flexWrap: 'nowrap', width: '100%' }}>
           

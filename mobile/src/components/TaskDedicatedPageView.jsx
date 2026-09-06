@@ -932,7 +932,7 @@ export default function TaskDedicatedPageView({
                       <span style={{ fontSize: '8px', fontWeight: 800, color: '#64748B', display: 'block' }}>{d.columnPercentage}%</span>
                     </div>
 
-                    <div style={{ width: '100%', maxWidth: '34px', borderRadius: '10px', overflow: 'hidden', display: 'flex', flexDirection: 'column-reverse', background: '#E2E8F0', height: `${Math.min(100, (d.totalColumnVal / 25) * 80)}%`, minHeight: '12px' }}>
+                    <div style={{ width: '100%', maxWidth: '36px', borderRadius: '10px', overflow: 'hidden', display: 'flex', flexDirection: 'column-reverse', background: '#E2E8F0', height: `${Math.min(100, (d.totalColumnVal / 25) * 80)}%`, minHeight: '12px' }}>
                       {d.subtaskContributions.map((sc, scIdx) => (
                         <div 
                           key={scIdx} 
@@ -941,10 +941,20 @@ export default function TaskDedicatedPageView({
                             flex: sc.val, 
                             background: sc.color, 
                             transition: 'all 0.3s ease',
-                            borderBottom: scIdx > 0 ? '1px solid rgba(255,255,255,0.3)' : 'none'
+                            borderBottom: scIdx > 0 ? '1px solid rgba(255,255,255,0.3)' : 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#FFFFFF',
+                            fontSize: '9px',
+                            fontWeight: 900,
+                            textShadow: '0 1px 2px rgba(0,0,0,0.6)',
+                            overflow: 'hidden'
                           }}
                           title={`${sc.title}: ${sc.val} ${measureUnit} (${sc.note})`}
-                        />
+                        >
+                          {sc.val >= 1 ? sc.val : ''}
+                        </div>
                       ))}
                     </div>
 
@@ -956,17 +966,23 @@ export default function TaskDedicatedPageView({
               </div>
             </div>
 
-            <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', width: '220px', flexShrink: 0 }}>
+            <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', width: '240px', flexShrink: 0 }}>
               <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block', marginBottom: '8px', borderBottom: '1px solid #CBD5E1', paddingBottom: '4px' }}>
-                Subtask Key
+                Subtask Contribution Key
               </span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {directChildSubtasks.map((st, i) => (
-                  <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#1E293B' }}>
-                    <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: subtaskColors[i % subtaskColors.length], flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st.title}</span>
-                  </div>
-                ))}
+                {directChildSubtasks.map((st, i) => {
+                  const val = Number(st.measureTarget || st.loggedMeasureVal || 0);
+                  const unitStr = val > 0 ? ` (+${val} ${measureUnit})` : (st.isOptional ? ' (Optional)' : ' (Standard)');
+                  return (
+                    <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#1E293B' }}>
+                      <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: subtaskColors[i % subtaskColors.length], flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {st.title} <strong style={{ color: '#2563EB', fontWeight: 800 }}>{unitStr}</strong>
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -1012,7 +1028,7 @@ export default function TaskDedicatedPageView({
                           <span style={{ fontSize: '8px', fontWeight: 800, color: '#64748B' }}>#{ev.eventId}</span>
                           
                           {/* Single Vertical Stacked Bar */}
-                          <div style={{ width: '22px', height: '115px', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column-reverse', background: '#E2E8F0', border: '1px solid #CBD5E1' }}>
+                          <div style={{ width: '28px', height: '115px', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column-reverse', background: '#E2E8F0', border: '1px solid #CBD5E1' }}>
                             {ev.subtaskSegments.map((seg, sIdx) => (
                               <div 
                                 key={sIdx} 
@@ -1021,10 +1037,20 @@ export default function TaskDedicatedPageView({
                                   flex: seg.val, 
                                   background: seg.color, 
                                   transition: 'all 0.3s ease',
-                                  borderBottom: sIdx > 0 ? '1px solid rgba(255,255,255,0.4)' : 'none'
+                                  borderBottom: sIdx > 0 ? '1px solid rgba(255,255,255,0.4)' : 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justify: 'center',
+                                  color: '#FFFFFF',
+                                  fontSize: '9px',
+                                  fontWeight: 900,
+                                  textShadow: '0 1px 2px rgba(0,0,0,0.6)',
+                                  overflow: 'hidden'
                                 }}
                                 title={`${ev.label} • ${seg.title}: ${seg.val} ${measureUnit} (${seg.pct}%)`}
-                              />
+                              >
+                                {seg.val > 0 ? seg.val : ''}
+                              </div>
                             ))}
                           </div>
                         </div>
@@ -1038,17 +1064,23 @@ export default function TaskDedicatedPageView({
             </div>
 
             {/* SUBTASK CONTRIBUTIONS LEGEND */}
-            <div style={{ background: '#F8FAFC', padding: '14px 16px', borderRadius: '14px', border: '1px solid #E2E8F0', width: '220px', flexShrink: 0 }}>
+            <div style={{ background: '#F8FAFC', padding: '14px 16px', borderRadius: '14px', border: '1px solid #E2E8F0', width: '240px', flexShrink: 0 }}>
               <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block', marginBottom: '8px', borderBottom: '1px solid #CBD5E1', paddingBottom: '4px' }}>
                 Subtask Contribution Key
               </span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {directChildSubtasks.map((st, i) => (
-                  <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#1E293B' }}>
-                    <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: subtaskColors[i % subtaskColors.length], flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{st.title}</span>
-                  </div>
-                ))}
+                {directChildSubtasks.map((st, i) => {
+                  const val = Number(st.measureTarget || st.currentEventWork || 0);
+                  const unitStr = val > 0 ? ` (${val} ${measureUnit})` : (st.isOptional ? ' (Optional)' : ' (Standard)');
+                  return (
+                    <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#1E293B' }}>
+                      <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: subtaskColors[i % subtaskColors.length], flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {st.title} <strong style={{ color: '#2563EB', fontWeight: 800 }}>{unitStr}</strong>
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -1137,161 +1169,7 @@ export default function TaskDedicatedPageView({
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 10. CALENDAR VIEWS PANEL (IMAGE 2 & 3 REFERENCES) */}
-      <div style={{ padding: '24px', background: '#FFF', borderRadius: '24px', border: '1px solid #E2E8F0', boxShadow: '0 8px 30px rgba(0,0,0,0.04)' }}>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', border: '2px solid #0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '14px' }}>
-              14
-            </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
-                <ChevronLeft size={20} color="#475569" />
-              </button>
-              <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A', margin: 0 }}>
-                October 2022
-              </h2>
-              <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
-                <ChevronRight size={20} color="#475569" />
-              </button>
-            </div>
-          </div>
 
-          <div style={{ display: 'flex', gap: '4px', background: '#F1F5F9', padding: '3px', borderRadius: '8px', border: '1px solid #CBD5E1' }}>
-            <button
-              onClick={() => setCalendarViewMode('MONTH')}
-              style={{
-                background: calendarViewMode === 'MONTH' ? '#DC2626' : 'transparent',
-                color: calendarViewMode === 'MONTH' ? '#FFF' : '#475569',
-                border: 'none',
-                padding: '4px 12px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: 800,
-                cursor: 'pointer'
-              }}
-            >
-              Monthly
-            </button>
-
-            <button
-              onClick={() => setCalendarViewMode('WEEK')}
-              style={{
-                background: calendarViewMode === 'WEEK' ? '#DC2626' : 'transparent',
-                color: calendarViewMode === 'WEEK' ? '#FFF' : '#475569',
-                border: 'none',
-                padding: '4px 12px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: 800,
-                cursor: 'pointer'
-              }}
-            >
-              Weekly
-            </button>
-          </div>
-        </div>
-
-        {/* WEEKLY CALENDAR VIEW */}
-        {calendarViewMode === 'WEEK' && (
-          <div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: '#E2E8F0', borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0' }}>
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-                <div key={d} style={{ background: '#FFF', padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: '#64748B' }}>
-                  {d}
-                </div>
-              ))}
-
-              {[10, 11, 12, 13, 14, 15, 16].map((dayNum, i) => (
-                <div key={i} style={{ background: '#FFF', minHeight: '100px', padding: '8px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'center' }}>
-                  <span style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    background: dayNum === 14 ? '#2563EB' : 'transparent',
-                    color: dayNum === 14 ? '#FFF' : '#0F172A',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justify: 'center',
-                    fontSize: '12px',
-                    fontWeight: 900
-                  }}>
-                    {dayNum}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div style={{ textAlign: 'center', fontSize: '11px', fontWeight: 800, color: '#64748B', marginTop: '8px' }}>
-              Weekly Calendar View
-            </div>
-          </div>
-        )}
-
-        {/* MONTHLY CALENDAR VIEW */}
-        {calendarViewMode === 'MONTH' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: '#E2E8F0', borderRadius: '12px', overflow: 'hidden', border: '1px solid #E2E8F0' }}>
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-              <div key={d} style={{ background: '#FFF', padding: '8px', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: '#64748B' }}>
-                {d}
-              </div>
-            ))}
-
-            {monthlyGridCells.map((cell, idx) => (
-              <div
-                key={idx}
-                onClick={() => setSelectedCalendarDate(cell.dayNum)}
-                style={{
-                  background: '#FFF',
-                  minHeight: '75px',
-                  padding: '6px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                  position: 'relative'
-                }}
-              >
-                <span style={{
-                  width: '22px',
-                  height: '22px',
-                  borderRadius: '50%',
-                  background: cell.isToday ? '#2563EB' : 'transparent',
-                  color: cell.isToday ? '#FFF' : (cell.isCurrentMonth ? '#0F172A' : '#CBD5E1'),
-                  display: 'flex',
-                  alignItems: 'center',
-                  justify: 'center',
-                  fontSize: '11px',
-                  fontWeight: 900
-                }}>
-                  {cell.dayNum}
-                </span>
-
-                {cell.events.map((ev, evIdx) => (
-                  <div 
-                    key={evIdx}
-                    style={{
-                      background: ev.color,
-                      color: ev.textColor,
-                      padding: '2px 5px',
-                      borderRadius: '4px',
-                      fontSize: '9px',
-                      fontWeight: 800,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}
-                  >
-                    {ev.text}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
       {/* ========================================================================= */}
       {/* 11. LEETCODE 365-DAY HEATMAP (7 x 4 x 12 MATRIX) */}
