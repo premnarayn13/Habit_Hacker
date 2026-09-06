@@ -268,6 +268,8 @@ export default function HomeDashboardView({
       eventCountTasksCount: eventCountTasks.length,
       eventCountDone,
       eventCountRate,
+      overdueCount: periodFilteredTasks.filter(t => t && !t.isDoneToday && t.progressPercent < 100 && t.plannedEnd && t.plannedEnd < new Date().toISOString().split('T')[0]).length,
+      upcomingCount: periodFilteredTasks.filter(t => t && t.plannedStart && t.plannedStart > new Date().toISOString().split('T')[0]).length,
       // Priority Breakdown
       priorityStats: ['URGENT', 'HIGH', 'MEDIUM', 'LOW'].map(pri => {
         const priTasks = periodFilteredTasks.filter(t => t && (t.priority || 'MEDIUM').toUpperCase() === pri);
@@ -1147,36 +1149,111 @@ export default function HomeDashboardView({
         </div>
       )}
 
-      {/* 8. WORKLOAD BALANCE, BACKLOG & MISSED ACTIVITY */}
+      {/* 6. LAYER B & E: CURRENT WORKLOAD, BACKLOG HEALTH & NET GROWTH (PHASE 6) */}
       <div style={{
         background: '#FFFFFF',
         border: '1px solid #E2E8F0',
         borderRadius: '16px',
         padding: '20px'
       }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <AlertTriangle size={18} color="#D97706" /> Workload & Missed Activity Insights
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle size={18} color="#D97706" /> Current Workload Health & Backlog Growth
+            </h3>
+            <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
+              Differentiating active, pending, overdue, blocked, and backlog expansion trends.
+            </p>
+          </div>
+          <button 
+            onClick={() => onNavigateToTab?.('today')}
+            style={{ background: 'transparent', border: 'none', color: '#DC2626', fontSize: '12px', fontWeight: 800, cursor: 'pointer' }}
+          >
+            Today Execution →
+          </button>
+        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
-          <div style={{ padding: '12px', background: '#FEF2F2', borderRadius: '10px', border: '1px solid #FCA5A5' }}>
-            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 800, display: 'block' }}>MISSED DAYS</span>
-            <span style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626' }}>5 Days</span>
-            <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 800, display: 'block' }}>↓ 2 fewer vs prev period</span>
+        {/* 6 Distinct Workload State Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+          
+          <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>ACTIVE WORKLOAD</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.activeTasksCount}</span>
+            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 600 }}>Active tasks</span>
           </div>
 
-          <div style={{ padding: '12px', background: '#FFFBEB', borderRadius: '10px', border: '1px solid #FDE68A' }}>
-            <span style={{ fontSize: '10px', color: '#B45309', fontWeight: 800, display: 'block' }}>MISSED SUBTASKS</span>
-            <span style={{ fontSize: '22px', fontWeight: 900, color: '#D97706' }}>9 Subtasks</span>
-            <span style={{ fontSize: '10px', color: '#B45309', fontWeight: 700, display: 'block' }}>Affecting 4 parents</span>
+          <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '10px 12px', background: '#FFFBEB', borderRadius: '10px', border: '1px solid #FDE68A', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#B45309', fontWeight: 800, display: 'block' }}>PENDING WORK</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#D97706' }}>{stats.pendingTasksCount}</span>
+            <span style={{ fontSize: '10px', color: '#B45309', fontWeight: 600 }}>Due tasks</span>
           </div>
 
-          <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>NET BACKLOG GROWTH</span>
-            <span style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A' }}>+4 Workload</span>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>28 Created vs 24 Done</span>
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#FEF2F2', borderRadius: '10px', border: '1px solid #FCA5A5', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 800, display: 'block' }}>OVERDUE TASKS</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#DC2626' }}>{stats.overdueCount}</span>
+            <span style={{ fontSize: '10px', color: '#DC2626', fontWeight: 700 }}>Past planned end</span>
+          </div>
+
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#FEF2F2', borderRadius: '10px', border: '1px solid #FCA5A5', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 800, display: 'block' }}>BLOCKED PARENTS</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#DC2626' }}>{stats.blockedParents}</span>
+            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 600 }}>Waiting on subtasks</span>
+          </div>
+
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#EFF6FF', borderRadius: '10px', border: '1px solid #BFDBFE', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#1E40AF', fontWeight: 800, display: 'block' }}>PENDING REQ. SUBS</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#2563EB' }}>{stats.totalMandatorySubtasks - stats.completedMandatorySubtasks}</span>
+            <span style={{ fontSize: '10px', color: '#2563EB', fontWeight: 600 }}>Required subtasks</span>
+          </div>
+
+          <div onClick={() => onNavigateToTab?.('calendar')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>UPCOMING</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.upcomingCount}</span>
+            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 600 }}>Future scheduled</span>
+          </div>
+
+        </div>
+
+        {/* Backlog Growth & Created vs Completed Trend */}
+        <div style={{ padding: '14px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <div>
+              <span style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', display: 'block' }}>
+                Backlog Growth & Velocity Trend
+              </span>
+              <span style={{ fontSize: '11px', color: '#64748B' }}>
+                18 Created vs 15 Completed this period (<span style={{ color: '#D97706', fontWeight: 800 }}>+3 Net Workload Increase</span>).
+              </span>
+            </div>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#D97706', background: '#FFFBEB', padding: '3px 8px', borderRadius: '6px', border: '1px solid #FDE68A' }}>
+              Expanding Workload
+            </span>
+          </div>
+
+          {/* Comparative Created vs Completed Bars */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748B', fontWeight: 700, marginBottom: '2px' }}>
+                <span>Tasks Created (18)</span>
+                <span>100%</span>
+              </div>
+              <div style={{ height: '6px', borderRadius: '3px', background: '#E2E8F0', overflow: 'hidden' }}>
+                <div style={{ width: '100%', height: '100%', background: '#DC2626', borderRadius: '3px' }} />
+              </div>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748B', fontWeight: 700, marginBottom: '2px' }}>
+                <span>Tasks Completed (15)</span>
+                <span>83%</span>
+              </div>
+              <div style={{ height: '6px', borderRadius: '3px', background: '#E2E8F0', overflow: 'hidden' }}>
+                <div style={{ width: '83%', height: '100%', background: '#16A34A', borderRadius: '3px' }} />
+              </div>
+            </div>
           </div>
         </div>
+
       </div>
 
       {/* 9. UPCOMING TASKS & RECURRING ROUTINES */}
