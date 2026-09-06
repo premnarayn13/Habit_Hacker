@@ -593,6 +593,7 @@ export default function App() {
   const [selectedEditItem, setSelectedEditItem] = useState(null);
   const [dedicatedTaskPageItem, setDedicatedTaskPageItem] = useState(null);
   const [showArchivedVault, setShowArchivedVault] = useState(false);
+  const [missedDaysLogs, setMissedDaysLogs] = useState([]);
 
   const [availableCapacityMinutes, setAvailableCapacityMinutes] = useState(480);
 
@@ -814,6 +815,13 @@ export default function App() {
       } else {
         updateTasksState(INITIAL_DEFAULT_TASKS, userEmail);
       }
+
+      try {
+        const { data: dbMissed } = await supabase.from('view_parent_task_missed_days').select('*');
+        if (dbMissed && dbMissed.length > 0) {
+          setMissedDaysLogs(dbMissed);
+        }
+      } catch (e) {}
 
     } catch (err) {
       console.warn('Supabase fetch notice:', err.message);
@@ -1332,11 +1340,12 @@ export default function App() {
             <>
               {(activeTab === 'widgets' || activeTab === 'home') && (
                 <HomeDashboardView 
+                  currentUser={currentUser}
                   tasks={activeTasks}
                   subtasks={subtasks}
                   habits={habits}
                   disciplineScore={disciplineScore}
-                  missedDaysLogs={[]}
+                  missedDaysLogs={missedDaysLogs}
                   onNavigateToTab={(tab) => handleTabSwitch(tab)}
                   onNavigateToTaskDedicated={(item) => setDedicatedTaskPageItem(item)}
                 />
