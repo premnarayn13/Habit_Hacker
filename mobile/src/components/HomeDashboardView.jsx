@@ -396,101 +396,120 @@ export default function HomeDashboardView({
         </div>
       </div>
 
-      {/* 2. MASTER PRODUCTIVITY SNAPSHOT & DETERMINISTIC SCORE */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
-        
-        {/* Productivity Score Gauge Card */}
-        <div 
-          onClick={() => onNavigateToTab?.('analytics')}
-          style={{
-            background: 'linear-gradient(135deg, #DC2626, #991B1B)',
-            borderRadius: '14px',
-            padding: '16px',
-            color: '#FFF',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(220, 38, 38, 0.3)',
-            transition: 'transform 0.15s ease'
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.05em', opacity: 0.9 }}>PRODUCTIVITY SCORE</span>
-            <Award size={18} color="#FFF" />
+      {/* 2. LAYER A: MY PRODUCTIVITY SYSTEM & MASTER COUNTERS (PHASE 2) */}
+      <div style={{
+        background: '#FFFFFF',
+        border: '1px solid #E2E8F0',
+        borderRadius: '16px',
+        padding: '20px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Grid size={18} color="#DC2626" /> My Productivity System Infrastructure
+            </h3>
+            <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
+              Master inventory counters and structural complexity analysis.
+            </p>
           </div>
-          <div style={{ margin: '10px 0' }}>
-            <div style={{ fontSize: '38px', fontWeight: 900, lineHeight: 1 }}>{stats.productivityScore}</div>
-            <div style={{ fontSize: '11px', opacity: 0.85, marginTop: '2px', fontWeight: 600 }}>Out of 100 points</div>
-          </div>
-          <div style={{ fontSize: '10px', opacity: 0.9, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-            Based on completion, consistency & momentum <ChevronRight size={12} />
-          </div>
+          <button 
+            onClick={() => onNavigateToTab?.('tasks')}
+            style={{ background: 'transparent', border: 'none', color: '#DC2626', fontSize: '12px', fontWeight: 800, cursor: 'pointer' }}
+          >
+            Explore Tasks Repository →
+          </button>
         </div>
 
-        {/* Active Tasks */}
-        <div 
-          onClick={() => onNavigateToTab?.('today')}
-          style={{
-            background: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderRadius: '14px',
-            padding: '16px',
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between'
-          }}
-        >
-          <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748B' }}>ACTIVE TASKS</div>
-          <div style={{ fontSize: '28px', fontWeight: 900, color: '#0F172A', margin: '4px 0' }}>{stats.activeTasksCount}</div>
-          <div style={{ fontSize: '11px', color: '#DC2626', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-            View execution dashboard <ChevronRight size={12} />
+        {/* 9 Compact Master System Counters */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+          
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>TOTAL TASKS</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.totalAllTasks}</span>
           </div>
+
+          <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>ACTIVE TASKS</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#2563EB' }}>{stats.activeTasksCount}</span>
+          </div>
+
+          <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '10px 12px', background: '#F0FDF4', borderRadius: '10px', border: '1px solid #BBF7D0', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#15803D', fontWeight: 800, display: 'block' }}>COMPLETED</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#16A34A' }}>{stats.completedTasksCount}</span>
+          </div>
+
+          <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '10px 12px', background: '#FFFBEB', borderRadius: '10px', border: '1px solid #FDE68A', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#B45309', fontWeight: 800, display: 'block' }}>PENDING</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#D97706' }}>{stats.pendingTasksCount}</span>
+          </div>
+
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>PARENTS</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.totalParents}</span>
+          </div>
+
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>STANDALONE</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.standaloneTasksCount}</span>
+          </div>
+
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>SUBTASKS</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.totalSubtasksCount}</span>
+          </div>
+
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#FEF2F2', borderRadius: '10px', border: '1px solid #FCA5A5', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 800, display: 'block' }}>MANDATORY</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#DC2626' }}>{stats.totalMandatorySubtasks}</span>
+          </div>
+
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>OPTIONAL</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#64748B' }}>{stats.totalOptionalSubtasks}</span>
+          </div>
+
         </div>
 
-        {/* Completed Tasks */}
-        <div 
-          onClick={() => onNavigateToTab?.('today')}
-          style={{
-            background: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderRadius: '14px',
-            padding: '16px',
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between'
-          }}
-        >
-          <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748B' }}>COMPLETED</div>
-          <div style={{ fontSize: '28px', fontWeight: 900, color: '#16A34A', margin: '4px 0' }}>{stats.completedTasksCount}</div>
-          <div style={{ fontSize: '11px', color: '#16A34A', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {stats.completionRate}% completion rate <ChevronRight size={12} />
+        {/* Structural Ratio & Complexity Breakdown */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+          
+          {/* Hierarchy Breakdown Bar */}
+          <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, color: '#0F172A', marginBottom: '6px' }}>
+              <span>Hierarchy Distribution</span>
+              <span style={{ color: '#64748B' }}>{stats.totalParents} P · {stats.standaloneTasksCount} S · {stats.totalSubtasksCount} Sub</span>
+            </div>
+            <div style={{ height: '8px', borderRadius: '4px', background: '#E2E8F0', display: 'flex', overflow: 'hidden' }}>
+              <div style={{ width: `${Math.round((stats.totalParents / Math.max(stats.totalAllTasks, 1)) * 100)}%`, background: '#DC2626' }} title="Parent Tasks" />
+              <div style={{ width: `${Math.round((stats.standaloneTasksCount / Math.max(stats.totalAllTasks, 1)) * 100)}%`, background: '#2563EB' }} title="Standalone Tasks" />
+              <div style={{ width: `${Math.round((stats.totalSubtasksCount / Math.max(stats.totalAllTasks, 1)) * 100)}%`, background: '#94A3B8' }} title="Subtasks" />
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '6px', fontSize: '10px', color: '#64748B', fontWeight: 700 }}>
+              <span style={{ color: '#DC2626' }}>■ Parents</span>
+              <span style={{ color: '#2563EB' }}>■ Standalone</span>
+              <span style={{ color: '#94A3B8' }}>■ Subtasks</span>
+            </div>
           </div>
-        </div>
 
-        {/* Pending Tasks */}
-        <div 
-          onClick={() => onNavigateToTab?.('today')}
-          style={{
-            background: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderRadius: '14px',
-            padding: '16px',
-            cursor: 'pointer',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between'
-          }}
-        >
-          <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748B' }}>PENDING</div>
-          <div style={{ fontSize: '28px', fontWeight: 900, color: '#D97706', margin: '4px 0' }}>{stats.pendingTasksCount}</div>
-          <div style={{ fontSize: '11px', color: '#D97706', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {stats.blockedParents} parent tasks blocked <ChevronRight size={12} />
+          {/* Mandatory vs Optional Ratio Bar */}
+          <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, color: '#0F172A', marginBottom: '6px' }}>
+              <span>Subtask Requirement Ratio</span>
+              <span style={{ color: '#DC2626' }}>
+                {Math.round((stats.totalMandatorySubtasks / Math.max(stats.totalSubtasksCount, 1)) * 100)}% Mandatory
+              </span>
+            </div>
+            <div style={{ height: '8px', borderRadius: '4px', background: '#E2E8F0', display: 'flex', overflow: 'hidden' }}>
+              <div style={{ width: `${Math.round((stats.totalMandatorySubtasks / Math.max(stats.totalSubtasksCount, 1)) * 100)}%`, background: '#DC2626' }} />
+              <div style={{ width: `${Math.round((stats.totalOptionalSubtasks / Math.max(stats.totalSubtasksCount, 1)) * 100)}%`, background: '#CBD5E1' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '10px', color: '#64748B', fontWeight: 700 }}>
+              <span style={{ color: '#DC2626' }}>{stats.totalMandatorySubtasks} Mandatory (Required)</span>
+              <span style={{ color: '#64748B' }}>{stats.totalOptionalSubtasks} Optional</span>
+            </div>
           </div>
-        </div>
 
+        </div>
       </div>
 
       {/* 3. TASK INVENTORY & HIERARCHY HEALTH ENGINE */}
