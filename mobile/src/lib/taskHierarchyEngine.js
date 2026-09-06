@@ -104,22 +104,50 @@ export function calculateParentDailyMeasure(childSubtasks = [], dayLogsMap = {})
   return Math.round(totalDailyMeasure * 10) / 10;
 }
 
-/**
- * Evaluates parent task auto-completion status.
- * Parent is COMPLETED iff ALL mandatory (non-optional) subtasks are completed.
- */
 export function calculateParentCompletionStatus(task, childSubtasks = []) {
-  if (!isParentTaskWithChildren(task, childSubtasks)) {
-    return Boolean(task.isDoneToday || task.progressPercent >= 100);
+  if (!task) return { isCompleted: false, isPartiallyCompleted: false, completedMandatory: 0, totalMandatory: 0 };
+
+  const isStandalone = !isParentTaskWithChildren(task, childSubtasks);
+  
+  if (isStandalone) {
+    const isCompleted = Boolean(
+      task.isDoneToday || 
+      task.progressPercent >= 100 || 
+      (task.targetCount > 0 && task.currentCount >= task.targetCount)
+    );
+    return {
+      isCompleted,
+      isPartiallyCompleted: false,
+      completedMandatory: isCompleted ? 1 : 0,
+      totalMandatory: 1
+    };
   }
 
   const mandatoryChildren = childSubtasks.filter(c => !c.isOptional);
-  if (mandatoryChildren.length === 0) {
-    // If all children are optional, completion defaults to whether any child is completed
-    return childSubtasks.some(c => c.isDoneToday || c.progressPercent >= 100);
+  const totalMandatory = mandatoryChildren.length;
+  
+  if (totalMandatory === 0) {
+    // If all children are optional, parent is completed if any optional child is done
+    const completedCount = childSubtasks.filter(c => c.isDoneToday || c.progressPercent >= 100).length;
+    const isCompleted = completedCount > 0;
+    return {
+      isCompleted,
+      isPartiallyCompleted: false,
+      completedMandatory: completedCount,
+      totalMandatory: childSubtasks.length
+    };
   }
 
-  return mandatoryChildren.every(c => c.isDoneToday || c.progressPercent >= 100);
+  const completedMandatory = mandatoryChildren.filter(c => c.isDoneToday || c.progressPercent >= 100).length;
+  const isCompleted = completedMandatory === totalMandatory;
+  const isPartiallyCompleted = completedMandatory > 0 && completedMandatory < totalMandatory;
+
+  return {
+    isCompleted,
+    isPartiallyCompleted,
+    completedMandatory,
+    totalMandatory
+  };
 }
 
 /**
