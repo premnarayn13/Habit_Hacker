@@ -946,7 +946,7 @@ export default function TaskDedicatedPageView({
       {/* 8. CONTRIBUTION / SUBTASK ANALYTICS PANEL (STACKED COLUMN — IMAGE 2 MODEL) */}
       {/* ========================================================================= */}
       {(trackingMode === 'end_date' || trackingMode === 'count_days') && (
-        <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+        <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)', width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
           <div style={{ marginBottom: '18px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#1E293B', margin: 0, textAlign: 'center' }}>
               Subtask Contribution per Day - Grouped Breakdown
@@ -956,9 +956,9 @@ export default function TaskDedicatedPageView({
             </p>
           </div>
 
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '280px', display: 'flex', gap: '12px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '220px', paddingBottom: '24px', fontSize: '10px', fontWeight: 800, color: '#64748B' }}>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+            <div style={{ flex: 1, minWidth: '260px', maxWidth: '100%', display: 'flex', gap: '12px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '220px', paddingBottom: '24px', fontSize: '10px', fontWeight: 800, color: '#64748B', flexShrink: 0 }}>
                 <span>25</span>
                 <span>20</span>
                 <span>15</span>
@@ -967,9 +967,9 @@ export default function TaskDedicatedPageView({
                 <span>0</span>
               </div>
 
-              <div style={{ flex: 1, height: '220px', display: 'flex', alignItems: 'flex-end', gap: '12px', borderBottom: '2px solid #E2E8F0', paddingBottom: '4px' }}>
+              <div style={{ flex: 1, height: '220px', display: 'flex', alignItems: 'flex-end', gap: '12px', borderBottom: '2px solid #E2E8F0', paddingBottom: '4px', minWidth: `${Math.max(260, sampleDailyMeasures.length * 40)}px` }}>
                 {sampleDailyMeasures.map((d, i) => (
-                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                  <div key={i} style={{ width: '36px', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
                     
                     <div style={{ textAlign: 'center', marginBottom: '4px' }}>
                       <span style={{ fontSize: '10px', fontWeight: 900, color: '#0F172A', display: 'block' }}>{d.totalColumnVal}</span>
@@ -1316,13 +1316,15 @@ export default function TaskDedicatedPageView({
         {/* SVG Cumulative Measure Slope Trajectory Line Chart Container */}
         {(() => {
           const maxCumDomain = Math.max(Math.ceil(Math.max(totalCompletedMeasure, expectedMeasureTillToday, 10) * 1.25), 10);
-          
           const numDays = fullTimelineDailyData.length;
+
+          // Dynamic canvas width based on total number of timeline days
+          const svgCanvasWidth = Math.max(480, numDays * 36);
 
           // Map every single day from Day 1 to Today to SVG coordinates (x, y)
           const points = fullTimelineDailyData.map((d, idx) => {
             const frac = numDays > 1 ? idx / (numDays - 1) : 1;
-            const x = Math.round(20 + frac * 460);
+            const x = Math.round(24 + frac * (svgCanvasWidth - 48));
             
             const yActual = Math.max(20, 160 - Math.round((d.actualCumulativeVal / maxCumDomain) * 140));
             const yTarget = Math.max(20, 160 - Math.round((d.expectedTargetVal / maxCumDomain) * 140));
@@ -1335,23 +1337,46 @@ export default function TaskDedicatedPageView({
             };
           });
 
-          // Polyline string containing EVERY single day point
+          // Polyline strings
           const actualPolylinePoints = points.map(p => `${p.x},${p.yActual}`).join(' ');
           const targetPolylinePoints = points.map(p => `${p.x},${p.yTarget}`).join(' ');
-          const polygonPoints = `20,160 ${actualPolylinePoints} 480,160 20,160`;
-
-          // Pick 7 key checkpoint ticks along the X-axis for clean label rendering
-          const numLabels = 7;
-          const labelPoints = Array.from({ length: Math.min(numLabels, points.length) }).map((_, lIdx) => {
-            const pIdx = Math.round(lIdx * (points.length - 1) / Math.max(1, numLabels - 1));
-            return points[pIdx];
-          });
+          const polygonPoints = `24,160 ${actualPolylinePoints} ${svgCanvasWidth - 24},160 24,160`;
 
           return (
-            <div style={{ height: '240px', background: '#FFFFFF', padding: '16px 14px 28px 45px', border: '1.5px solid #CBD5E1', borderRadius: '16px', position: 'relative', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
+            <div style={{ 
+              height: '240px', 
+              background: '#FFFFFF', 
+              border: '1.5px solid #CBD5E1', 
+              borderRadius: '16px', 
+              position: 'relative', 
+              boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)', 
+              overflow: 'hidden',
+              width: '100%',
+              maxWidth: '100%',
+              boxSizing: 'border-box'
+            }}>
               
-              {/* Y-Axis Labels */}
-              <div style={{ position: 'absolute', left: '6px', top: '16px', bottom: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '9px', fontWeight: 800, color: '#64748B', textAlign: 'right', width: '32px' }}>
+              {/* FIXED PINNED Y-AXIS OVERLAY (STAYS FIXED ON LEFT WHILE SCROLLING GRAPH) */}
+              <div style={{ 
+                position: 'absolute', 
+                left: 0, 
+                top: 0, 
+                bottom: 0, 
+                width: '42px', 
+                background: '#FFFFFF', 
+                borderRight: '1px solid #E2E8F0', 
+                zIndex: 10, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                justify: 'space-between', 
+                padding: '16px 4px 28px 4px',
+                fontSize: '9px', 
+                fontWeight: 800, 
+                color: '#64748B', 
+                textAlign: 'right',
+                boxShadow: '4px 0 8px rgba(0,0,0,0.04)',
+                boxSizing: 'border-box'
+              }}>
                 <span>{maxCumDomain}</span>
                 <span>{Math.round(maxCumDomain * 0.75)}</span>
                 <span>{Math.round(maxCumDomain * 0.50)}</span>
@@ -1359,90 +1384,105 @@ export default function TaskDedicatedPageView({
                 <span>0</span>
               </div>
 
-              {/* SVG Canvas */}
-              <svg viewBox="0 0 500 180" preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
-                <defs>
-                  <linearGradient id="cumOrangeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#EA580C" stopOpacity="0.25" />
-                    <stop offset="100%" stopColor="#F97316" stopOpacity="0.02" />
-                  </linearGradient>
-                  <filter id="glowOrangeLine" x="-20%" y="-20%" width="140%" height="140%">
-                    <feGaussianBlur stdDeviation="2" result="blur" />
-                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                  </filter>
-                </defs>
+              {/* SCROLLABLE INNER GRAPH CANVAS AREA */}
+              <div style={{ 
+                width: '100%', 
+                height: '100%', 
+                overflowX: 'auto', 
+                overflowY: 'hidden', 
+                WebkitOverflowScrolling: 'touch',
+                paddingLeft: '42px',
+                boxSizing: 'border-box'
+              }}>
+                <div style={{ width: `${svgCanvasWidth}px`, height: '100%', position: 'relative' }}>
+                  
+                  {/* SVG Canvas */}
+                  <svg viewBox={`0 0 ${svgCanvasWidth} 180`} style={{ width: '100%', height: '100%', display: 'block' }}>
+                    <defs>
+                      <linearGradient id="cumOrangeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#EA580C" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#F97316" stopOpacity="0.02" />
+                      </linearGradient>
+                      <filter id="glowOrangeLine" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="2" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                      </filter>
+                    </defs>
 
-                {/* Horizontal Grid Lines */}
-                <line x1="20" y1="20" x2="480" y2="20" stroke="#F1F5F9" strokeWidth="1.5" />
-                <line x1="20" y1="55" x2="480" y2="55" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
-                <line x1="20" y1="90" x2="480" y2="90" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
-                <line x1="20" y1="125" x2="480" y2="125" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
-                <line x1="20" y1="160" x2="480" y2="160" stroke="#CBD5E1" strokeWidth="2" />
+                    {/* Horizontal Grid Lines */}
+                    <line x1="24" y1="20" x2={svgCanvasWidth - 24} y2="20" stroke="#F1F5F9" strokeWidth="1.5" />
+                    <line x1="24" y1="55" x2={svgCanvasWidth - 24} y2="55" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+                    <line x1="24" y1="90" x2={svgCanvasWidth - 24} y2="90" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+                    <line x1="24" y1="125" x2={svgCanvasWidth - 24} y2="125" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+                    <line x1="24" y1="160" x2={svgCanvasWidth - 24} y2="160" stroke="#CBD5E1" strokeWidth="2" />
 
-                {/* Vertical Gridlines for Checkpoint Days */}
-                {labelPoints.map((p, i) => (
-                  <line key={i} x1={p.x} y1="20" x2={p.x} y2="160" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="3,3" />
-                ))}
+                    {/* Vertical Gridlines for Every Day */}
+                    {points.map((p, i) => (
+                      <line key={i} x1={p.x} y1="20" x2={p.x} y2="160" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="3,3" />
+                    ))}
 
-                {/* 1. AVERAGE TARGET LINE (GREEN DASHED LINE UP TO EXPECTED MEASURE TILL TODAY) */}
-                <polyline 
-                  fill="none" 
-                  stroke="#16A34A" 
-                  strokeWidth="2.5" 
-                  strokeDasharray="6,6" 
-                  points={targetPolylinePoints}
-                />
+                    {/* 1. AVERAGE TARGET LINE (GREEN DASHED LINE UP TO EXPECTED MEASURE TILL TODAY) */}
+                    <polyline 
+                      fill="none" 
+                      stroke="#16A34A" 
+                      strokeWidth="2.5" 
+                      strokeDasharray="6,6" 
+                      points={targetPolylinePoints}
+                    />
 
-                {/* 2. ACTUAL CUMULATIVE MEASURE LINE (MONOTONICALLY INCREASING WITH PLAIN HORIZONTAL FLAT SEGMENTS ON MISSED DAYS) */}
-                <g>
-                  {/* Shaded Area under Actual Cumulative Line */}
-                  <polygon fill="url(#cumOrangeGradient)" points={polygonPoints} />
+                    {/* 2. ACTUAL CUMULATIVE MEASURE LINE (MONOTONICALLY INCREASING WITH PLAIN HORIZONTAL FLAT SEGMENTS ON MISSED DAYS) */}
+                    <g>
+                      {/* Shaded Area under Actual Cumulative Line */}
+                      <polygon fill="url(#cumOrangeGradient)" points={polygonPoints} />
 
-                  {/* Actual Cumulative Polyline */}
-                  <polyline 
-                    fill="none" 
-                    stroke="#EA580C" 
-                    strokeWidth="3.5" 
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    filter="url(#glowOrangeLine)"
-                    points={actualPolylinePoints}
-                  />
-
-                  {/* Node Markers & Data Labels on Ticks & Missed Days */}
-                  {labelPoints.map((p, i) => (
-                    <g key={i}>
-                      <circle 
-                        cx={p.x} 
-                        cy={p.yActual} 
-                        r={p.isMissedDay ? "4" : "6"} 
-                        fill={p.isMissedDay ? "#94A3B8" : "#EA580C"} 
-                        stroke="#FFFFFF" 
-                        strokeWidth="2" 
+                      {/* Actual Cumulative Polyline */}
+                      <polyline 
+                        fill="none" 
+                        stroke="#EA580C" 
+                        strokeWidth="3.5" 
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        filter="url(#glowOrangeLine)"
+                        points={actualPolylinePoints}
                       />
-                      {/* Cumulative Value Text Label above Node */}
-                      <text 
-                        x={p.x} 
-                        y={p.yActual - 8} 
-                        textAnchor="middle" 
-                        fontSize="9.5" 
-                        fontWeight="900" 
-                        fill={p.isMissedDay ? "#64748B" : "#C2410C"}
-                      >
-                        {p.actualCumulativeVal}
-                      </text>
-                    </g>
-                  ))}
-                </g>
-              </svg>
 
-              {/* X-Axis Timeline Labels */}
-              <div style={{ position: 'absolute', left: '45px', right: '16px', bottom: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', fontWeight: 800, color: '#475569' }}>
-                {labelPoints.map((p, i) => (
-                  <span key={i} style={{ color: p.isMissedDay ? '#DC2626' : (i === labelPoints.length - 1 ? '#EA580C' : '#0F172A'), fontWeight: i === labelPoints.length - 1 ? 900 : 800 }}>
-                    {i === labelPoints.length - 1 ? `Today (${p.monthDayStr})` : (i === 0 ? `Start (${p.monthDayStr})` : p.monthDayStr)}
-                  </span>
-                ))}
+                      {/* Node Markers & Data Labels on Every Day */}
+                      {points.map((p, i) => (
+                        <g key={i}>
+                          <circle 
+                            cx={p.x} 
+                            cy={p.yActual} 
+                            r={p.isMissedDay ? "4" : "6"} 
+                            fill={p.isMissedDay ? "#94A3B8" : "#EA580C"} 
+                            stroke="#FFFFFF" 
+                            strokeWidth="2" 
+                          />
+                          {/* Cumulative Value Text Label above Node */}
+                          <text 
+                            x={p.x} 
+                            y={p.yActual - 8} 
+                            textAnchor="middle" 
+                            fontSize="9.5" 
+                            fontWeight="900" 
+                            fill={p.isMissedDay ? "#64748B" : "#C2410C"}
+                          >
+                            {p.actualCumulativeVal}
+                          </text>
+                        </g>
+                      ))}
+                    </g>
+                  </svg>
+
+                  {/* X-Axis Timeline Labels for Every Day */}
+                  <div style={{ position: 'absolute', left: 0, right: 0, bottom: '4px', display: 'flex', justifyContent: 'space-between', paddingLeft: '24px', paddingRight: '24px', fontSize: '8.5px', fontWeight: 800, color: '#475569', boxSizing: 'border-box' }}>
+                    {points.map((p, i) => (
+                      <span key={i} style={{ width: '32px', textAlign: 'center', flexShrink: 0, color: p.isMissedDay ? '#DC2626' : (i === points.length - 1 ? '#EA580C' : '#0F172A'), fontWeight: i === points.length - 1 ? 900 : 800 }}>
+                        {i === points.length - 1 ? `Today` : (i === 0 ? `Start` : p.monthDayStr)}
+                      </span>
+                    ))}
+                  </div>
+
+                </div>
               </div>
 
             </div>
