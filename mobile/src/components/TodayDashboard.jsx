@@ -61,7 +61,6 @@ export default function TodayDashboard({
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'COMPLETED', 'PENDING', 'PARTIAL'
   const [taskTypeFilter, setTaskTypeFilter] = useState('ALL'); // 'ALL', 'end_date', 'count_days', 'count_event'
   const [priorityFilter, setPriorityFilter] = useState('ALL'); // 'ALL', 'HIGH', 'MEDIUM', 'LOW'
-  const [structureFilter, setStructureFilter] = useState('ALL'); // 'ALL', 'PARENTS', 'HAS_SUBTASKS', 'STANDALONE'
   const [categoryFilter, setCategoryFilter] = useState('ALL'); // 'ALL', 'Academics', 'Coding', 'Fitness', etc.
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -84,15 +83,15 @@ export default function TodayDashboard({
     day: 'numeric'
   });
 
-  // Separate Parent Tasks from Child Subtasks
+  // Separate Parent Tasks from Child Subtasks safely
   const parentTasks = useMemo(() => {
-    return tasks.filter(t => !t.parentTaskId);
+    return (tasks || []).filter(t => t && !t.parentTaskId);
   }, [tasks]);
 
   const subtasksMap = useMemo(() => {
     const map = {};
-    tasks.forEach(t => {
-      if (t.parentTaskId) {
+    (tasks || []).forEach(t => {
+      if (t && t.parentTaskId) {
         if (!map[t.parentTaskId]) map[t.parentTaskId] = [];
         map[t.parentTaskId].push(t);
       }
@@ -102,6 +101,7 @@ export default function TodayDashboard({
 
   // Recurrence Frequency Label Resolver
   const getFrequencyLabel = (t) => {
+    if (!t) return 'Daily';
     if (t.recurrencePattern) return t.recurrencePattern;
     if (t.trackingMode === 'end_date') return 'Daily (Start-End Date)';
     if (t.trackingMode === 'count_days') return 'Every 2 days';
@@ -112,6 +112,7 @@ export default function TodayDashboard({
   // Determine Applicable Tasks for Selected Date with Multi-Filtering
   const filteredParentTasks = useMemo(() => {
     return parentTasks.filter(p => {
+      if (!p) return false;
       const children = subtasksMap[p.id] || [];
       const statusObj = calculateParentCompletionStatus(p, children);
 
@@ -129,16 +130,12 @@ export default function TodayDashboard({
       // 4. Priority Filter
       if (priorityFilter !== 'ALL' && p.priority !== priorityFilter) return false;
 
-      // 5. Structure Filter
-      if (structureFilter === 'HAS_SUBTASKS' && children.length === 0) return false;
-      if (structureFilter === 'STANDALONE' && children.length > 0) return false;
-
-      // 6. Search Query Filter
-      if (searchQuery.trim() && !p.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      // 5. Search Query Filter
+      if (searchQuery.trim() && p.title && !p.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
 
       return true;
     });
-  }, [parentTasks, subtasksMap, statusFilter, categoryFilter, taskTypeFilter, priorityFilter, structureFilter, searchQuery]);
+  }, [parentTasks, subtasksMap, statusFilter, categoryFilter, taskTypeFilter, priorityFilter, searchQuery]);
 
   // Compute Daily Statistics (Unfiltered for Top Scorecard Accuracy)
   const stats = useMemo(() => {
@@ -148,6 +145,7 @@ export default function TodayDashboard({
     let totalMeasuresVal = 0;
 
     parentTasks.forEach(p => {
+      if (!p) return;
       const children = subtasksMap[p.id] || [];
       const statusObj = calculateParentCompletionStatus(p, children);
 
@@ -159,10 +157,10 @@ export default function TodayDashboard({
 
       if (children.length > 0) {
         children.forEach(st => {
-          if (!st.isDoneToday && !st.isOptional) {
+          if (st && !st.isDoneToday && !st.isOptional) {
             pendingSubtasksCount++;
           }
-          if (st.isDoneToday) {
+          if (st && st.isDoneToday) {
             totalMeasuresVal += Number(st.loggedMeasureVal || st.measureTarget || 0);
           }
         });
@@ -186,9 +184,40 @@ export default function TodayDashboard({
     };
   }, [parentTasks, subtasksMap]);
 
+  // Compute Task Type Breakdown safely
+  const typeBreakdown = useMemo(() => {
+    let endDateCount = 0, endDateDone = 0;
+    let dayCountCount = 0, dayCountDone = 0;
+    let eventCountCount = 0, eventCountDone = 0;
+
+    parentTasks.forEach(p => {
+      if (!p) return;
+      const children = subtasksMap[p.id] || [];
+      const statusObj = calculateParentCompletionStatus(p, children);
+
+      if (p.trackingMode === 'end_date' || !p.trackingMode) {
+        endDateCount++;
+        if (statusObj.isCompleted) endDateDone++;
+      } else if (p.trackingMode === 'count_days') {
+        dayCountCount++;
+        if (statusObj.isCompleted) dayCountDone++;
+      } else if (p.trackingMode === 'count_event') {
+        eventCountCount++;
+        if (statusObj.isCompleted) eventCountDone++;
+      }
+    });
+
+    return {
+      endDate: { total: endDateCount, done: endDateDone, pending: endDateCount - endDateDone },
+      dayCount: { total: dayCountCount, done: dayCountDone, pending: dayCountCount - dayCountDone },
+      eventCount: { total: eventCountCount, done: eventCountDone, pending: eventCountCount - eventCountDone }
+    };
+  }, [parentTasks, subtasksMap]);
+
   // Distinct Lists for Sections
   const pendingParentTasks = useMemo(() => {
     return parentTasks.filter(p => {
+      if (!p) return false;
       const children = subtasksMap[p.id] || [];
       const statusObj = calculateParentCompletionStatus(p, children);
       return !statusObj.isCompleted;
@@ -197,6 +226,7 @@ export default function TodayDashboard({
 
   const completedParentTasks = useMemo(() => {
     return parentTasks.filter(p => {
+      if (!p) return false;
       const children = subtasksMap[p.id] || [];
       const statusObj = calculateParentCompletionStatus(p, children);
       return statusObj.isCompleted;
@@ -207,7 +237,7 @@ export default function TodayDashboard({
   const categoriesList = useMemo(() => {
     const set = new Set();
     parentTasks.forEach(p => {
-      if (p.category) set.add(p.category);
+      if (p && p.category) set.add(p.category);
     });
     return Array.from(set);
   }, [parentTasks]);
@@ -219,11 +249,12 @@ export default function TodayDashboard({
 
   // Complete Pending Task Trigger (Checks if Measure Modal is needed)
   const handleInitiateTaskCompletion = (task) => {
+    if (!task) return;
     const isMeasureTask = task.hasMeasureTracking || (task.measureTarget && Number(task.measureTarget) > 0) || task.trackingMode === 'measure';
     if (isMeasureTask && !task.isDoneToday) {
       setMeasureModalTask(task);
     } else {
-      onToggleTask(task.id);
+      if (onToggleTask) onToggleTask(task.id);
     }
   };
 
@@ -232,7 +263,9 @@ export default function TodayDashboard({
     if (onUpdateTaskProgress) {
       onUpdateTaskProgress(taskId, 100);
     }
-    onToggleTask(taskId, value);
+    if (onToggleTask) {
+      onToggleTask(taskId, value);
+    }
   };
 
   return (
@@ -339,7 +372,7 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* MULTI-FILTER BAR (STATUS, TYPE, PRIORITY, STRUCTURE, CATEGORY, SEARCH) */}
+      {/* MULTI-FILTER BAR (STATUS, PRIORITY, CATEGORY, SEARCH) */}
       {/* ========================================================================= */}
       <div style={{ padding: '14px 16px', background: '#FFF', borderRadius: '18px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         
@@ -355,45 +388,39 @@ export default function TodayDashboard({
           />
         </div>
 
-        {/* Filter Rows */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-          
-          {/* Status Filter */}
-          <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px' }}>
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', display: 'flex', alignItems: 'center', marginRight: '2px' }}>
-              <Filter size={11} style={{ marginRight: '3px' }} /> Status:
-            </span>
-            {[
-              { id: 'ALL', label: 'All' },
-              { id: 'PENDING', label: 'Pending' },
-              { id: 'PARTIAL', label: 'Partially Done' },
-              { id: 'COMPLETED', label: 'Completed' }
-            ].map(f => (
-              <button
-                key={f.id}
-                onClick={() => setStatusFilter(f.id)}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '8px',
-                  fontSize: '10px',
-                  fontWeight: 800,
-                  border: statusFilter === f.id ? '1.5px solid #2563EB' : '1px solid #CBD5E1',
-                  background: statusFilter === f.id ? '#EFF6FF' : '#FFF',
-                  color: statusFilter === f.id ? '#2563EB' : '#475569',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
+        {/* Filter Row 1: Status Filter */}
+        <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px' }}>
+          <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', display: 'flex', alignItems: 'center', marginRight: '2px' }}>
+            <Filter size={11} style={{ marginRight: '3px' }} /> Status:
+          </span>
+          {[
+            { id: 'ALL', label: 'All' },
+            { id: 'PENDING', label: 'Pending' },
+            { id: 'PARTIAL', label: 'Partially Done' },
+            { id: 'COMPLETED', label: 'Completed' }
+          ].map(f => (
+            <button
+              key={f.id}
+              onClick={() => setStatusFilter(f.id)}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '8px',
+                fontSize: '10px',
+                fontWeight: 800,
+                border: statusFilter === f.id ? '1.5px solid #2563EB' : '1px solid #CBD5E1',
+                background: statusFilter === f.id ? '#EFF6FF' : '#FFF',
+                color: statusFilter === f.id ? '#2563EB' : '#475569',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
 
-        {/* Secondary Filters: Priority & Structure & Categories */}
+        {/* Filter Row 2: Priority & Category Chips */}
         <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px' }}>
-          {/* Priority */}
           <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', display: 'flex', alignItems: 'center', marginRight: '2px' }}>
             Priority:
           </span>
@@ -418,7 +445,6 @@ export default function TodayDashboard({
 
           <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', display: 'flex', alignItems: 'center', margin: '0 4px' }}>|</span>
 
-          {/* Categories */}
           {['ALL', ...categoriesList].map(cat => (
             <button
               key={cat}
@@ -462,6 +488,7 @@ export default function TodayDashboard({
             </div>
           ) : (
             filteredParentTasks.map(task => {
+              if (!task) return null;
               const children = subtasksMap[task.id] || [];
               const statusObj = calculateParentCompletionStatus(task, children);
               const isExpanded = !!expandedParents[task.id];
@@ -556,7 +583,7 @@ export default function TodayDashboard({
                       {children.map(st => (
                         <div 
                           key={st.id} 
-                          onClick={() => onToggleTask(st.id)}
+                          onClick={() => onToggleTask && onToggleTask(st.id)}
                           style={{ 
                             display: 'flex', 
                             alignItems: 'center', 
@@ -610,6 +637,7 @@ export default function TodayDashboard({
             </div>
           ) : (
             pendingParentTasks.map(task => {
+              if (!task) return null;
               const children = subtasksMap[task.id] || [];
               const isCompletable = canManuallyCompleteTask(task, children);
               const isMeasureTask = task.hasMeasureTracking || (task.measureTarget && Number(task.measureTarget) > 0) || task.trackingMode === 'measure';
@@ -678,7 +706,7 @@ export default function TodayDashboard({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {categoriesList.map(cat => {
-            const catTasks = parentTasks.filter(p => p.category === cat);
+            const catTasks = parentTasks.filter(p => p && p.category === cat);
             const catDone = catTasks.filter(p => calculateParentCompletionStatus(p, subtasksMap[p.id] || []).isCompleted).length;
             const catPct = Math.round((catDone / Math.max(1, catTasks.length)) * 100);
 
@@ -699,6 +727,7 @@ export default function TodayDashboard({
                 {/* List of Tasks & Subtasks under Category */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '6px', borderTop: '1px dashed #CBD5E1' }}>
                   {catTasks.map(task => {
+                    if (!task) return null;
                     const children = subtasksMap[task.id] || [];
                     const statusObj = calculateParentCompletionStatus(task, children);
 
@@ -719,7 +748,7 @@ export default function TodayDashboard({
                             {children.map(st => (
                               <div key={st.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: '#475569' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <button onClick={() => onToggleTask(st.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                                  <button onClick={() => onToggleTask && onToggleTask(st.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                                     {st.isDoneToday ? <CheckCircle2 size={13} color="#16A34A" /> : <Circle size={13} color="#CBD5E1" />}
                                   </button>
                                   <span style={{ textDecoration: st.isDoneToday ? 'line-through' : 'none', fontWeight: 600 }}>
@@ -757,38 +786,41 @@ export default function TodayDashboard({
               No tasks completed yet today.
             </div>
           ) : (
-            completedParentTasks.map(parent => (
-              <div key={parent.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '10px 12px', borderRadius: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <button onClick={() => onToggleTask(parent.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                    <CheckCircle2 size={20} color="#16A34A" />
-                  </button>
-                  <div>
-                    <span style={{ fontSize: '12px', fontWeight: 900, color: '#15803D', textDecoration: 'line-through' }}>{parent.title}</span>
-                    <div style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700 }}>
-                      Completed • {parent.hasMeasureTracking ? `Logged: ${parent.loggedMeasureVal || parent.measureTarget || 0} ${parent.measureUnit || ''}` : 'Standard Task'}
+            completedParentTasks.map(parent => {
+              if (!parent) return null;
+              return (
+                <div key={parent.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '10px 12px', borderRadius: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button onClick={() => onToggleTask && onToggleTask(parent.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      <CheckCircle2 size={20} color="#16A34A" />
+                    </button>
+                    <div>
+                      <span style={{ fontSize: '12px', fontWeight: 900, color: '#15803D', textDecoration: 'line-through' }}>{parent.title}</span>
+                      <div style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700 }}>
+                        Completed • {parent.hasMeasureTracking ? `Logged: ${parent.loggedMeasureVal || parent.measureTarget || 0} ${parent.measureUnit || ''}` : 'Standard Task'}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  {parent.hasMeasureTracking && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {parent.hasMeasureTracking && (
+                      <button
+                        onClick={() => setMeasureModalTask(parent)}
+                        style={{ background: '#FFF', border: '1px solid #BBF7D0', color: '#16A34A', padding: '5px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                      >
+                        <Edit3 size={11} /> Edit Measure
+                      </button>
+                    )}
                     <button
-                      onClick={() => setMeasureModalTask(parent)}
-                      style={{ background: '#FFF', border: '1px solid #BBF7D0', color: '#16A34A', padding: '5px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                      onClick={() => onToggleTask && onToggleTask(parent.id)}
+                      style={{ background: '#FFF', border: '1px solid #CBD5E1', color: '#64748B', padding: '5px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
                     >
-                      <Edit3 size={11} /> Edit Measure
+                      <Undo2 size={11} /> Undo
                     </button>
-                  )}
-                  <button
-                    onClick={() => onToggleTask(parent.id)}
-                    style={{ background: '#FFF', border: '1px solid #CBD5E1', color: '#64748B', padding: '5px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
-                  >
-                    <Undo2 size={11} /> Undo
-                  </button>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
