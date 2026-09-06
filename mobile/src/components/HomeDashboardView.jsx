@@ -512,7 +512,7 @@ export default function HomeDashboardView({
         </div>
       </div>
 
-      {/* 3. TASK INVENTORY & HIERARCHY HEALTH ENGINE */}
+      {/* 3. LAYER A & B: TASK HIERARCHY HEALTH & REPRESENTATIVE TREE VISUALIZER (PHASE 3) */}
       <div style={{
         background: '#FFFFFF',
         border: '1px solid #E2E8F0',
@@ -522,78 +522,149 @@ export default function HomeDashboardView({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <div>
             <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Layers size={18} color="#DC2626" /> Task Inventory & Hierarchy Health
+              <Layers size={18} color="#DC2626" /> Task Hierarchy Health & Dependency Status
             </h3>
             <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
-              Structural breakdown of root parents, subtasks, and dependency health.
+              Parent task completion rules (Optional subtasks do not block parent completion).
             </p>
           </div>
           <button 
             onClick={() => onNavigateToTab?.('tasks')}
             style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#DC2626', borderRadius: '8px', padding: '4px 10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
           >
-            Manage Tasks
+            Manage Hierarchy
           </button>
         </div>
 
-        {/* High Level Metrics Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '16px' }}>
-          <div style={{ padding: '10px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>PARENT TASKS</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A' }}>{stats.totalParents}</span>
-          </div>
-
-          <div style={{ padding: '10px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>TOTAL SUBTASKS</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A' }}>{stats.totalSubtasksCount}</span>
-          </div>
-
-          <div style={{ padding: '10px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>MANDATORY SUBTASKS</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#DC2626' }}>{stats.totalMandatorySubtasks}</span>
-          </div>
-
-          <div style={{ padding: '10px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>OPTIONAL SUBTASKS</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#64748B' }}>{stats.totalOptionalSubtasks}</span>
-          </div>
-
-          <div style={{ padding: '10px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>STANDALONE TASKS</span>
-            <span style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A' }}>{stats.standaloneTasksCount}</span>
-          </div>
-        </div>
-
-        {/* Hierarchy Progress Gauges */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+        {/* 4 Hierarchy Progress Gauges */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
           
-          <div style={{ padding: '12px', background: '#EFF6FF', borderRadius: '12px', border: '1px solid #BFDBFE' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: '#1E40AF', marginBottom: '4px' }}>
-              <span>Mandatory Subtask Completion</span>
-              <span>{stats.mandatorySubtaskRate}%</span>
+          <div style={{ padding: '12px', background: '#F0FDF4', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: '#15803D', marginBottom: '4px' }}>
+              <span>Completed Parent Tasks</span>
+              <span>{stats.completedParents} / {stats.totalParents}</span>
             </div>
-            <div style={{ height: '8px', borderRadius: '4px', background: '#DBEAFE', overflow: 'hidden' }}>
-              <div style={{ width: `${stats.mandatorySubtaskRate}%`, height: '100%', background: '#2563EB', borderRadius: '4px', transition: 'width 0.3s ease' }} />
+            <div style={{ height: '8px', borderRadius: '4px', background: '#DCFCE7', overflow: 'hidden' }}>
+              <div style={{ width: `${Math.round((stats.completedParents / Math.max(stats.totalParents, 1)) * 100)}%`, height: '100%', background: '#16A34A', borderRadius: '4px' }} />
             </div>
-            <span style={{ fontSize: '10px', color: '#3B82F6', fontWeight: 700, marginTop: '4px', display: 'block' }}>
-              {stats.completedMandatorySubtasks} / {stats.totalMandatorySubtasks} Mandatory Done
+            <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, marginTop: '4px', display: 'block' }}>
+              All mandatory subtasks checked
             </span>
           </div>
 
           <div style={{ padding: '12px', background: '#FEF2F2', borderRadius: '12px', border: '1px solid #FCA5A5' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: '#991B1B', marginBottom: '4px' }}>
-              <span>Parents Blocked by Subtasks</span>
+              <span>Blocked Parent Tasks</span>
               <span>{stats.blockedParents} Blocked</span>
             </div>
             <div style={{ height: '8px', borderRadius: '4px', background: '#FEE2E2', overflow: 'hidden' }}>
               <div style={{ width: `${Math.round((stats.blockedParents / Math.max(stats.totalParents, 1)) * 100)}%`, height: '100%', background: '#DC2626', borderRadius: '4px' }} />
             </div>
             <span style={{ fontSize: '10px', color: '#EF4444', fontWeight: 700, marginTop: '4px', display: 'block' }}>
-              {stats.completedParents} / {stats.totalParents} Parents Completed
+              Waiting on mandatory subtasks
+            </span>
+          </div>
+
+          <div style={{ padding: '12px', background: '#EFF6FF', borderRadius: '12px', border: '1px solid #BFDBFE' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: '#1E40AF', marginBottom: '4px' }}>
+              <span>Mandatory Subtask Completion</span>
+              <span>{stats.mandatorySubtaskRate}%</span>
+            </div>
+            <div style={{ height: '8px', borderRadius: '4px', background: '#DBEAFE', overflow: 'hidden' }}>
+              <div style={{ width: `${stats.mandatorySubtaskRate}%`, height: '100%', background: '#2563EB', borderRadius: '4px' }} />
+            </div>
+            <span style={{ fontSize: '10px', color: '#3B82F6', fontWeight: 700, marginTop: '4px', display: 'block' }}>
+              {stats.completedMandatorySubtasks} / {stats.totalMandatorySubtasks} Mandatory Done
+            </span>
+          </div>
+
+          <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: '#475569', marginBottom: '4px' }}>
+              <span>Optional Subtask Completion</span>
+              <span>{stats.optionalSubtaskRate}%</span>
+            </div>
+            <div style={{ height: '8px', borderRadius: '4px', background: '#E2E8F0', overflow: 'hidden' }}>
+              <div style={{ width: `${stats.optionalSubtaskRate}%`, height: '100%', background: '#64748B', borderRadius: '4px' }} />
+            </div>
+            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, marginTop: '4px', display: 'block' }}>
+              {stats.completedOptionalSubtasks} / {stats.totalOptionalSubtasks} Optional (Non-blocking)
             </span>
           </div>
 
         </div>
+
+        {/* Representative Hierarchy Tree Card List */}
+        <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', marginBottom: '8px', letterSpacing: '0.05em' }}>
+          HIGH-LEVEL PARENT TASK HIERARCHY STATUS (TAP TO INSPECT TASK INFO)
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {parentTasks.filter(p => (subtasksMap[p.id] || []).length > 0).slice(0, 4).map(parent => {
+            const children = subtasksMap[parent.id] || [];
+            const mandatorySubs = children.filter(c => !c.isOptional);
+            const optionalSubs = children.filter(c => c.isOptional);
+
+            const mandatoryDone = mandatorySubs.filter(c => c.isDoneToday || c.progressPercent >= 100).length;
+            const optionalDone = optionalSubs.filter(c => c.isDoneToday || c.progressPercent >= 100).length;
+            const status = calculateParentCompletionStatus(parent, children);
+
+            return (
+              <div 
+                key={parent.id}
+                onClick={() => onNavigateToTaskDedicated?.(parent)}
+                style={{
+                  padding: '12px',
+                  borderRadius: '10px',
+                  background: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '8px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Layers size={16} color={status.isCompleted ? '#16A34A' : '#DC2626'} />
+                  <div>
+                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', display: 'block' }}>
+                      {parent.title}
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>
+                      Category: {parent.category || 'General'} · {children.length} Subtasks ({mandatorySubs.length} Required)
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: mandatoryDone === mandatorySubs.length ? '#16A34A' : '#DC2626', display: 'block' }}>
+                      {mandatoryDone}/{mandatorySubs.length} Required Done
+                    </span>
+                    {optionalSubs.length > 0 && (
+                      <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 600, display: 'block' }}>
+                        {optionalDone}/{optionalSubs.length} Optional Done
+                      </span>
+                    )}
+                  </div>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    background: status.isCompleted ? '#DCFCE7' : '#FEF2F2',
+                    color: status.isCompleted ? '#15803D' : '#991B1B',
+                    border: status.isCompleted ? '1px solid #BBF7D0' : '1px solid #FCA5A5'
+                  }}>
+                    {status.isCompleted ? 'Completed' : 'Blocked'}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
       </div>
 
       {/* 4. TASK TYPE DISTRIBUTION & PERFORMANCE MATRIX */}
