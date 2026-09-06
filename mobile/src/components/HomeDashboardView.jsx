@@ -63,6 +63,7 @@ export default function HomeDashboardView({
   subtasks = [], 
   habits = [], 
   disciplineScore = 84,
+  missedDaysLogs = [],
   onNavigateToTab,
   onNavigateToTaskDedicated 
 }) {
