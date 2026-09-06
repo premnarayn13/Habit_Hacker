@@ -1865,7 +1865,7 @@ export default function TaskDedicatedPageView({
         </div>
       )}
       {/* ========================================================================= */}
-      {/* 17. FULLSCREEN HD LINE GRAPH ZOOM MODAL */}
+      {/* 17. FULLSCREEN HD LINE GRAPH ZOOM MODAL (LIGHT THEME) */}
       {/* ========================================================================= */}
       {isFullscreenGraph && (
         <div style={{
@@ -1875,7 +1875,7 @@ export default function TaskDedicatedPageView({
           right: 0,
           bottom: 0,
           zIndex: 999999,
-          background: 'rgba(15, 23, 42, 0.96)',
+          background: 'rgba(248, 250, 252, 0.98)',
           backdropFilter: 'blur(16px)',
           display: 'flex',
           flexDirection: 'column',
@@ -1883,23 +1883,23 @@ export default function TaskDedicatedPageView({
           boxSizing: 'border-box'
         }}>
           {/* Fullscreen Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', color: '#FFF' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', color: '#0F172A' }}>
             <div>
-              <h2 style={{ fontSize: '20px', fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: '10px', color: '#FFF' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: '10px', color: '#0F172A' }}>
                 <LineChart size={24} color="#EA580C" /> {currentTask.title} — Trajectory Line Graph (HD Fullscreen)
               </h2>
-              <span style={{ fontSize: '12px', color: '#94A3B8', fontWeight: 600 }}>
+              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>
                 Interactive High-Definition View • {fullTimelineDailyData.length} total timeline days plotted
               </span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               {/* Fullscreen Zoom Controls */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(30, 41, 59, 0.9)', padding: '6px 14px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#F1F5F9', padding: '6px 14px', borderRadius: '14px', border: '1px solid #CBD5E1' }}>
                 <button
                   onClick={() => setGraphZoomLevel(prev => Math.max(1, prev - 0.25))}
                   disabled={graphZoomLevel <= 1}
-                  style={{ background: 'none', border: 'none', color: graphZoomLevel <= 1 ? '#64748B' : '#FFF', cursor: graphZoomLevel <= 1 ? 'not-allowed' : 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                  style={{ background: 'none', border: 'none', color: graphZoomLevel <= 1 ? '#94A3B8' : '#0F172A', cursor: graphZoomLevel <= 1 ? 'not-allowed' : 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
                   title="Zoom Out"
                 >
                   <ZoomOut size={18} />
@@ -1912,7 +1912,7 @@ export default function TaskDedicatedPageView({
                 <button
                   onClick={() => setGraphZoomLevel(prev => Math.min(4, prev + 0.25))}
                   disabled={graphZoomLevel >= 4}
-                  style={{ background: 'none', border: 'none', color: graphZoomLevel >= 4 ? '#64748B' : '#FFF', cursor: graphZoomLevel >= 4 ? 'not-allowed' : 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                  style={{ background: 'none', border: 'none', color: graphZoomLevel >= 4 ? '#94A3B8' : '#0F172A', cursor: graphZoomLevel >= 4 ? 'not-allowed' : 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
                   title="Zoom In"
                 >
                   <ZoomIn size={18} />
@@ -1921,7 +1921,7 @@ export default function TaskDedicatedPageView({
                 {graphZoomLevel !== 1 && (
                   <button
                     onClick={() => setGraphZoomLevel(1)}
-                    style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px', marginLeft: '4px', display: 'flex', alignItems: 'center' }}
+                    style={{ background: 'none', border: 'none', color: '#EA580C', cursor: 'pointer', padding: '4px', marginLeft: '4px', display: 'flex', alignItems: 'center' }}
                     title="Reset Zoom (100%)"
                   >
                     <RotateCcw size={16} />
@@ -1952,21 +1952,22 @@ export default function TaskDedicatedPageView({
             </div>
           </div>
 
-          {/* Fullscreen Canvas Container */}
+          {/* Fullscreen Canvas Container (Light Theme) */}
           <div style={{
             flex: 1,
-            background: '#0F172A',
+            background: '#FFFFFF',
             borderRadius: '20px',
-            border: '1px solid #334155',
+            border: '1.5px solid #CBD5E1',
             padding: '24px 20px 40px 60px',
             position: 'relative',
             overflowX: 'auto',
             overflowY: 'hidden',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.04)'
           }}>
             {/* Dynamic Y-Axis Scale Labels */}
-            <div style={{ position: 'absolute', left: '12px', top: '24px', bottom: '50px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '11px', fontWeight: 900, color: '#94A3B8', textAlign: 'right', width: '40px', zIndex: 10 }}>
+            <div style={{ position: 'absolute', left: '12px', top: '24px', bottom: '50px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '11px', fontWeight: 900, color: '#64748B', textAlign: 'right', width: '40px', zIndex: 10 }}>
               <span>{Math.max(Math.ceil(Math.max(totalCompletedMeasure, expectedMeasureTillToday, 10) * 1.25), 10)}</span>
               <span>{Math.round(Math.max(Math.ceil(Math.max(totalCompletedMeasure, expectedMeasureTillToday, 10) * 1.25), 10) * 0.75)}</span>
               <span>{Math.round(Math.max(Math.ceil(Math.max(totalCompletedMeasure, expectedMeasureTillToday, 10) * 1.25), 10) * 0.50)}</span>
@@ -2008,33 +2009,33 @@ export default function TaskDedicatedPageView({
                     <svg viewBox="0 0 1000 380" preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'visible', display: 'block' }}>
                       <defs>
                         <linearGradient id="cumOrangeGradientFS" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stopColor="#EA580C" stopOpacity="0.35" />
+                          <stop offset="0%" stopColor="#EA580C" stopOpacity="0.25" />
                           <stop offset="100%" stopColor="#F97316" stopOpacity="0.02" />
                         </linearGradient>
                       </defs>
 
-                      {/* Gridlines */}
-                      <line x1="20" y1="20" x2="980" y2="20" stroke="#334155" strokeWidth="1" />
-                      <line x1="20" y1="100" x2="980" y2="100" stroke="#1E293B" strokeWidth="1" strokeDasharray="4,4" />
-                      <line x1="20" y1="180" x2="980" y2="180" stroke="#1E293B" strokeWidth="1" strokeDasharray="4,4" />
-                      <line x1="20" y1="260" x2="980" y2="260" stroke="#1E293B" strokeWidth="1" strokeDasharray="4,4" />
-                      <line x1="20" y1="340" x2="980" y2="340" stroke="#475569" strokeWidth="2" />
+                      {/* Light Theme Gridlines */}
+                      <line x1="20" y1="20" x2="980" y2="20" stroke="#F1F5F9" strokeWidth="1.5" />
+                      <line x1="20" y1="100" x2="980" y2="100" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+                      <line x1="20" y1="180" x2="980" y2="180" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+                      <line x1="20" y1="260" x2="980" y2="260" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
+                      <line x1="20" y1="340" x2="980" y2="340" stroke="#CBD5E1" strokeWidth="2" />
 
                       {labelPoints.map((p, i) => (
-                        <line key={i} x1={p.x} y1="20" x2={p.x} y2="340" stroke="#1E293B" strokeWidth="1" strokeDasharray="3,3" />
+                        <line key={i} x1={p.x} y1="20" x2={p.x} y2="340" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="3,3" />
                       ))}
 
                       {/* Target Pace Line */}
-                      <polyline fill="none" stroke="#22C55E" strokeWidth="3" strokeDasharray="8,8" points={targetPolylinePoints} />
+                      <polyline fill="none" stroke="#16A34A" strokeWidth="3" strokeDasharray="8,8" points={targetPolylinePoints} />
 
                       {/* Actual Cumulative Slope Line */}
                       <g>
                         <polygon fill="url(#cumOrangeGradientFS)" points={polygonPoints} />
-                        <polyline fill="none" stroke="#F97316" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" points={actualPolylinePoints} />
+                        <polyline fill="none" stroke="#EA580C" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" points={actualPolylinePoints} />
                         {sampledPoints.map((p, i) => (
                           <g key={i}>
-                            <circle cx={p.x} cy={p.yActual} r={p.isMissedDay ? "6" : "7.5"} fill={p.isMissedDay ? "#94A3B8" : "#F97316"} stroke="#FFF" strokeWidth="2.5" />
-                            <text x={p.x} y={p.yActual - 10} textAnchor="middle" fontSize="12" fontWeight="900" fill={p.isMissedDay ? "#CBD5E1" : "#FFEDD5"}>
+                            <circle cx={p.x} cy={p.yActual} r={p.isMissedDay ? "6" : "7.5"} fill={p.isMissedDay ? "#94A3B8" : "#EA580C"} stroke="#FFF" strokeWidth="2.5" />
+                            <text x={p.x} y={p.yActual - 10} textAnchor="middle" fontSize="12" fontWeight="900" fill={p.isMissedDay ? "#64748B" : "#C2410C"}>
                               {p.actualCumulativeVal}
                             </text>
                           </g>
@@ -2043,9 +2044,9 @@ export default function TaskDedicatedPageView({
                     </svg>
 
                     {/* Fullscreen X-Axis Timeline Labels */}
-                    <div style={{ position: 'absolute', left: '20px', right: '20px', bottom: '-24px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, color: '#94A3B8' }}>
+                    <div style={{ position: 'absolute', left: '20px', right: '20px', bottom: '-24px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, color: '#475569' }}>
                       {labelPoints.map((p, i) => (
-                        <span key={i} style={{ color: p.isMissedDay ? '#EF4444' : (i === labelPoints.length - 1 ? '#F97316' : '#E2E8F0'), fontWeight: i === labelPoints.length - 1 ? 900 : 800 }}>
+                        <span key={i} style={{ color: p.isMissedDay ? '#DC2626' : (i === labelPoints.length - 1 ? '#EA580C' : '#0F172A'), fontWeight: i === labelPoints.length - 1 ? 900 : 800 }}>
                           {i === labelPoints.length - 1 ? `Today (${p.monthDayStr})` : (i === 0 ? `Start (${p.monthDayStr})` : p.monthDayStr)}
                         </span>
                       ))}
