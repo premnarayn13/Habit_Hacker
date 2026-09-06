@@ -621,12 +621,12 @@ export default function App() {
       return task;
     });
 
-    // 3. Automated 5-Day Blank Auto-Archive for Un-extended Completed / Expired Tasks
+    // 3. Automated 5-Day Blank Auto-Archive for Un-extended Expired Tasks
     const todayMs = Date.now();
     updatedTasks = updatedTasks.map(task => {
       if (task.isArchived) return task;
-      const isDoneOrExpired = task.progressPercent >= 100 || (task.plannedEnd && task.plannedEnd < todayStr);
-      if (isDoneOrExpired && task.plannedEnd) {
+      const isExpired = Boolean(task.plannedEnd && task.plannedEnd < todayStr);
+      if (isExpired && task.plannedEnd) {
         const endDateMs = new Date(task.plannedEnd).getTime();
         const daysPast = Math.floor((todayMs - endDateMs) / (1000 * 60 * 60 * 24));
         if (daysPast >= 5) {
