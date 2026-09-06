@@ -1108,7 +1108,7 @@ export default function TaskDedicatedPageView({
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#1E40AF', textTransform: 'uppercase', display: 'block' }}>Initial Total Targeted Measure</span>
             <span style={{ fontSize: '15px', fontWeight: 900, color: '#1E3A8A' }}>{totalTargetedMeasure} {measureUnit}</span>
             <span style={{ fontSize: '9px', color: '#3B82F6', fontWeight: 700, display: 'block' }}>
-              {trackingMode === 'count_event' ? `(${targetCount} events × ${eventUnitTarget} ${measureUnit}/event)` : `(${effectiveTargetDays} days × ${dailyTargetMeasure} {measureUnit})`}
+              {trackingMode === 'count_event' ? `(${targetCount} events × ${eventUnitTarget} ${measureUnit}/event)` : `(${effectiveTargetDays} days × ${dailyTargetMeasure} ${measureUnit})`}
             </span>
           </div>
 
@@ -1272,6 +1272,52 @@ export default function TaskDedicatedPageView({
         {/* SVG Cumulative Measure Slope Trajectory Line Chart Container */}
         {(() => {
           const maxCumDomain = Math.max(Math.ceil(Math.max(totalCompletedMeasure, expectedMeasureTillToday, 10) * 1.25), 10);
+          
+          // Generate 7 trajectory checkpoints from Day 1 (plannedStart) up to Today (elapsedDays)
+          const numCheckpoints = 7;
+          const startDt = new Date(effectiveStartStr);
+          
+          const trajectoryPoints = Array.from({ length: numCheckpoints }).map((_, idx) => {
+            const frac = idx / (numCheckpoints - 1);
+            const dayOffset = Math.round(1 + frac * (elapsedDays - 1));
+            
+            const pointDt = new Date(startDt);
+            pointDt.setDate(startDt.getDate() + (dayOffset - 1));
+            
+            const monthStr = pointDt.toLocaleDateString('en-US', { month: 'short' });
+            const dayNum = pointDt.getDate();
+            const dayName = pointDt.toLocaleDateString('en-US', { weekday: 'short' });
+            
+            const label = idx === numCheckpoints - 1 
+              ? `Today (${dayName})` 
+              : (idx === 0 ? `Start (${monthStr} ${dayNum})` : `${monthStr} ${dayNum}`);
+
+            // Actual Cumulative Measure rises from Day 1 to land EXACTLY at totalCompletedMeasure on the final point (Today)
+            const actualVal = Math.round((frac * totalCompletedMeasure) * 10) / 10;
+            
+            // Average Target Measure rises from Day 1 to land EXACTLY at expectedMeasureTillToday on the final point (Today)
+            const targetVal = Math.round((frac * expectedMeasureTillToday) * 10) / 10;
+
+            const x = Math.round(20 + frac * 460);
+            const yActual = Math.max(20, 160 - Math.round((actualVal / maxCumDomain) * 140));
+            const yTarget = Math.max(20, 160 - Math.round((targetVal / maxCumDomain) * 140));
+
+            return {
+              idx,
+              dayOffset,
+              label,
+              actualVal,
+              targetVal,
+              x,
+              yActual,
+              yTarget
+            };
+          });
+
+          const actualPolylinePoints = trajectoryPoints.map(p => `${p.x},${p.yActual}`).join(' ');
+          const targetPolylinePoints = trajectoryPoints.map(p => `${p.x},${p.yTarget}`).join(' ');
+          const polygonPoints = `20,160 ${actualPolylinePoints} 480,160 20,160`;
+
           return (
             <div style={{ height: '240px', background: '#FFFFFF', padding: '16px 14px 28px 45px', border: '1.5px solid #CBD5E1', borderRadius: '16px', position: 'relative', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
               
@@ -1284,7 +1330,7 @@ export default function TaskDedicatedPageView({
                 <span>0</span>
               </div>
 
-              {/* SVG Canvas with ViewBox for Precise Responsive Scaling (No mobile screen overflow!) */}
+              {/* SVG Canvas with ViewBox for Precise Responsive Scaling */}
               <svg viewBox="0 0 500 180" preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
                 <defs>
                   <linearGradient id="cumOrangeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -1304,100 +1350,68 @@ export default function TaskDedicatedPageView({
                 <line x1="20" y1="125" x2="480" y2="125" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
                 <line x1="20" y1="160" x2="480" y2="160" stroke="#CBD5E1" strokeWidth="2" />
 
-                {/* Vertical Day Gridlines */}
-                {sampleDailyMeasures.map((_, i) => {
-                  const x = Math.round(20 + (i / Math.max(1, sampleDailyMeasures.length - 1)) * 460);
-                  return <line key={i} x1={x} y1="20" x2={x} y2="160" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="3,3" />;
-                })}
+                {/* Vertical Checkpoint Gridlines */}
+                {trajectoryPoints.map((p, i) => (
+                  <line key={i} x1={p.x} y1="20" x2={p.x} y2="160" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="3,3" />
+                ))}
 
-                {/* 1. AVERAGE TARGET LINE (45 DEGREE LINE FROM BOTTOM-LEFT (20,160) TO TARGET POINT AT TODAY) */}
-                {(() => {
-                  const targetY = Math.max(20, 160 - Math.round((expectedMeasureTillToday / maxCumDomain) * 140));
-                  return (
-                    <line 
-                      x1="20" 
-                      y1="160" 
-                      x2="480" 
-                      y2={targetY} 
-                      stroke="#16A34A" 
-                      strokeWidth="2.5" 
-                      strokeDasharray="6,6" 
-                    />
-                  );
-                })()}
+                {/* 1. AVERAGE TARGET LINE (GREEN DASHED LINE UP TO EXPECTED MEASURE TILL TODAY) */}
+                <polyline 
+                  fill="none" 
+                  stroke="#16A34A" 
+                  strokeWidth="2.5" 
+                  strokeDasharray="6,6" 
+                  points={targetPolylinePoints}
+                />
 
-                {/* 2. ACTUAL CUMULATIVE MEASURE LINE (MONOTONICALLY INCREASING, NEVER GOES DOWN) */}
-                {(() => {
-                  let runningTotal = 0;
-                  
-                  const points = sampleDailyMeasures.map((d, i) => {
-                    const dailyDelta = d.totalColumnVal;
-                    runningTotal += dailyDelta;
-                    const x = Math.round(20 + (i / Math.max(1, sampleDailyMeasures.length - 1)) * 460);
-                    // Calculate y: y=160 is 0 cumulative, y=20 is maxCumDomain
-                    const y = Math.max(20, 160 - Math.round((runningTotal / maxCumDomain) * 140));
-                    return {
-                      x,
-                      y,
-                      runningTotal: Math.round(runningTotal * 10) / 10,
-                      dailyDelta,
-                      dayLabel: d.dayLabel
-                    };
-                  });
+                {/* 2. ACTUAL CUMULATIVE MEASURE LINE (MONOTONICALLY INCREASING, MATCHES TOTAL COMPLETED MEASURE AT TODAY) */}
+                <g>
+                  {/* Shaded Area under Actual Cumulative Line */}
+                  <polygon fill="url(#cumOrangeGradient)" points={polygonPoints} />
 
-                  const polylinePoints = points.map(p => `${p.x},${p.y}`).join(' ');
-                  const polygonPoints = `20,160 ${polylinePoints} 480,160 20,160`;
+                  {/* Actual Cumulative Polyline */}
+                  <polyline 
+                    fill="none" 
+                    stroke="#EA580C" 
+                    strokeWidth="3.5" 
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    filter="url(#glowOrangeLine)"
+                    points={actualPolylinePoints}
+                  />
 
-                  return (
-                    <g>
-                      {/* Shaded Area under Monotonically Increasing Cumulative Line */}
-                      <polygon fill="url(#cumOrangeGradient)" points={polygonPoints} />
-
-                      {/* Actual Cumulative Polyline */}
-                      <polyline 
-                        fill="none" 
-                        stroke="#EA580C" 
-                        strokeWidth="3.5" 
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        filter="url(#glowOrangeLine)"
-                        points={polylinePoints}
+                  {/* Node Markers & Data Labels */}
+                  {trajectoryPoints.map((p, i) => (
+                    <g key={i}>
+                      <circle 
+                        cx={p.x} 
+                        cy={p.yActual} 
+                        r="6" 
+                        fill="#EA580C" 
+                        stroke="#FFFFFF" 
+                        strokeWidth="2" 
                       />
-
-                      {/* Node Markers & Data Labels */}
-                      {points.map((p, i) => (
-                        <g key={i}>
-                          <circle 
-                            cx={p.x} 
-                            cy={p.y} 
-                            r={p.dailyDelta === 0 ? "4.5" : "6"} 
-                            fill={p.dailyDelta === 0 ? "#F97316" : "#EA580C"} 
-                            stroke="#FFFFFF" 
-                            strokeWidth="2" 
-                          />
-                          {/* Cumulative Value Text Label above Node */}
-                          <text 
-                            x={p.x} 
-                            y={p.y - 8} 
-                            textAnchor="middle" 
-                            fontSize="9" 
-                            fontWeight="800" 
-                            fill="#C2410C"
-                          >
-                            {p.runningTotal}
-                          </text>
-                        </g>
-                      ))}
+                      {/* Cumulative Value Text Label above Node */}
+                      <text 
+                        x={p.x} 
+                        y={p.yActual - 8} 
+                        textAnchor="middle" 
+                        fontSize="9.5" 
+                        fontWeight="900" 
+                        fill="#C2410C"
+                      >
+                        {p.actualVal}
+                      </text>
                     </g>
-                  );
-                })()}
+                  ))}
+                </g>
               </svg>
 
               {/* X-Axis Timeline Labels */}
               <div style={{ position: 'absolute', left: '45px', right: '16px', bottom: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', fontWeight: 800, color: '#475569' }}>
-                {sampleDailyMeasures.map((d, i) => (
-                  <span key={i} style={{ color: d.totalColumnVal === 0 ? '#94A3B8' : '#0F172A' }}>
-                    {d.dayLabel} ({d.totalColumnVal > 0 ? `+${d.totalColumnVal}` : '0'})
+                {trajectoryPoints.map((p, i) => (
+                  <span key={i} style={{ color: i === trajectoryPoints.length - 1 ? '#EA580C' : '#0F172A', fontWeight: i === trajectoryPoints.length - 1 ? 900 : 800 }}>
+                    {p.label}
                   </span>
                 ))}
               </div>

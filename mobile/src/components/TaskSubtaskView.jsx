@@ -114,8 +114,8 @@ export default function TaskSubtaskView({
   const userCreatedCategories = Array.from(new Set(tasks.map(t => t.category).filter(Boolean)));
   const categoriesList = ['ALL', ...userCreatedCategories];
 
-  // Category Filter
-  if (activeCategory !== 'ALL') {
+  // Category Filter (Bypassed when filterType === 'COMPLETED' so completed tasks are always visible!)
+  if (activeCategory !== 'ALL' && filterType !== 'COMPLETED') {
     displayedTasks = displayedTasks.filter(t => (t.category || '').toLowerCase() === activeCategory.toLowerCase());
   }
 

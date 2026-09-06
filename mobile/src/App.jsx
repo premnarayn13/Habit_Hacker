@@ -546,12 +546,13 @@ const INITIAL_DEFAULT_TASKS = [
     category: 'Fitness',
     priority: 'MEDIUM',
     trackingMode: 'count_days',
-    plannedStart: '2026-07-01',
-    plannedEnd: '2026-07-31',
+    plannedStart: '2026-08-01',
+    plannedEnd: '2026-08-31',
     targetCount: 30,
     currentCount: 30,
     isOptional: false,
     isDoneToday: true,
+    isArchived: false,
     progressPercent: 100,
     parentTaskId: ''
   },
@@ -565,12 +566,13 @@ const INITIAL_DEFAULT_TASKS = [
     category: 'Fitness',
     priority: 'HIGH',
     trackingMode: 'count_days',
-    plannedStart: '2026-07-01',
-    plannedEnd: '2026-07-31',
+    plannedStart: '2026-08-01',
+    plannedEnd: '2026-08-31',
     targetCount: 30,
     currentCount: 30,
     isOptional: false,
     isDoneToday: true,
+    isArchived: false,
     progressPercent: 100,
     parentTaskId: ''
   }
@@ -597,8 +599,16 @@ export default function App() {
     try {
       const globalCached = localStorage.getItem('habit_hacker_tasks_global_v2');
       if (globalCached) {
-        const parsed = JSON.parse(globalCached);
+        let parsed = JSON.parse(globalCached);
         if (parsed && parsed.length > 0) {
+          // Un-archive completed tasks that were accidentally auto-archived
+          parsed = parsed.map(t => {
+            const isCompleted = t.progressPercent >= 100 || (t.targetCount > 0 && t.currentCount >= t.targetCount);
+            if (isCompleted && t.isArchived && t.archiveReason === 'Passed Archive (5 Days Un-extended)') {
+              return { ...t, isArchived: false };
+            }
+            return t;
+          });
           const existingIds = new Set(parsed.map(t => t.id));
           const missingDefaults = INITIAL_DEFAULT_TASKS.filter(dt => !existingIds.has(dt.id));
           if (missingDefaults.length > 0) {
@@ -606,6 +616,7 @@ export default function App() {
             try { localStorage.setItem('habit_hacker_tasks_global_v2', JSON.stringify(merged)); } catch (e) {}
             return merged;
           }
+          try { localStorage.setItem('habit_hacker_tasks_global_v2', JSON.stringify(parsed)); } catch (e) {}
           return parsed;
         }
       }
@@ -688,10 +699,15 @@ export default function App() {
       return task;
     });
 
-    // 3. Automated 5-Day Blank Auto-Archive for Un-extended Expired Tasks
+    // 3. Automated 5-Day Blank Auto-Archive for Un-extended Expired UNFINISHED Tasks
     const todayMs = Date.now();
     updatedTasks = updatedTasks.map(task => {
       if (task.isArchived) return task;
+
+      // Completed tasks are NEVER auto-archived as unfinished!
+      const isCompleted = task.progressPercent >= 100 || (task.targetCount > 0 && task.currentCount >= task.targetCount);
+      if (isCompleted) return task;
+
       const isExpired = Boolean(task.plannedEnd && task.plannedEnd < todayStr);
       if (isExpired && task.plannedEnd) {
         const endDateMs = new Date(task.plannedEnd).getTime();

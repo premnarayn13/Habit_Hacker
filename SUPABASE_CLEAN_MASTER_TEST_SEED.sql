@@ -178,10 +178,10 @@ VALUES
 -- TASK 7 & 8: Day Count Tasks — COMPLETED (For Testing Extend Functionality)
 -- Target: 30 Days. Current = 30/30 (100%)
 -- -------------------------------------------------------------------------
-INSERT INTO public.tasks (id, user_id, title, description, category, priority, tracking_mode, planned_start, planned_end, target_count, current_count, is_optional, is_done_today, progress_percent)
+INSERT INTO public.tasks (id, user_id, title, description, category, priority, tracking_mode, planned_start, planned_end, target_count, current_count, is_optional, is_done_today, is_archived, progress_percent)
 VALUES 
-  ('task-7-completed-extend', 'default-user', 'Task 7 — Completed 30-Day Fitness Challenge', 'Completed task ready for testing Extend button in task list and info page', 'Fitness', 'MEDIUM', 'count_days', '2026-07-01', '2026-07-31', 30, 30, FALSE, TRUE, 100),
-  ('task-8-completed-extend-test', 'default-user', 'Task 8 — Completed Challenge (Extend Test)', 'Finished 30-Day challenge ready for testing the Extend function', 'Fitness', 'HIGH', 'count_days', '2026-07-01', '2026-07-31', 30, 30, FALSE, TRUE, 100);
+  ('task-7-completed-extend', 'default-user', 'Task 7 — Completed 30-Day Fitness Challenge', 'Completed task ready for testing Extend button in task list and info page', 'Fitness', 'MEDIUM', 'count_days', '2026-08-01', '2026-08-31', 30, 30, FALSE, TRUE, FALSE, 100),
+  ('task-8-completed-extend-test', 'default-user', 'Task 8 — Completed Challenge (Extend Test)', 'Finished 30-Day challenge ready for testing the Extend function', 'Fitness', 'HIGH', 'count_days', '2026-08-01', '2026-08-31', 30, 30, FALSE, TRUE, FALSE, 100);
 
 -- =========================================================================
 -- 4. VERIFICATION QUERY (VERIFIES ALL 7 TASKS & MAPPED SUBTASKS)
