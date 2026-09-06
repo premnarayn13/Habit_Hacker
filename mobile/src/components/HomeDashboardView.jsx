@@ -33,9 +33,9 @@ import {
   ArrowRight,
   Sun,
   Moon,
-  Coffee,
   PieChart,
-  BarChart2
+  BarChart2,
+  Grid
 } from 'lucide-react';
 import { calculateParentCompletionStatus } from '../lib/taskHierarchyEngine';
 
