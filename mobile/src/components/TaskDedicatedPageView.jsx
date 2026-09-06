@@ -300,40 +300,68 @@ export default function TaskDedicatedPageView({
     };
   });
 
-  // Event Count Daily Cluster Data (Multiple Touching Vertical Stacked Bars per Day)
-  const eventClusterDailyData = Array.from({ length: 7 }).map((_, idx) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - idx));
-    const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
-    const eventCountToday = (idx % 2 === 0) ? 2 : (idx % 3 === 0 ? 3 : 1);
+  // Event Count Daily Cluster Data (Derived from actual completed event logs & task currentCount)
+  const eventClusterDailyData = (() => {
+    const totalEvents = currentCount || 0;
+    let remainingEventsToPlace = totalEvents;
+    let eventCounter = 1;
+    const daysArr = Array.from({ length: 7 });
     
-    const events = Array.from({ length: eventCountToday }).map((_, eIdx) => {
-      const subtaskSegments = directChildSubtasks.map((st, sIdx) => {
-        const color = subtaskColors[sIdx % subtaskColors.length];
-        const val = Number(st.measureTarget || (sIdx === 0 ? 6 : (sIdx === 1 ? 3 : 1)));
+    const dayEventCounts = [0, 0, 0, 0, 0, 0, 0];
+    if (totalEvents > 0) {
+      if (currentTask.isDoneToday || totalEvents === 1) {
+        dayEventCounts[6] = 1;
+        remainingEventsToPlace -= 1;
+      }
+      if (remainingEventsToPlace > 0) {
+        const ydayEvents = Math.min(remainingEventsToPlace, 2);
+        dayEventCounts[5] = ydayEvents;
+        remainingEventsToPlace -= ydayEvents;
+      }
+      let dayIdx = 4;
+      while (remainingEventsToPlace > 0 && dayIdx >= 0) {
+        const placed = Math.min(remainingEventsToPlace, 2);
+        dayEventCounts[dayIdx] = placed;
+        remainingEventsToPlace -= placed;
+        dayIdx--;
+      }
+    }
+
+    return daysArr.map((_, idx) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - idx));
+      const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const eventCountToday = dayEventCounts[idx];
+
+      const events = Array.from({ length: eventCountToday }).map(() => {
+        const curEvNum = eventCounter++;
+        const subtaskSegments = directChildSubtasks.map((st, sIdx) => {
+          const color = subtaskColors[sIdx % subtaskColors.length];
+          const val = Number(st.measureTarget || (sIdx === 0 ? 6 : (sIdx === 1 ? 3 : 1)));
+          return {
+            subtaskId: st.id,
+            title: st.title,
+            val,
+            color,
+            pct: Math.round((val / Math.max(1, eventUnitTarget)) * 100)
+          };
+        });
+
         return {
-          subtaskId: st.id,
-          title: st.title,
-          val,
-          color,
-          pct: Math.round((val / Math.max(1, eventUnitTarget)) * 100)
+          eventId: curEvNum,
+          label: `Ev #${curEvNum}`,
+          subtaskSegments
         };
       });
 
       return {
-        eventId: eIdx + 1,
-        label: `Ev #${eIdx + 1}`,
-        subtaskSegments
+        date: d.toISOString().split('T')[0],
+        dayLabel,
+        eventCountToday,
+        events
       };
     });
-
-    return {
-      date: d.toISOString().split('T')[0],
-      dayLabel,
-      eventCountToday,
-      events
-    };
-  });
+  })();
 
   // DYNAMIC MEASURE-BASED 365-DAY HEATMAP DATA ENGINE (7 rows x 52 weeks = 364 days)
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -648,7 +676,7 @@ export default function TaskDedicatedPageView({
           </div>
 
           <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', background: '#F1F5F9', padding: '8px 14px', borderRadius: '14px', border: '1px solid #CBD5E1', alignSelf: 'center' }}>
-            Repetition Pattern: <strong>{currentTask.recurrencePattern || 'Daily'}</strong>
+            Repetition Pattern: <strong>{currentTask.recurrencePattern || (trackingMode === 'count_event' ? `Flexible Goal Target (${targetCount} Events)` : 'Daily')}</strong>
           </span>
 
           <span style={{ fontSize: '11px', fontWeight: 800, color: currentTask.reminderTime ? '#2563EB' : '#64748B', background: currentTask.reminderTime ? '#EFF6FF' : '#F1F5F9', padding: '8px 14px', borderRadius: '14px', border: currentTask.reminderTime ? '1px solid #BFDBFE' : '1px solid #CBD5E1', alignSelf: 'center' }}>
@@ -672,8 +700,13 @@ export default function TaskDedicatedPageView({
               {trackingMode === 'count_event' ? 'Total Target Events' : (trackingMode === 'count_days' ? 'Target Days' : 'Planned Days')}
             </span>
             <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>
-              {targetCount} {trackingMode === 'count_event' ? measureUnit : 'Days'}
+              {targetCount} {trackingMode === 'count_event' ? 'Events' : 'Days'}
             </span>
+            {trackingMode === 'count_event' && (
+              <span style={{ fontSize: '9px', fontWeight: 700, color: '#2563EB', display: 'block' }}>
+                ({targetCount * eventUnitTarget} {measureUnit} Total Goal)
+              </span>
+            )}
           </div>
 
           <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderLeft: '5px solid #16A34A', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '160px' }}>
@@ -681,8 +714,13 @@ export default function TaskDedicatedPageView({
               Completed Score
             </span>
             <span style={{ fontSize: '20px', fontWeight: 900, color: '#15803D' }}>
-              {currentCount} {trackingMode === 'count_event' ? measureUnit : 'Days'}
+              {currentCount} {trackingMode === 'count_event' ? 'Events' : 'Days'}
             </span>
+            {trackingMode === 'count_event' && (
+              <span style={{ fontSize: '9px', fontWeight: 700, color: '#16A34A', display: 'block' }}>
+                ({currentCount * eventUnitTarget} {measureUnit} Completed)
+              </span>
+            )}
           </div>
 
           <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderLeft: '5px solid #D97706', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '160px' }}>
@@ -690,8 +728,13 @@ export default function TaskDedicatedPageView({
               Remaining Needed
             </span>
             <span style={{ fontSize: '20px', fontWeight: 900, color: '#B45309' }}>
-              {remainingTargetCount} {trackingMode === 'count_event' ? measureUnit : 'Days'}
+              {remainingTargetCount} {trackingMode === 'count_event' ? 'Events' : 'Days'}
             </span>
+            {trackingMode === 'count_event' && (
+              <span style={{ fontSize: '9px', fontWeight: 700, color: '#B45309', display: 'block' }}>
+                ({remainingTargetCount * eventUnitTarget} {measureUnit} Remaining)
+              </span>
+            )}
           </div>
 
           <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderLeft: '5px solid #DC2626', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '160px' }}>
@@ -958,29 +1001,35 @@ export default function TaskDedicatedPageView({
                   </span>
                   
                   {/* Adjacent Vertical Stacked Event Bars */}
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '140px', padding: '4px 6px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-                    {d.events.map((ev, evIdx) => (
-                      <div key={evIdx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', height: '100%', justifyContent: 'flex-end' }}>
-                        <span style={{ fontSize: '8px', fontWeight: 800, color: '#64748B' }}>#{ev.eventId}</span>
-                        
-                        {/* Single Vertical Stacked Bar */}
-                        <div style={{ width: '22px', height: '115px', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column-reverse', background: '#E2E8F0', border: '1px solid #CBD5E1' }}>
-                          {ev.subtaskSegments.map((seg, sIdx) => (
-                            <div 
-                              key={sIdx} 
-                              style={{ 
-                                width: '100%', 
-                                flex: seg.val, 
-                                background: seg.color, 
-                                transition: 'all 0.3s ease',
-                                borderBottom: sIdx > 0 ? '1px solid rgba(255,255,255,0.4)' : 'none'
-                              }}
-                              title={`${ev.label} • ${seg.title}: ${seg.val} ${measureUnit} (${seg.pct}%)`}
-                            />
-                          ))}
-                        </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '140px', padding: '4px 6px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0', minWidth: '36px', justifyContent: 'center' }}>
+                    {d.events.length === 0 ? (
+                      <div style={{ fontSize: '9px', fontWeight: 700, color: '#CBD5E1', fontStyle: 'italic', alignSelf: 'center' }}>
+                        None
                       </div>
-                    ))}
+                    ) : (
+                      d.events.map((ev, evIdx) => (
+                        <div key={evIdx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', height: '100%', justifyContent: 'flex-end' }}>
+                          <span style={{ fontSize: '8px', fontWeight: 800, color: '#64748B' }}>#{ev.eventId}</span>
+                          
+                          {/* Single Vertical Stacked Bar */}
+                          <div style={{ width: '22px', height: '115px', borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column-reverse', background: '#E2E8F0', border: '1px solid #CBD5E1' }}>
+                            {ev.subtaskSegments.map((seg, sIdx) => (
+                              <div 
+                                key={sIdx} 
+                                style={{ 
+                                  width: '100%', 
+                                  flex: seg.val, 
+                                  background: seg.color, 
+                                  transition: 'all 0.3s ease',
+                                  borderBottom: sIdx > 0 ? '1px solid rgba(255,255,255,0.4)' : 'none'
+                                }}
+                                title={`${ev.label} • ${seg.title}: ${seg.val} ${measureUnit} (${seg.pct}%)`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
 
                   <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569', marginTop: '2px' }}>{d.dayLabel}</span>
@@ -1011,7 +1060,7 @@ export default function TaskDedicatedPageView({
       {/* ========================================================================= */}
       <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
         <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Ruler size={18} color="#EC4899" /> DayCount & Schedule Measure Analytics System
+          <Ruler size={18} color="#EC4899" /> {trackingMode === 'count_event' ? 'EventCount & Schedule Measure Analytics System' : (trackingMode === 'count_days' ? 'DayCount & Schedule Measure Analytics System' : 'Start-End Date & Schedule Measure Analytics System')}
         </h3>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
@@ -1026,7 +1075,9 @@ export default function TaskDedicatedPageView({
           <div style={{ background: '#EFF6FF', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BFDBFE' }}>
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#1E40AF', textTransform: 'uppercase', display: 'block' }}>Initial Total Targeted Measure</span>
             <span style={{ fontSize: '15px', fontWeight: 900, color: '#1E3A8A' }}>{totalTargetedMeasure} {measureUnit}</span>
-            <span style={{ fontSize: '9px', color: '#3B82F6', fontWeight: 700, display: 'block' }}>({effectiveTargetDays} days × {dailyTargetMeasure} {measureUnit})</span>
+            <span style={{ fontSize: '9px', color: '#3B82F6', fontWeight: 700, display: 'block' }}>
+              {trackingMode === 'count_event' ? `(${targetCount} events × ${eventUnitTarget} ${measureUnit}/event)` : `(${effectiveTargetDays} days × ${dailyTargetMeasure} {measureUnit})`}
+            </span>
           </div>
 
           {/* Card 3: Total Completed Measure */}
@@ -1040,7 +1091,10 @@ export default function TaskDedicatedPageView({
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#3730A3', textTransform: 'uppercase', display: 'block' }}>Expected Till Today (On Target)</span>
             <span style={{ fontSize: '15px', fontWeight: 900, color: '#312E81' }}>{expectedMeasureTillToday} {measureUnit}</span>
             <span style={{ fontSize: '9px', color: targetVarianceTillToday >= 0 ? '#16A34A' : '#DC2626', fontWeight: 800, display: 'block' }}>
-              ({elapsedDays} days × {dailyTargetMeasure} {measureUnit}) • {targetVarianceTillToday >= 0 ? `+${targetVarianceTillToday}` : `${targetVarianceTillToday}`} {measureUnit} {targetVarianceTillToday >= 0 ? 'ahead' : 'behind'}
+              {trackingMode === 'count_event'
+                ? `(Schedule Pace: ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * targetCount * 10) / 10} events) • ${targetVarianceTillToday >= 0 ? '+' : ''}${targetVarianceTillToday} ${measureUnit} ${targetVarianceTillToday >= 0 ? 'ahead' : 'behind'}`
+                : `(${elapsedDays} days × ${dailyTargetMeasure} ${measureUnit}) • ${targetVarianceTillToday >= 0 ? '+' : ''}${targetVarianceTillToday} ${measureUnit} ${targetVarianceTillToday >= 0 ? 'ahead' : 'behind'}`
+              }
             </span>
           </div>
 

@@ -501,31 +501,7 @@ export default function TaskSubtaskView({
 
                   </div>
 
-                  {/* RIGHT SIDE CLEAN DROPDOWN DETAILS TRIGGER BUTTON */}
-                  <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleExpand(task.id); }}
-                      style={{
-                        background: isExpanded ? '#FEF2F2' : '#F8FAFC',
-                        color: isExpanded ? '#DC2626' : '#475569',
-                        border: '1px solid',
-                        borderColor: isExpanded ? '#FECACA' : '#CBD5E1',
-                        padding: '4px 10px',
-                        borderRadius: '8px',
-                        fontSize: '11px',
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        transition: 'all 0.2s ease'
-                      }}
-                      title="Toggle Details & Subtasks Dropdown"
-                    >
-                      <span>Details</span>
-                      {isExpanded ? <ChevronDown size={14} color="#DC2626" /> : <ChevronRight size={14} color="#475569" />}
-                    </button>
-                  </div>
+
 
                 </div>
 

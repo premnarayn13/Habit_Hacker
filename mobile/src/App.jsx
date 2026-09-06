@@ -554,6 +554,25 @@ const INITIAL_DEFAULT_TASKS = [
     isDoneToday: true,
     progressPercent: 100,
     parentTaskId: ''
+  },
+
+  // TASK 8: Completed Task Ready for Extend Testing
+  {
+    id: 'task-8-completed-extend-test',
+    user_id: 'default-user',
+    title: 'Task 8 — Completed Challenge (Extend Test)',
+    description: 'Finished 30-Day challenge ready for testing the Extend function',
+    category: 'Fitness',
+    priority: 'HIGH',
+    trackingMode: 'count_days',
+    plannedStart: '2026-07-01',
+    plannedEnd: '2026-07-31',
+    targetCount: 30,
+    currentCount: 30,
+    isOptional: false,
+    isDoneToday: true,
+    progressPercent: 100,
+    parentTaskId: ''
   }
 ];
 
