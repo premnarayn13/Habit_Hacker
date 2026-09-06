@@ -33,6 +33,8 @@ import {
   Maximize2,
   PieChart,
   BarChart3,
+  ShieldCheck,
+  Timer,
   Lock as LockIcon
 } from 'lucide-react';
 import { 
@@ -44,6 +46,89 @@ import {
   calculateParentCompletionStatus 
 } from '../lib/taskHierarchyEngine';
 import TodayMeasureEditModal from './TodayMeasureEditModal';
+
+// CUSTOM MANUALLY CODED REACT DROPDOWN COMPONENT (NO DEFAULT BROWSER SELECT)
+function CustomDropdown({ label, value, options, onChange, icon: Icon }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOption = options.find(o => o.value === value) || options[0];
+
+  return (
+    <div style={{ position: 'relative', flex: 1, minWidth: '110px' }}>
+      <label style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '3px' }}>
+        {Icon && <Icon size={10} color="#2563EB" />} {label}
+      </label>
+      <button
+        type="button"
+        onClick={() => setIsOpen(prev => !prev)}
+        style={{
+          width: '100%',
+          padding: '6px 10px',
+          borderRadius: '10px',
+          border: '1.5px solid #CBD5E1',
+          background: '#FFFFFF',
+          fontSize: '11px',
+          fontWeight: 800,
+          color: '#0F172A',
+          display: 'flex',
+          justify: 'space-between',
+          alignItems: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {selectedOption ? selectedOption.label : label}
+        </span>
+        <ChevronDown size={14} color="#64748B" style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+      </button>
+
+      {isOpen && (
+        <>
+          <div 
+            onClick={() => setIsOpen(false)}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 998 }}
+          />
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            marginTop: '4px',
+            background: '#FFFFFF',
+            borderRadius: '12px',
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.12)',
+            zIndex: 999,
+            overflow: 'hidden',
+            maxHeight: '200px',
+            overflowY: 'auto'
+          }}>
+            {options.map(opt => (
+              <div
+                key={opt.value}
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                style={{
+                  padding: '8px 12px',
+                  fontSize: '11px',
+                  fontWeight: value === opt.value ? 900 : 700,
+                  color: value === opt.value ? '#2563EB' : '#1E293B',
+                  background: value === opt.value ? '#EFF6FF' : '#FFF',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid #F1F5F9'
+                }}
+              >
+                {opt.label}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function TodayDashboard({ 
   capacityData, 
@@ -59,12 +144,11 @@ export default function TodayDashboard({
   // Date State Switcher (0 = Today, -1 = Yesterday, +1 = Tomorrow, etc.)
   const [dateOffset, setDateOffset] = useState(0);
 
-  // Multi-Filter Dropdown States
+  // Multi-Filter States (NO VARIETY FILTER)
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'COMPLETED', 'PENDING', 'PARTIAL'
   const [taskTypeFilter, setTaskTypeFilter] = useState('ALL'); // 'ALL', 'end_date', 'count_days', 'count_event'
   const [priorityFilter, setPriorityFilter] = useState('ALL'); // 'ALL', 'HIGH', 'MEDIUM', 'LOW'
   const [categoryFilter, setCategoryFilter] = useState('ALL'); // 'ALL', 'Academics', 'Coding', 'Fitness', etc.
-  const [varietyFilter, setVarietyFilter] = useState('ALL'); // 'ALL', 'PARENTS', 'HAS_SUBTASKS', 'STANDALONE'
   const [searchQuery, setSearchQuery] = useState('');
 
   // Expandable UI States
@@ -112,7 +196,7 @@ export default function TodayDashboard({
     return 'Daily';
   };
 
-  // Determine Applicable Tasks for Selected Date with Multi-Dropdown Filtering
+  // Determine Applicable Tasks for Selected Date with Custom Multi-Filtering (No Variety Filter)
   const filteredParentTasks = useMemo(() => {
     return parentTasks.filter(p => {
       if (!p) return false;
@@ -133,16 +217,12 @@ export default function TodayDashboard({
       // 4. Priority Filter
       if (priorityFilter !== 'ALL' && p.priority !== priorityFilter) return false;
 
-      // 5. Variety / Structure Filter
-      if (varietyFilter === 'HAS_SUBTASKS' && children.length === 0) return false;
-      if (varietyFilter === 'STANDALONE' && children.length > 0) return false;
-
-      // 6. Search Query Filter
+      // 5. Search Query Filter
       if (searchQuery.trim() && p.title && !p.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
 
       return true;
     });
-  }, [parentTasks, subtasksMap, statusFilter, categoryFilter, taskTypeFilter, priorityFilter, varietyFilter, searchQuery]);
+  }, [parentTasks, subtasksMap, statusFilter, categoryFilter, taskTypeFilter, priorityFilter, searchQuery]);
 
   // Compute Daily Statistics (Unfiltered for Top Scorecard Accuracy)
   const stats = useMemo(() => {
@@ -150,9 +230,13 @@ export default function TodayDashboard({
     let pendingCount = 0;
     let pendingSubtasksCount = 0;
     let totalMeasuresVal = 0;
+    let completedMandatorySubtasks = 0;
+    let totalMandatorySubtasks = 0;
+    let totalEstimatedMinutes = 0;
 
     parentTasks.forEach(p => {
       if (!p) return;
+      totalEstimatedMinutes += Number(p.estimatedMinutes || 30);
       const children = subtasksMap[p.id] || [];
       const statusObj = calculateParentCompletionStatus(p, children);
 
@@ -164,8 +248,13 @@ export default function TodayDashboard({
 
       if (children.length > 0) {
         children.forEach(st => {
-          if (st && !st.isDoneToday && !st.isOptional) {
-            pendingSubtasksCount++;
+          if (st && !st.isOptional) {
+            totalMandatorySubtasks++;
+            if (st.isDoneToday || st.progressPercent >= 100) {
+              completedMandatorySubtasks++;
+            } else {
+              pendingSubtasksCount++;
+            }
           }
           if (st && st.isDoneToday) {
             totalMeasuresVal += Number(st.loggedMeasureVal || st.measureTarget || 0);
@@ -187,7 +276,10 @@ export default function TodayDashboard({
       pendingCount,
       pendingSubtasksCount,
       completionRate,
-      totalMeasuresVal
+      totalMeasuresVal,
+      completedMandatorySubtasks,
+      totalMandatorySubtasks,
+      totalEstimatedMinutes
     };
   }, [parentTasks, subtasksMap]);
 
@@ -278,6 +370,33 @@ export default function TodayDashboard({
     });
     return Array.from(set);
   }, [parentTasks]);
+
+  // Options for Custom Dropdowns
+  const statusOptions = [
+    { value: 'ALL', label: 'All Statuses' },
+    { value: 'PENDING', label: 'Pending Tasks' },
+    { value: 'PARTIAL', label: 'Partially Done' },
+    { value: 'COMPLETED', label: 'Completed Tasks' }
+  ];
+
+  const priorityOptions = [
+    { value: 'ALL', label: 'All Priorities' },
+    { value: 'HIGH', label: 'High Priority' },
+    { value: 'MEDIUM', label: 'Medium Priority' },
+    { value: 'LOW', label: 'Low Priority' }
+  ];
+
+  const categoryOptions = useMemo(() => [
+    { value: 'ALL', label: 'All Categories' },
+    ...categoriesList.map(cat => ({ value: cat, label: cat }))
+  ], [categoriesList]);
+
+  const taskTypeOptions = [
+    { value: 'ALL', label: 'All Task Types' },
+    { value: 'end_date', label: 'Type-1 (Start-End Date)' },
+    { value: 'count_days', label: 'Type-2 (Day Count)' },
+    { value: 'count_event', label: 'Type-3 (Event Count)' }
+  ];
 
   // Expand/Collapse Toggle Helper
   const toggleParentExpand = (id) => {
@@ -409,7 +528,7 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* MULTI-FILTER DROPDOWNS BAR (PRIORITY, CATEGORY, TYPE, VARIETY, STATUS) */}
+      {/* CUSTOM MANUALLY CODED DROPDOWNS BAR (NO DEFAULT SELECT, NO VARIETY) */}
       {/* ========================================================================= */}
       <div style={{ padding: '14px 16px', background: '#FFF', borderRadius: '18px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         
@@ -425,82 +544,40 @@ export default function TodayDashboard({
           />
         </div>
 
-        {/* Filter Dropdowns Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
+        {/* Custom Manually Coded Dropdowns Grid (4 Controls, No Variety) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px' }}>
           
-          {/* Status Dropdown */}
-          <div>
-            <label style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', display: 'block', marginBottom: '3px' }}>Status</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ width: '100%', padding: '6px 8px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '11px', fontWeight: 800, color: '#0F172A', outline: 'none' }}
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="PENDING">Pending Tasks</option>
-              <option value="PARTIAL">Partially Done</option>
-              <option value="COMPLETED">Completed Tasks</option>
-            </select>
-          </div>
+          <CustomDropdown 
+            label="Status"
+            value={statusFilter}
+            options={statusOptions}
+            onChange={setStatusFilter}
+            icon={Filter}
+          />
 
-          {/* Priority Dropdown */}
-          <div>
-            <label style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', display: 'block', marginBottom: '3px' }}>Priority</label>
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              style={{ width: '100%', padding: '6px 8px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '11px', fontWeight: 800, color: '#0F172A', outline: 'none' }}
-            >
-              <option value="ALL">All Priorities</option>
-              <option value="HIGH">High Priority</option>
-              <option value="MEDIUM">Medium Priority</option>
-              <option value="LOW">Low Priority</option>
-            </select>
-          </div>
+          <CustomDropdown 
+            label="Priority"
+            value={priorityFilter}
+            options={priorityOptions}
+            onChange={setPriorityFilter}
+            icon={Flame}
+          />
 
-          {/* Category Dropdown */}
-          <div>
-            <label style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', display: 'block', marginBottom: '3px' }}>Category</label>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              style={{ width: '100%', padding: '6px 8px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '11px', fontWeight: 800, color: '#0F172A', outline: 'none' }}
-            >
-              <option value="ALL">All Categories</option>
-              {categoriesList.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
+          <CustomDropdown 
+            label="Category"
+            value={categoryFilter}
+            options={categoryOptions}
+            onChange={setCategoryFilter}
+            icon={Layers}
+          />
 
-          {/* Task Type Dropdown (Type-1, Type-2, Type-3) */}
-          <div>
-            <label style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', display: 'block', marginBottom: '3px' }}>Task Type</label>
-            <select
-              value={taskTypeFilter}
-              onChange={(e) => setTaskTypeFilter(e.target.value)}
-              style={{ width: '100%', padding: '6px 8px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '11px', fontWeight: 800, color: '#0F172A', outline: 'none' }}
-            >
-              <option value="ALL">All Types</option>
-              <option value="end_date">Type-1 (Start-End Date)</option>
-              <option value="count_days">Type-2 (Day Count)</option>
-              <option value="count_event">Type-3 (Event Count)</option>
-            </select>
-          </div>
-
-          {/* Variety Dropdown */}
-          <div>
-            <label style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', display: 'block', marginBottom: '3px' }}>Variety</label>
-            <select
-              value={varietyFilter}
-              onChange={(e) => setVarietyFilter(e.target.value)}
-              style={{ width: '100%', padding: '6px 8px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '11px', fontWeight: 800, color: '#0F172A', outline: 'none' }}
-            >
-              <option value="ALL">All Variety</option>
-              <option value="HAS_SUBTASKS">Parent Tasks with Subtasks</option>
-              <option value="STANDALONE">Standalone Tasks</option>
-            </select>
-          </div>
+          <CustomDropdown 
+            label="Task Type"
+            value={taskTypeFilter}
+            options={taskTypeOptions}
+            onChange={setTaskTypeFilter}
+            icon={Activity}
+          />
 
         </div>
 
@@ -865,7 +942,7 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* 5. RICH DAILY STATISTICAL ANALYTICS & INSIGHTS (CLEAN LIGHT THEME) */}
+      {/* 5. ENHANCED STATISTICAL PERFORMANCE & INSIGHTS (SINGLE LINE TASK TYPE ROW) */}
       {/* ========================================================================= */}
       <div style={{ padding: '20px', background: '#FFF', borderRadius: '24px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
         
@@ -879,7 +956,7 @@ export default function TodayDashboard({
           </span>
         </div>
 
-        {/* 1. Overall Completion Meter & Gauge */}
+        {/* 1. Overall Completion Meter & Capacity Utilization */}
         <div style={{ background: 'linear-gradient(135deg, #FFF7ED, #EFF6FF)', padding: '16px', borderRadius: '16px', border: '1px solid #FED7AA' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <span style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>Workload Completion Meter</span>
@@ -890,8 +967,8 @@ export default function TodayDashboard({
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '11px', fontWeight: 800, color: '#475569' }}>
-            <span>{stats.completedCount} Completed</span>
-            <span>{stats.pendingCount} Pending</span>
+            <span>{stats.completedCount} Tasks Done</span>
+            <span>{stats.pendingCount} Tasks Pending</span>
             {stats.totalMeasuresVal > 0 && (
               <span style={{ color: '#EC4899', fontWeight: 900 }}>
                 <Ruler size={12} style={{ display: 'inline', marginRight: '2px' }} /> {stats.totalMeasuresVal} Units Logged
@@ -900,9 +977,58 @@ export default function TodayDashboard({
           </div>
         </div>
 
-        {/* 2. Priority Completion Breakdown Cards */}
+        {/* 2. TASK TYPE SCHEDULE PERFORMANCE — STRICTLY ONE LINE (ALL 3 BOXES SIDE BY SIDE) */}
         <div>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', display: 'block', marginBottom: '8px' }}>Priority Completion Breakdown</span>
+          <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', display: 'block', marginBottom: '6px' }}>
+            Task Type Schedule Performance
+          </span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+            
+            {/* Type-1 Box */}
+            <div style={{ padding: '8px 6px', borderRadius: '10px', background: '#EFF6FF', border: '1px solid #BFDBFE', textAlign: 'center' }}>
+              <span style={{ fontSize: '9px', fontWeight: 800, color: '#1E40AF', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                Type-1 (Date Range)
+              </span>
+              <span style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>
+                {typeBreakdown.endDate.done}/{typeBreakdown.endDate.total} Done
+              </span>
+              <span style={{ fontSize: '8px', color: '#64748B', fontWeight: 700, display: 'block' }}>
+                {typeBreakdown.endDate.pending} pending
+              </span>
+            </div>
+
+            {/* Type-2 Box */}
+            <div style={{ padding: '8px 6px', borderRadius: '10px', background: '#F0FDF4', border: '1px solid #BBF7D0', textAlign: 'center' }}>
+              <span style={{ fontSize: '9px', fontWeight: 800, color: '#15803D', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                Type-2 (Day Count)
+              </span>
+              <span style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>
+                {typeBreakdown.dayCount.done}/{typeBreakdown.dayCount.total} Done
+              </span>
+              <span style={{ fontSize: '8px', color: '#64748B', fontWeight: 700, display: 'block' }}>
+                {typeBreakdown.dayCount.pending} pending
+              </span>
+            </div>
+
+            {/* Type-3 Box */}
+            <div style={{ padding: '8px 6px', borderRadius: '10px', background: '#FAF5FF', border: '1px solid #E9D5FF', textAlign: 'center' }}>
+              <span style={{ fontSize: '9px', fontWeight: 800, color: '#7E22CE', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                Type-3 (Event Count)
+              </span>
+              <span style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>
+                {typeBreakdown.eventCount.done}/{typeBreakdown.eventCount.total} Done
+              </span>
+              <span style={{ fontSize: '8px', color: '#64748B', fontWeight: 700, display: 'block' }}>
+                {typeBreakdown.eventCount.pending} pending
+              </span>
+            </div>
+
+          </div>
+        </div>
+
+        {/* 3. Priority Completion Breakdown Cards */}
+        <div>
+          <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', display: 'block', marginBottom: '8px' }}>Priority Distribution & Execution</span>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
             {/* High */}
             <div style={{ padding: '10px', background: '#FEF2F2', borderRadius: '12px', border: '1px solid #FECACA', textAlign: 'center' }}>
@@ -930,50 +1056,40 @@ export default function TodayDashboard({
           </div>
         </div>
 
-        {/* 3. Task Type Breakdown (Type-1, Type-2, Type-3) */}
-        <div>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', display: 'block', marginBottom: '8px' }}>Task Type Schedule Performance</span>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
-            
-            {/* Type-1 */}
-            <div style={{ padding: '12px', borderRadius: '12px', background: '#EFF6FF', border: '1px solid #BFDBFE' }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#1E40AF', display: 'block' }}>Type-1 (Start-End Date)</span>
-              <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>
-                {typeBreakdown.endDate.done} / {typeBreakdown.endDate.total} Done
-              </span>
-              <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 700 }}>
-                {typeBreakdown.endDate.pending} tasks pending
-              </span>
-            </div>
-
-            {/* Type-2 */}
-            <div style={{ padding: '12px', borderRadius: '12px', background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#15803D', display: 'block' }}>Type-2 (Day Count)</span>
-              <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>
-                {typeBreakdown.dayCount.done} / {typeBreakdown.dayCount.total} Done
-              </span>
-              <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 700 }}>
-                {typeBreakdown.dayCount.pending} tasks pending
-              </span>
-            </div>
-
-            {/* Type-3 */}
-            <div style={{ padding: '12px', borderRadius: '12px', background: '#FAF5FF', border: '1px solid #E9D5FF' }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#7E22CE', display: 'block' }}>Type-3 (Event Count)</span>
-              <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>
-                {typeBreakdown.eventCount.done} / {typeBreakdown.eventCount.total} Done
-              </span>
-              <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 700 }}>
-                {typeBreakdown.eventCount.pending} tasks pending
-              </span>
-            </div>
-
+        {/* 4. Additional Statistical Insights: Time Output & Mandatory Subtask Ratio */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+          
+          {/* Workload Time Output */}
+          <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#2563EB', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Timer size={12} /> Workload Time
+            </span>
+            <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>
+              ~{stats.totalEstimatedMinutes} mins
+            </span>
+            <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 700 }}>
+              Capacity: {capacityData?.availableCapacityMinutes || 480} mins available
+            </span>
           </div>
+
+          {/* Mandatory Subtasks Mastery */}
+          <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#7E22CE', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <ShieldCheck size={12} /> Mandatory Subtasks
+            </span>
+            <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>
+              {stats.completedMandatorySubtasks} / {stats.totalMandatorySubtasks} Done
+            </span>
+            <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 700 }}>
+              {stats.totalMandatorySubtasks - stats.completedMandatorySubtasks} remaining
+            </span>
+          </div>
+
         </div>
 
-        {/* 4. Category Wise Progress Distribution */}
+        {/* 5. Category Progress Breakdown */}
         <div>
-          <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', display: 'block', marginBottom: '8px' }}>Category Progress Distribution</span>
+          <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', display: 'block', marginBottom: '8px' }}>Category Output Breakdown</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {categoriesList.map(cat => {
               const catTasks = parentTasks.filter(p => p && p.category === cat);
@@ -997,7 +1113,7 @@ export default function TodayDashboard({
           </div>
         </div>
 
-        {/* 5. Discipline Grade Scorecard */}
+        {/* 6. Discipline Grade Scorecard */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC', padding: '14px 16px', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
           <div>
             <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Daily Discipline Score</span>
