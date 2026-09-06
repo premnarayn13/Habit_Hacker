@@ -254,51 +254,95 @@ export default function TaskDedicatedPageView({
     ? currentTask.missedStreak 
     : (currentTask.isDoneToday ? 0 : Math.max(0, elapsedDays - currentCount));
 
-  // Daily Measure & Subtask Contribution Data (For Start-End Date Tasks & Day Count Tasks)
+  // FULL TIMELINE DAY-BY-DAY DATA ENGINE (From plannedStart / Day 1 up to today / Day elapsedDays)
   const avgMeasured = calculateMeasurableAverage(directChildSubtasks);
+  const missedDaysRecordsList = getMissedDaysForTask({ ...currentTask, elapsedDays }, directChildSubtasks, elapsedDays);
+  const missedDaysSetByAgo = new Set(missedDaysRecordsList.map(m => m.daysAgo));
 
-  const sampleDailyMeasures = Array.from({ length: 7 }).map((_, idx) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - idx));
-    const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
+  const startTimelineDate = new Date(effectiveStartStr);
+  const totalTimelineDays = Math.max(1, elapsedDays);
 
+  let runningCumulativeActualMeasure = 0;
+
+  const fullTimelineDailyData = Array.from({ length: totalTimelineDays }).map((_, idx) => {
+    const dayNumber = idx + 1; // 1-indexed (Day 1, Day 2, ..., Day elapsedDays)
+    const daysAgo = totalTimelineDays - dayNumber;
+    
+    const d = new Date(startTimelineDate);
+    d.setDate(startTimelineDate.getDate() + idx);
+    const dateStr = d.toISOString().split('T')[0];
+    const monthDayStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const weekdayStr = d.toLocaleDateString('en-US', { weekday: 'short' });
+
+    const isMissedDay = missedDaysSetByAgo.has(daysAgo);
+    const isCompletedDay = !isMissedDay;
+
+    let dailyDeltaMeasure = 0;
+    if (isCompletedDay) {
+      const numCompletedDays = Math.max(1, totalTimelineDays - missedDaysSetByAgo.size);
+      dailyDeltaMeasure = Math.round((totalCompletedMeasure / numCompletedDays) * 10) / 10;
+    } else {
+      dailyDeltaMeasure = 0; // MISSED DAY -> 0 measure, line stays PLAIN HORIZONTAL!
+    }
+
+    runningCumulativeActualMeasure = Math.round((runningCumulativeActualMeasure + dailyDeltaMeasure) * 10) / 10;
+    
+    // Final day lands EXACTLY on totalCompletedMeasure!
+    const finalCumulativeVal = (idx === totalTimelineDays - 1) 
+      ? totalCompletedMeasure 
+      : runningCumulativeActualMeasure;
+
+    const expectedTargetValAtDay = Math.min(totalTargetedMeasure, Math.round((dayNumber * dailyTargetMeasure) * 10) / 10);
+
+    return {
+      dayNumber,
+      daysAgo,
+      dateStr,
+      monthDayStr,
+      weekdayStr,
+      isCompletedDay,
+      isMissedDay,
+      dailyDeltaMeasure,
+      actualCumulativeVal: finalCumulativeVal,
+      expectedTargetVal: expectedTargetValAtDay
+    };
+  });
+
+  // Daily Subtask Stacked Bar Measures from Day 1 to Today
+  const fullSubtaskDailyMeasures = fullTimelineDailyData.map(dayInfo => {
     let totalColumnVal = 0;
+
     const subtaskContributions = directChildSubtasks.map((st, sIdx) => {
       const color = subtaskColors[sIdx % subtaskColors.length];
-      const isCompletedToday = (idx <= (st.currentCount || 0)) || (idx % 2 === 0);
+      const isCompletedDay = dayInfo.isCompletedDay;
       const evCount = st.trackingMode === 'count_event' ? (st.currentCount || 2) : 1;
       
-      const val = calculateSubtaskContribution(st, isCompletedToday, evCount, avgMeasured);
-      let note = '';
-      if (st.hasMeasureTracking || st.measureTarget) {
-        note = 'Explicit Logged Measure';
-      } else if (st.trackingMode === 'count_event') {
-        note = `${evCount} Events × ${avgMeasured} Avg Measure`;
-      } else {
-        note = `1 Standard × ${avgMeasured} Avg Measure`;
-      }
+      const val = calculateSubtaskContribution(st, isCompletedDay, evCount, avgMeasured);
+      if (isCompletedDay) totalColumnVal += val;
 
-      totalColumnVal += val;
       return {
         id: st.id,
         title: st.title,
-        val,
+        val: isCompletedDay ? val : 0,
         color,
-        note
+        note: isCompletedDay ? `Logged ${val} ${measureUnit}` : 'Missed Day (0 Measure)'
       };
     });
 
-    totalColumnVal = Math.round(totalColumnVal * 10) / 10;
+    totalColumnVal = dayInfo.isCompletedDay ? Math.round(totalColumnVal * 10) / 10 : 0;
     const columnPercentage = Math.min(100, Math.round((totalColumnVal / Math.max(1, dailyTargetMeasure)) * 100));
 
     return {
-      date: d.toISOString().split('T')[0],
-      dayLabel,
+      date: dayInfo.dateStr,
+      dayLabel: dayInfo.monthDayStr,
+      isMissedDay: dayInfo.isMissedDay,
       totalColumnVal,
       columnPercentage,
       subtaskContributions
     };
   });
+
+  const sampleDailyMeasures = fullSubtaskDailyMeasures;
 
   // Event Count Daily Cluster Data (Derived from actual completed event logs & task currentCount)
   const eventClusterDailyData = (() => {
@@ -1273,50 +1317,35 @@ export default function TaskDedicatedPageView({
         {(() => {
           const maxCumDomain = Math.max(Math.ceil(Math.max(totalCompletedMeasure, expectedMeasureTillToday, 10) * 1.25), 10);
           
-          // Generate 7 trajectory checkpoints from Day 1 (plannedStart) up to Today (elapsedDays)
-          const numCheckpoints = 7;
-          const startDt = new Date(effectiveStartStr);
-          
-          const trajectoryPoints = Array.from({ length: numCheckpoints }).map((_, idx) => {
-            const frac = idx / (numCheckpoints - 1);
-            const dayOffset = Math.round(1 + frac * (elapsedDays - 1));
-            
-            const pointDt = new Date(startDt);
-            pointDt.setDate(startDt.getDate() + (dayOffset - 1));
-            
-            const monthStr = pointDt.toLocaleDateString('en-US', { month: 'short' });
-            const dayNum = pointDt.getDate();
-            const dayName = pointDt.toLocaleDateString('en-US', { weekday: 'short' });
-            
-            const label = idx === numCheckpoints - 1 
-              ? `Today (${dayName})` 
-              : (idx === 0 ? `Start (${monthStr} ${dayNum})` : `${monthStr} ${dayNum}`);
+          const numDays = fullTimelineDailyData.length;
 
-            // Actual Cumulative Measure rises from Day 1 to land EXACTLY at totalCompletedMeasure on the final point (Today)
-            const actualVal = Math.round((frac * totalCompletedMeasure) * 10) / 10;
-            
-            // Average Target Measure rises from Day 1 to land EXACTLY at expectedMeasureTillToday on the final point (Today)
-            const targetVal = Math.round((frac * expectedMeasureTillToday) * 10) / 10;
-
+          // Map every single day from Day 1 to Today to SVG coordinates (x, y)
+          const points = fullTimelineDailyData.map((d, idx) => {
+            const frac = numDays > 1 ? idx / (numDays - 1) : 1;
             const x = Math.round(20 + frac * 460);
-            const yActual = Math.max(20, 160 - Math.round((actualVal / maxCumDomain) * 140));
-            const yTarget = Math.max(20, 160 - Math.round((targetVal / maxCumDomain) * 140));
+            
+            const yActual = Math.max(20, 160 - Math.round((d.actualCumulativeVal / maxCumDomain) * 140));
+            const yTarget = Math.max(20, 160 - Math.round((d.expectedTargetVal / maxCumDomain) * 140));
 
             return {
-              idx,
-              dayOffset,
-              label,
-              actualVal,
-              targetVal,
+              ...d,
               x,
               yActual,
               yTarget
             };
           });
 
-          const actualPolylinePoints = trajectoryPoints.map(p => `${p.x},${p.yActual}`).join(' ');
-          const targetPolylinePoints = trajectoryPoints.map(p => `${p.x},${p.yTarget}`).join(' ');
+          // Polyline string containing EVERY single day point
+          const actualPolylinePoints = points.map(p => `${p.x},${p.yActual}`).join(' ');
+          const targetPolylinePoints = points.map(p => `${p.x},${p.yTarget}`).join(' ');
           const polygonPoints = `20,160 ${actualPolylinePoints} 480,160 20,160`;
+
+          // Pick 7 key checkpoint ticks along the X-axis for clean label rendering
+          const numLabels = 7;
+          const labelPoints = Array.from({ length: Math.min(numLabels, points.length) }).map((_, lIdx) => {
+            const pIdx = Math.round(lIdx * (points.length - 1) / Math.max(1, numLabels - 1));
+            return points[pIdx];
+          });
 
           return (
             <div style={{ height: '240px', background: '#FFFFFF', padding: '16px 14px 28px 45px', border: '1.5px solid #CBD5E1', borderRadius: '16px', position: 'relative', boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
@@ -1330,7 +1359,7 @@ export default function TaskDedicatedPageView({
                 <span>0</span>
               </div>
 
-              {/* SVG Canvas with ViewBox for Precise Responsive Scaling */}
+              {/* SVG Canvas */}
               <svg viewBox="0 0 500 180" preserveAspectRatio="none" style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
                 <defs>
                   <linearGradient id="cumOrangeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -1343,15 +1372,15 @@ export default function TaskDedicatedPageView({
                   </filter>
                 </defs>
 
-                {/* Math Graph Paper Grid Lines (Horizontal & Vertical) */}
+                {/* Horizontal Grid Lines */}
                 <line x1="20" y1="20" x2="480" y2="20" stroke="#F1F5F9" strokeWidth="1.5" />
                 <line x1="20" y1="55" x2="480" y2="55" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
                 <line x1="20" y1="90" x2="480" y2="90" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
                 <line x1="20" y1="125" x2="480" y2="125" stroke="#F1F5F9" strokeWidth="1.5" strokeDasharray="4,4" />
                 <line x1="20" y1="160" x2="480" y2="160" stroke="#CBD5E1" strokeWidth="2" />
 
-                {/* Vertical Checkpoint Gridlines */}
-                {trajectoryPoints.map((p, i) => (
+                {/* Vertical Gridlines for Checkpoint Days */}
+                {labelPoints.map((p, i) => (
                   <line key={i} x1={p.x} y1="20" x2={p.x} y2="160" stroke="#F1F5F9" strokeWidth="1" strokeDasharray="3,3" />
                 ))}
 
@@ -1364,7 +1393,7 @@ export default function TaskDedicatedPageView({
                   points={targetPolylinePoints}
                 />
 
-                {/* 2. ACTUAL CUMULATIVE MEASURE LINE (MONOTONICALLY INCREASING, MATCHES TOTAL COMPLETED MEASURE AT TODAY) */}
+                {/* 2. ACTUAL CUMULATIVE MEASURE LINE (MONOTONICALLY INCREASING WITH PLAIN HORIZONTAL FLAT SEGMENTS ON MISSED DAYS) */}
                 <g>
                   {/* Shaded Area under Actual Cumulative Line */}
                   <polygon fill="url(#cumOrangeGradient)" points={polygonPoints} />
@@ -1380,14 +1409,14 @@ export default function TaskDedicatedPageView({
                     points={actualPolylinePoints}
                   />
 
-                  {/* Node Markers & Data Labels */}
-                  {trajectoryPoints.map((p, i) => (
+                  {/* Node Markers & Data Labels on Ticks & Missed Days */}
+                  {labelPoints.map((p, i) => (
                     <g key={i}>
                       <circle 
                         cx={p.x} 
                         cy={p.yActual} 
-                        r="6" 
-                        fill="#EA580C" 
+                        r={p.isMissedDay ? "4" : "6"} 
+                        fill={p.isMissedDay ? "#94A3B8" : "#EA580C"} 
                         stroke="#FFFFFF" 
                         strokeWidth="2" 
                       />
@@ -1398,9 +1427,9 @@ export default function TaskDedicatedPageView({
                         textAnchor="middle" 
                         fontSize="9.5" 
                         fontWeight="900" 
-                        fill="#C2410C"
+                        fill={p.isMissedDay ? "#64748B" : "#C2410C"}
                       >
-                        {p.actualVal}
+                        {p.actualCumulativeVal}
                       </text>
                     </g>
                   ))}
@@ -1409,9 +1438,9 @@ export default function TaskDedicatedPageView({
 
               {/* X-Axis Timeline Labels */}
               <div style={{ position: 'absolute', left: '45px', right: '16px', bottom: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '8.5px', fontWeight: 800, color: '#475569' }}>
-                {trajectoryPoints.map((p, i) => (
-                  <span key={i} style={{ color: i === trajectoryPoints.length - 1 ? '#EA580C' : '#0F172A', fontWeight: i === trajectoryPoints.length - 1 ? 900 : 800 }}>
-                    {p.label}
+                {labelPoints.map((p, i) => (
+                  <span key={i} style={{ color: p.isMissedDay ? '#DC2626' : (i === labelPoints.length - 1 ? '#EA580C' : '#0F172A'), fontWeight: i === labelPoints.length - 1 ? 900 : 800 }}>
+                    {i === labelPoints.length - 1 ? `Today (${p.monthDayStr})` : (i === 0 ? `Start (${p.monthDayStr})` : p.monthDayStr)}
                   </span>
                 ))}
               </div>

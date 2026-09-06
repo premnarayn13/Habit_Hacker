@@ -79,10 +79,24 @@ CREATE TABLE IF NOT EXISTS public.event_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.daily_task_logs (
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    parent_task_id VARCHAR(255) NOT NULL,
+    user_id VARCHAR(255) NOT NULL DEFAULT 'default-user',
+    log_date DATE NOT NULL,
+    day_number INT NOT NULL,
+    is_completed BOOLEAN NOT NULL DEFAULT FALSE,
+    daily_measure NUMERIC(10, 2) DEFAULT 0.0,
+    cumulative_measure NUMERIC(10, 2) DEFAULT 0.0,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- =========================================================================
 -- 2. WIPE ALL EXISTING TASKS, SUBTASKS, AND LOGS (CLEAN SLATE RESET)
 -- =========================================================================
 
+DELETE FROM public.daily_task_logs;
 DELETE FROM public.subtask_logs;
 DELETE FROM public.event_logs;
 DELETE FROM public.subtasks;
