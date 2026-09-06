@@ -627,29 +627,6 @@ export default function App() {
   const [subtasks, setSubtasks] = useState([]);
   const [habits, setHabits] = useState([]);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setCurrentUser(session.user);
-        fetchUserData(session.user.id, session.user.email);
-      } else {
-        fetchUserData('default-user', '');
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setCurrentUser(session.user);
-        fetchUserData(session.user.id, session.user.email);
-      } else {
-        setCurrentUser(null);
-        fetchUserData('default-user', '');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
   // SUBTASK LIFECYCLE EVALUATOR & AUTOMATED PARENT TURN COMPLETION
   const processSubtaskLifecycles = (rawTasks) => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -843,6 +820,29 @@ export default function App() {
       updateTasksState(INITIAL_DEFAULT_TASKS, userEmail);
     }
   };
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+        fetchUserData(session.user.id, session.user.email);
+      } else {
+        fetchUserData('default-user', '');
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setCurrentUser(session.user);
+        fetchUserData(session.user.id, session.user.email);
+      } else {
+        setCurrentUser(null);
+        fetchUserData('default-user', '');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleTabSwitch = (newTab) => {
     if (newTab === activeTab) return;
