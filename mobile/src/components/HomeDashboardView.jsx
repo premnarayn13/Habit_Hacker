@@ -667,50 +667,84 @@ export default function HomeDashboardView({
 
       </div>
 
-      {/* 4. TASK TYPE DISTRIBUTION & PERFORMANCE MATRIX */}
+      {/* 4. LAYER A & C: TASK TRACKING MODES, PERFORMANCE & MATRIX BREAKDOWN (PHASE 4) */}
       <div style={{
         background: '#FFFFFF',
         border: '1px solid #E2E8F0',
         borderRadius: '16px',
         padding: '20px'
       }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <PieChart size={18} color="#DC2626" /> Task Type Distribution & Performance
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <div>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <PieChart size={18} color="#DC2626" /> Task Type Distribution & Performance Matrix
+            </h3>
+            <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
+              Performance breakdown across multi-modal tracking engines (Date Range, Day Count, Event Count).
+            </p>
+          </div>
+          <button 
+            onClick={() => onNavigateToTab?.('tasks')}
+            style={{ background: 'transparent', border: 'none', color: '#DC2626', fontSize: '12px', fontWeight: 800, cursor: 'pointer' }}
+          >
+            Filter by Type →
+          </button>
+        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+        {/* Task Type Distribution Bar */}
+        <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 800, color: '#0F172A', marginBottom: '6px' }}>
+            <span>Tracking Mode Workload Share</span>
+            <span style={{ color: '#64748B' }}>
+              {Math.round((stats.endDateTasksCount / Math.max(stats.totalAllTasks, 1)) * 100)}% Date Range · {Math.round((stats.dayCountTasksCount / Math.max(stats.totalAllTasks, 1)) * 100)}% Day Count · {Math.round((stats.eventCountTasksCount / Math.max(stats.totalAllTasks, 1)) * 100)}% Event Count
+            </span>
+          </div>
+          <div style={{ height: '8px', borderRadius: '4px', background: '#E2E8F0', display: 'flex', overflow: 'hidden' }}>
+            <div style={{ width: `${Math.round((stats.endDateTasksCount / Math.max(stats.totalAllTasks, 1)) * 100)}%`, background: '#2563EB' }} title="Start-End Date" />
+            <div style={{ width: `${Math.round((stats.dayCountTasksCount / Math.max(stats.totalAllTasks, 1)) * 100)}%`, background: '#16A34A' }} title="Day Count" />
+            <div style={{ width: `${Math.round((stats.eventCountTasksCount / Math.max(stats.totalAllTasks, 1)) * 100)}%`, background: '#7E22CE' }} title="Event Count" />
+          </div>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '6px', fontSize: '10px', fontWeight: 700 }}>
+            <span style={{ color: '#2563EB' }}>■ Start-End Date ({stats.endDateTasksCount})</span>
+            <span style={{ color: '#16A34A' }}>■ Day Count ({stats.dayCountTasksCount})</span>
+            {visibility.hasEventTasks && <span style={{ color: '#7E22CE' }}>■ Event Count ({stats.eventCountTasksCount})</span>}
+          </div>
+        </div>
+
+        {/* Detailed Performance Matrix Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '16px' }}>
           
           {/* Start-End Date */}
           <div 
             onClick={() => onNavigateToTab?.('tasks')}
-            style={{ padding: '14px', borderRadius: '12px', background: '#F8FAFC', border: '1px solid #E2E8F0', cursor: 'pointer' }}
+            style={{ padding: '14px', borderRadius: '12px', background: '#EFF6FF', border: '1px solid #BFDBFE', cursor: 'pointer' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
               <span style={{ fontSize: '12px', fontWeight: 800, color: '#1E40AF' }}>Start-End Date</span>
               <span style={{ fontSize: '11px', fontWeight: 800, color: '#1E40AF', background: '#DBEAFE', padding: '2px 6px', borderRadius: '4px' }}>
-                {stats.endDateRate}% Rate
+                {stats.endDateRate}% Completion
               </span>
             </div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.endDateTasksCount} Tasks</div>
-            <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', fontWeight: 600 }}>
-              {stats.endDateDone} Completed · {stats.endDateTasksCount - stats.endDateDone} Active
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.endDateTasksCount} Total Tasks</div>
+            <div style={{ fontSize: '11px', color: '#1E40AF', marginTop: '2px', fontWeight: 600 }}>
+              {stats.endDateDone} Done · {stats.endDateTasksCount - stats.endDateDone} Active/Pending
             </div>
           </div>
 
           {/* Day Count */}
           <div 
             onClick={() => onNavigateToTab?.('tasks')}
-            style={{ padding: '14px', borderRadius: '12px', background: '#F8FAFC', border: '1px solid #E2E8F0', cursor: 'pointer' }}
+            style={{ padding: '14px', borderRadius: '12px', background: '#F0FDF4', border: '1px solid #BBF7D0', cursor: 'pointer' }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
               <span style={{ fontSize: '12px', fontWeight: 800, color: '#15803D' }}>Day Count</span>
               <span style={{ fontSize: '11px', fontWeight: 800, color: '#15803D', background: '#DCFCE7', padding: '2px 6px', borderRadius: '4px' }}>
-                {stats.dayCountRate}% Rate
+                {stats.dayCountRate}% Completion
               </span>
             </div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.dayCountTasksCount} Tasks</div>
-            <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', fontWeight: 600 }}>
-              {stats.dayCountDone} Completed · {stats.dayCountTasksCount - stats.dayCountDone} Active
+            <div style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.dayCountTasksCount} Total Tasks</div>
+            <div style={{ fontSize: '11px', color: '#15803D', marginTop: '2px', fontWeight: 600 }}>
+              {stats.dayCountDone} Done · {stats.dayCountTasksCount - stats.dayCountDone} Active/Pending
             </div>
           </div>
 
@@ -718,22 +752,64 @@ export default function HomeDashboardView({
           {visibility.hasEventTasks && (
             <div 
               onClick={() => onNavigateToTab?.('tasks')}
-              style={{ padding: '14px', borderRadius: '12px', background: '#F8FAFC', border: '1px solid #E2E8F0', cursor: 'pointer' }}
+              style={{ padding: '14px', borderRadius: '12px', background: '#FAF5FF', border: '1px solid #E9D5FF', cursor: 'pointer' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 800, color: '#7E22CE' }}>Event Count</span>
                 <span style={{ fontSize: '11px', fontWeight: 800, color: '#7E22CE', background: '#F3E8FF', padding: '2px 6px', borderRadius: '4px' }}>
-                  {stats.eventCountRate}% Rate
+                  {stats.eventCountRate}% Completion
                 </span>
               </div>
-              <div style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.eventCountTasksCount} Tasks</div>
-              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', fontWeight: 600 }}>
-                {stats.eventCountDone} Completed · {stats.eventCountTasksCount - stats.eventCountDone} Active
+              <div style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.eventCountTasksCount} Total Tasks</div>
+              <div style={{ fontSize: '11px', color: '#7E22CE', marginTop: '2px', fontWeight: 600 }}>
+                {stats.eventCountDone} Done · {stats.eventCountTasksCount - stats.eventCountDone} Active/Pending
               </div>
             </div>
           )}
 
         </div>
+
+        {/* Category x Task Type Cross-Tabulation Matrix */}
+        <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', marginBottom: '8px', letterSpacing: '0.05em' }}>
+          CATEGORY × TASK TYPE MATRIX CROSS-TABULATION
+        </div>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+            <thead>
+              <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0', textAlign: 'left', color: '#64748B', fontSize: '11px', fontWeight: 800 }}>
+                <th style={{ padding: '8px 10px' }}>CATEGORY</th>
+                <th style={{ padding: '8px 10px' }}>DATE RANGE</th>
+                <th style={{ padding: '8px 10px' }}>DAY COUNT</th>
+                <th style={{ padding: '8px 10px' }}>EVENT COUNT</th>
+                <th style={{ padding: '8px 10px', textAlign: 'right' }}>TOTAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.categoryStats.map(cat => {
+                const catTasks = periodFilteredTasks.filter(t => t && t.category === cat.category);
+                const endDateCount = catTasks.filter(t => t.trackingMode === 'end_date').length;
+                const dayCountCount = catTasks.filter(t => t.trackingMode === 'count_days').length;
+                const eventCountCount = catTasks.filter(t => t.trackingMode === 'count_event').length;
+
+                return (
+                  <tr 
+                    key={cat.category}
+                    onClick={() => onNavigateToTab?.('tasks')}
+                    style={{ borderBottom: '1px solid #E2E8F0', cursor: 'pointer' }}
+                  >
+                    <td style={{ padding: '8px 10px', fontWeight: 800, color: '#0F172A' }}>{cat.category}</td>
+                    <td style={{ padding: '8px 10px', color: '#2563EB', fontWeight: 700 }}>{endDateCount}</td>
+                    <td style={{ padding: '8px 10px', color: '#16A34A', fontWeight: 700 }}>{dayCountCount}</td>
+                    <td style={{ padding: '8px 10px', color: '#7E22CE', fontWeight: 700 }}>{eventCountCount}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 900, color: '#0F172A' }}>{cat.total}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
       </div>
 
       {/* 5. CATEGORY INTELLIGENCE & HEALTH */}
