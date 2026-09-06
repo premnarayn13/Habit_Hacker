@@ -336,7 +336,8 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. TODAY'S OVERALL PROGRESS */}
+      {/* 3. TODAY'S OVERALL PROGRESS & LOGGED MEASURE OUTPUT */}
+      {/* Dynamic progress bar tracking task completion % and total daily measure output */}
       {/* ========================================================================= */}
       <div style={{ padding: '20px 24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -365,7 +366,8 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. NEXT UP HERO ACTION BANNER (SECTION 30) */}
+      {/* 4. NEXT UP HERO ACTION BANNER (PRIORITY URGENCY CARDS) */}
+      {/* High-visibility top priority task card with 1-tap completion & measure input */}
       {/* ========================================================================= */}
       {nextUpItem && (
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #FFF7ED, #FFFFFF)', borderRadius: '20px', border: '1.5px solid #FFEDD5', borderLeft: '6px solid #EA580C', boxShadow: '0 8px 24px rgba(234, 88, 12, 0.08)' }}>
