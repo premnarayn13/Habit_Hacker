@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import SidebarDrawer from './components/SidebarDrawer';
 import WidgetsHubView from './components/WidgetsHubView';
+import HomeDashboardView from './components/HomeDashboardView';
 import TodayDashboard from './components/TodayDashboard';
 import TaskSubtaskView from './components/TaskSubtaskView';
 import TaskDedicatedPageView from './components/TaskDedicatedPageView';
@@ -1329,11 +1330,14 @@ export default function App() {
             />
           ) : (
             <>
-              {activeTab === 'widgets' && (
-                <WidgetsHubView 
+              {(activeTab === 'widgets' || activeTab === 'home') && (
+                <HomeDashboardView 
                   tasks={activeTasks}
+                  subtasks={subtasks}
                   habits={habits}
-                  onOpenQuickAdd={handleOpenGeneralQuickAdd}
+                  disciplineScore={disciplineScore}
+                  onNavigateToTab={(tab) => handleTabSwitch(tab)}
+                  onNavigateToTaskDedicated={(item) => setDedicatedTaskPageItem(item)}
                 />
               )}
 
