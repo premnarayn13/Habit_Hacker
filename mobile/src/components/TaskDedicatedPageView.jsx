@@ -1133,297 +1133,83 @@ export default function TaskDedicatedPageView({
                 })}
               </div>
             </div>
-          </div>
         </div>
-      )}
-             {/* ========================================================================= */}
-      {/* 9. SCHEDULE MEASURE ANALYTICS SYSTEM (RE-DESIGNED VISUAL DASHBOARD) */}
+      </div>
+    )}
+      {/* 9. SCHEDULE MEASURE ANALYTICS SYSTEM */}
       {/* ========================================================================= */}
-      <div style={{
-        padding: '24px',
-        background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
-        borderRadius: '24px',
-        border: '1px solid #334155',
-        boxShadow: '0 20px 40px rgba(15, 23, 42, 0.4), 0 0 1px rgba(255, 255, 255, 0.1)',
-        color: '#F8FAFC',
-        position: 'relative',
-        overflow: 'hidden'
-      }}>
-        {/* Ambient background glow accents */}
-        <div style={{ position: 'absolute', top: '-60px', right: '-60px', width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(236,72,153,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '-60px', left: '-60px', width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
+      <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: '0 0 14px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Ruler size={18} color="#EC4899" /> {trackingMode === 'count_event' ? 'EventCount & Schedule Measure Analytics System' : (trackingMode === 'count_days' ? 'DayCount & Schedule Measure Analytics System' : 'Start-End Date & Schedule Measure Analytics System')}
+        </h3>
 
-        {/* Header Title with Subtitle & Tracking Badge */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ background: 'linear-gradient(135deg, #EC4899, #8B5CF6)', padding: '8px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(236, 72, 153, 0.3)' }}>
-                <Gauge size={20} color="#FFF" />
-              </div>
-              <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#FFF', margin: 0, letterSpacing: '-0.02em' }}>
-                  Schedule Measure Analytics Dashboard
-                </h3>
-                <span style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600 }}>
-                  {taskTypeLabel}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Hero Status Pill: Ahead / Behind / On Track */}
-          <div style={{
-            background: targetVarianceTillToday >= 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-            border: targetVarianceTillToday >= 0 ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
-            padding: '8px 16px',
-            borderRadius: '30px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            backdropFilter: 'blur(8px)'
-          }}>
-            {targetVarianceTillToday >= 0 ? (
-              <TrendingUp size={16} color="#4ADE80" />
-            ) : (
-              <AlertCircle size={16} color="#F87171" />
-            )}
-            <span style={{ fontSize: '12px', fontWeight: 800, color: targetVarianceTillToday >= 0 ? '#4ADE80' : '#F87171' }}>
-              {targetVarianceTillToday >= 0 
-                ? `+${targetVarianceTillToday} ${measureUnit} Ahead of Pace` 
-                : `${targetVarianceTillToday} ${measureUnit} Behind Pace`}
-            </span>
-          </div>
-        </div>
-
-        {/* TIER 1: MULTI-SEGMENT GOAL COMPLETION VISUAL PROGRESS BAR */}
-        {(() => {
-          const overallPct = Math.min(100, Math.round((totalCompletedMeasure / Math.max(1, totalTargetedMeasure)) * 100));
-          return (
-            <div style={{ background: 'rgba(30, 41, 59, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '16px', padding: '16px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Overall Goal Measure Completion
-                </span>
-                <span style={{ fontSize: '18px', fontWeight: 900, color: '#38BDF8' }}>
-                  {overallPct}% <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>({totalCompletedMeasure} / {totalTargetedMeasure} {measureUnit})</span>
-                </span>
-              </div>
-
-              {/* Multi-Segment Track Bar */}
-              <div style={{ height: '14px', background: 'rgba(15, 23, 42, 0.8)', borderRadius: '10px', padding: '2px', border: '1px solid rgba(255,255,255,0.05)', position: 'relative', overflow: 'hidden' }}>
-                <div style={{
-                  width: `${overallPct}%`,
-                  height: '100%',
-                  background: 'linear-gradient(90deg, #10B981 0%, #34D399 100%)',
-                  borderRadius: '8px',
-                  boxShadow: '0 0 12px rgba(52, 211, 153, 0.4)',
-                  transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
-                }} />
-              </div>
-
-              {/* Progress Bar Footer Legend */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '11px', fontWeight: 700, flexWrap: 'wrap', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#34D399' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34D399' }} />
-                  <span>Completed: <strong>{totalCompletedMeasure} {measureUnit}</strong></span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#818CF8' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#818CF8' }} />
-                  <span>Expected Today: <strong>{expectedMeasureTillToday} {measureUnit}</strong></span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#FBBF24' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FBBF24' }} />
-                  <span>Remaining Left: <strong>{totalTargetLeft} {measureUnit}</strong></span>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* TIER 2 & 3: COLOR-CODED KPI VISUAL CARDS GRID */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
           
           {/* Card 1: Daily Target Measure */}
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.12) 0%, rgba(219, 39, 119, 0.05) 100%)',
-            border: '1px solid rgba(236, 72, 153, 0.3)',
-            borderRadius: '16px',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            boxShadow: '0 4px 14px rgba(236, 72, 153, 0.1)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#F472B6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Daily Target</span>
-              <Target size={16} color="#F472B6" />
-            </div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
-              {dailyTargetMeasure} <span style={{ fontSize: '12px', color: '#F472B6', fontWeight: 700 }}>{measureUnit}/day</span>
-            </div>
-            <span style={{ fontSize: '10px', color: '#CBD5E1', fontWeight: 600, marginTop: '6px' }}>Target daily pace benchmark</span>
+          <div style={{ background: '#F8FAFC', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Daily Target Measure</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#EC4899' }}>{dailyTargetMeasure} {measureUnit}/day</span>
           </div>
 
           {/* Card 2: Initial Total Targeted Measure */}
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(29, 78, 216, 0.05) 100%)',
-            border: '1px solid rgba(59, 130, 246, 0.3)',
-            borderRadius: '16px',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            justify: 'space-between',
-            boxShadow: '0 4px 14px rgba(59, 130, 246, 0.1)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#60A5FA', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Initial Targeted Goal</span>
-              <Award size={16} color="#60A5FA" />
-            </div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
-              {totalTargetedMeasure} <span style={{ fontSize: '12px', color: '#60A5FA', fontWeight: 700 }}>{measureUnit}</span>
-            </div>
-            <span style={{ fontSize: '9.5px', color: '#93C5FD', fontWeight: 700, marginTop: '6px' }}>
+          <div style={{ background: '#EFF6FF', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BFDBFE' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#1E40AF', textTransform: 'uppercase', display: 'block' }}>Initial Total Targeted Measure</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#1E3A8A' }}>{totalTargetedMeasure} {measureUnit}</span>
+            <span style={{ fontSize: '9px', color: '#3B82F6', fontWeight: 700, display: 'block' }}>
               {trackingMode === 'count_event' ? `(${targetCount} events × ${eventUnitTarget} ${measureUnit}/event)` : `(${effectiveTargetDays} days × ${dailyTargetMeasure} ${measureUnit})`}
             </span>
           </div>
 
           {/* Card 3: Total Completed Measure */}
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.05) 100%)',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
-            borderRadius: '16px',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            justify: 'space-between',
-            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.1)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#34D399', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Completed</span>
-              <CheckCircle2 size={16} color="#34D399" />
-            </div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
-              {totalCompletedMeasure} <span style={{ fontSize: '12px', color: '#34D399', fontWeight: 700 }}>{measureUnit}</span>
-            </div>
-            <span style={{ fontSize: '10px', color: '#A7F3D0', fontWeight: 700, marginTop: '6px' }}>
-              Achieved till today ({elapsedDays} days elapsed)
-            </span>
+          <div style={{ background: '#F0FDF4', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>Total Completed Measure</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#15803D' }}>{totalCompletedMeasure} {measureUnit}</span>
           </div>
 
-          {/* Card 4: Expected Measure Till Today (If Target Followed) */}
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(67, 56, 202, 0.05) 100%)',
-            border: '1px solid rgba(99, 102, 241, 0.3)',
-            borderRadius: '16px',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            justify: 'space-between',
-            boxShadow: '0 4px 14px rgba(99, 102, 241, 0.1)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#818CF8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expected Till Today</span>
-              <Activity size={16} color="#818CF8" />
-            </div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
-              {expectedMeasureTillToday} <span style={{ fontSize: '12px', color: '#818CF8', fontWeight: 700 }}>{measureUnit}</span>
-            </div>
-            <span style={{ fontSize: '9.5px', color: targetVarianceTillToday >= 0 ? '#4ADE80' : '#F87171', fontWeight: 800, marginTop: '6px' }}>
+          {/* Card 4 (NEW): Expected Measure Till Today (If Target Followed) */}
+          <div style={{ background: '#EEF2FF', padding: '12px 16px', borderRadius: '12px', border: '1px solid #C7D2FE' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#3730A3', textTransform: 'uppercase', display: 'block' }}>Expected Till Today (On Target)</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#312E81' }}>{expectedMeasureTillToday} {measureUnit}</span>
+            <span style={{ fontSize: '9px', color: targetVarianceTillToday >= 0 ? '#16A34A' : '#DC2626', fontWeight: 800, display: 'block' }}>
               {trackingMode === 'count_event'
-                ? `(Pace: ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * targetCount * 10) / 10} events) • ${targetVarianceTillToday >= 0 ? '+' : ''}${targetVarianceTillToday} ${measureUnit} ${targetVarianceTillToday >= 0 ? 'ahead' : 'behind'}`
+                ? `(Schedule Pace: ${Math.round((elapsedDays / Math.max(1, totalWindowDays)) * targetCount * 10) / 10} events) • ${targetVarianceTillToday >= 0 ? '+' : ''}${targetVarianceTillToday} ${measureUnit} ${targetVarianceTillToday >= 0 ? 'ahead' : 'behind'}`
                 : `(${elapsedDays} days × ${dailyTargetMeasure} ${measureUnit}) • ${targetVarianceTillToday >= 0 ? '+' : ''}${targetVarianceTillToday} ${measureUnit} ${targetVarianceTillToday >= 0 ? 'ahead' : 'behind'}`
               }
             </span>
           </div>
 
           {/* Card 5: Total Target Left */}
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.05) 100%)',
-            border: '1px solid rgba(245, 158, 11, 0.3)',
-            borderRadius: '16px',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            justify: 'space-between',
-            boxShadow: '0 4px 14px rgba(245, 158, 11, 0.1)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#FBBF24', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Target Left</span>
-              <Clock size={16} color="#FBBF24" />
-            </div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
-              {totalTargetLeft} <span style={{ fontSize: '12px', color: '#FBBF24', fontWeight: 700 }}>{measureUnit}</span>
-            </div>
-            <span style={{ fontSize: '10px', color: '#FDE68A', fontWeight: 700, marginTop: '6px' }}>
-              Remaining measure to reach goal
-            </span>
+          <div style={{ background: '#FEF3C7', padding: '12px 16px', borderRadius: '12px', border: '1px solid #FDE68A' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#B45309', textTransform: 'uppercase', display: 'block' }}>Total Target Left</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#B45309' }}>{totalTargetLeft} {measureUnit}</span>
           </div>
 
           {/* Card 6: Req Daily Avg (Target Days) */}
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(126, 34, 206, 0.05) 100%)',
-            border: '1px solid rgba(168, 85, 247, 0.3)',
-            borderRadius: '16px',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            justify: 'space-between',
-            boxShadow: '0 4px 14px rgba(168, 85, 247, 0.1)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#C084FC', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Req Daily Avg (Target Days)</span>
-              <Zap size={16} color="#C084FC" />
-            </div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
-              {reqPaceRemTarget} <span style={{ fontSize: '12px', color: '#C084FC', fontWeight: 700 }}>{measureUnit}/day</span>
-            </div>
-            <span style={{ fontSize: '10px', color: '#E9D5FF', fontWeight: 700, marginTop: '6px' }}>
-              Required daily pace for remaining target days
+          <div style={{ background: '#FAF5FF', padding: '12px 16px', borderRadius: '12px', border: '1px solid #E9D5FF' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#7E22CE', textTransform: 'uppercase', display: 'block' }}>Req Daily Avg (Target Days)</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#6B21A8' }}>
+              {reqPaceRemTarget} {measureUnit}/day
             </span>
           </div>
 
           {/* Card 7: Req Daily Avg (End Date) */}
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(244, 63, 94, 0.12) 0%, rgba(190, 18, 60, 0.05) 100%)',
-            border: '1px solid rgba(244, 63, 94, 0.3)',
-            borderRadius: '16px',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            justify: 'space-between',
-            boxShadow: '0 4px 14px rgba(244, 63, 94, 0.1)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#FB7185', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Req Daily Avg (End Date)</span>
-              <Calendar size={16} color="#FB7185" />
-            </div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
-              {reqPaceUntilEndDate} <span style={{ fontSize: '12px', color: '#FB7185', fontWeight: 700 }}>{measureUnit}/day</span>
-            </div>
-            <span style={{ fontSize: '9.5px', color: '#FECDD3', fontWeight: 700, marginTop: '6px' }}>
-              {trackingMode === 'end_date' ? '(Identical for Daily Schedule)' : `Pace until planned end date (${remainingDays} days left)`}
+          <div style={{ background: '#FFF1F2', padding: '12px 16px', borderRadius: '12px', border: '1px solid #FECDD3' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#BE123C', textTransform: 'uppercase', display: 'block' }}>Req Daily Avg (End Date)</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#9F1239' }}>
+              {reqPaceUntilEndDate} {measureUnit}/day
             </span>
+            {trackingMode === 'end_date' && (
+              <span style={{ fontSize: '8px', color: '#BE123C', fontWeight: 700, display: 'block' }}>(Identical for Daily Schedule)</span>
+            )}
           </div>
 
           {/* Card 8: Projected Total Measure */}
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.12) 0%, rgba(13, 148, 136, 0.05) 100%)',
-            border: '1px solid rgba(20, 184, 166, 0.3)',
-            borderRadius: '16px',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            justify: 'space-between',
-            boxShadow: '0 4px 14px rgba(20, 184, 166, 0.1)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontSize: '10px', fontWeight: 800, color: '#2DD4BF', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Projected Total Measure</span>
-              <Sparkles size={16} color="#2DD4BF" />
-            </div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#FFF' }}>
-              {projectedTotalMeasure} <span style={{ fontSize: '12px', color: '#2DD4BF', fontWeight: 700 }}>{measureUnit}</span>
-            </div>
-            <span style={{ fontSize: '9px', color: '#99F6E4', fontWeight: 700, marginTop: '6px' }}>
+          <div style={{ background: '#F0FDF4', padding: '12px 16px', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
+            <span style={{ fontSize: '9px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>Projected Total Measure</span>
+            <span style={{ fontSize: '15px', fontWeight: 900, color: '#15803D' }}>
+              {projectedTotalMeasure} {measureUnit}
+            </span>
+            <span style={{ fontSize: '8px', color: '#16A34A', fontWeight: 700, display: 'block' }}>
               ({totalCompletedMeasure} achieved + {remainingDays} days left × {dailyAverageMeasureTillNow} avg/day)
             </span>
           </div>
