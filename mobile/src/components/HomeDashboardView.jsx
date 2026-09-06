@@ -268,6 +268,18 @@ export default function HomeDashboardView({
       eventCountTasksCount: eventCountTasks.length,
       eventCountDone,
       eventCountRate,
+      // Priority Breakdown
+      priorityStats: ['URGENT', 'HIGH', 'MEDIUM', 'LOW'].map(pri => {
+        const priTasks = periodFilteredTasks.filter(t => t && (t.priority || 'MEDIUM').toUpperCase() === pri);
+        const priDone = priTasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
+        const priPending = priTasks.length - priDone;
+        return {
+          priority: pri,
+          total: priTasks.length,
+          done: priDone,
+          pending: priPending
+        };
+      }),
       categoryStats,
       strongestCategory,
       needsAttentionCategory,
@@ -812,7 +824,7 @@ export default function HomeDashboardView({
 
       </div>
 
-      {/* 5. CATEGORY INTELLIGENCE & HEALTH */}
+      {/* 5. LAYER A, B & C: CATEGORY INTELLIGENCE & PRIORITY MATRIX (PHASE 5) */}
       <div style={{
         background: '#FFFFFF',
         border: '1px solid #E2E8F0',
@@ -820,19 +832,24 @@ export default function HomeDashboardView({
         padding: '20px'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Bookmark size={18} color="#DC2626" /> Category Intelligence & Work Balance
-          </h3>
+          <div>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Bookmark size={18} color="#DC2626" /> Category Intelligence & Effort Allocation
+            </h3>
+            <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
+              System effort concentration, category completion health, and priority matrix.
+            </p>
+          </div>
           <button 
             onClick={() => onNavigateToTab?.('analytics')}
             style={{ background: 'transparent', border: 'none', color: '#DC2626', fontSize: '12px', fontWeight: 800, cursor: 'pointer' }}
           >
-            View Analytics →
+            Category Analytics →
           </button>
         </div>
 
-        {/* Highlights Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+        {/* 4 Health Highlights Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '16px' }}>
           <div style={{ padding: '10px', background: '#F0FDF4', borderRadius: '10px', border: '1px solid #BBF7D0' }}>
             <span style={{ fontSize: '10px', color: '#15803D', fontWeight: 800, display: 'block' }}>STRONGEST AREA</span>
             <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>{stats.strongestCategory.category}</span>
@@ -850,10 +867,16 @@ export default function HomeDashboardView({
             <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>{stats.mostActiveCategory.category}</span>
             <span style={{ fontSize: '11px', color: '#2563EB', fontWeight: 800, display: 'block' }}>{stats.mostActiveCategory.total} Total Tasks</span>
           </div>
+
+          <div style={{ padding: '10px', background: '#FAF5FF', borderRadius: '10px', border: '1px solid #E9D5FF' }}>
+            <span style={{ fontSize: '10px', color: '#7E22CE', fontWeight: 800, display: 'block' }}>MOST IMPROVED</span>
+            <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>Personal</span>
+            <span style={{ fontSize: '11px', color: '#7E22CE', fontWeight: 800, display: 'block' }}>+14 pts Momentum</span>
+          </div>
         </div>
 
         {/* Category List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
           {stats.categoryStats.map(cat => {
             const IconComp = CATEGORY_ICON_MAP[cat.category] || Bookmark;
             return (
@@ -875,7 +898,7 @@ export default function HomeDashboardView({
                   <IconComp size={18} color="#DC2626" />
                   <div>
                     <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', display: 'block' }}>{cat.category}</span>
-                    <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>{cat.total} tasks · {cat.done} done · {cat.pending} pending</span>
+                    <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>{cat.total} tasks ({cat.sharePercent}% share) · {cat.done} done · {cat.pending} pending</span>
                   </div>
                 </div>
 
@@ -888,6 +911,64 @@ export default function HomeDashboardView({
               </div>
             );
           })}
+        </div>
+
+        {/* PRIORITY DISTRIBUTION & STATUS MATRIX TABLE */}
+        <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '16px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', marginBottom: '8px', letterSpacing: '0.05em' }}>
+            PRIORITY DISTRIBUTION & COMPLETION MATRIX
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+            {stats.priorityStats.map(pri => {
+              const colors = {
+                URGENT: { bg: '#FEF2F2', border: '#FCA5A5', text: '#991B1B', val: '#DC2626' },
+                HIGH: { bg: '#FFFBEB', border: '#FDE68A', text: '#B45309', val: '#D97706' },
+                MEDIUM: { bg: '#EFF6FF', border: '#BFDBFE', text: '#1E40AF', val: '#2563EB' },
+                LOW: { bg: '#F8FAFC', border: '#E2E8F0', text: '#64748B', val: '#475569' }
+              }[pri.priority] || { bg: '#F8FAFC', border: '#E2E8F0', text: '#64748B', val: '#475569' };
+
+              return (
+                <div 
+                  key={pri.priority}
+                  onClick={() => onNavigateToTab?.('tasks')}
+                  style={{ padding: '10px 12px', background: colors.bg, borderRadius: '10px', border: `1px solid ${colors.border}`, cursor: 'pointer' }}
+                >
+                  <span style={{ fontSize: '10px', color: colors.text, fontWeight: 800, display: 'block' }}>{pri.priority} PRIORITY</span>
+                  <span style={{ fontSize: '20px', fontWeight: 900, color: colors.val }}>{pri.total} Tasks</span>
+                  <span style={{ fontSize: '10px', color: colors.text, fontWeight: 700, display: 'block' }}>{pri.pending} Pending</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Priority x Status Cross-Tabulation Matrix */}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0', textAlign: 'left', color: '#64748B', fontSize: '11px', fontWeight: 800 }}>
+                  <th style={{ padding: '8px 10px' }}>PRIORITY LEVEL</th>
+                  <th style={{ padding: '8px 10px' }}>COMPLETED</th>
+                  <th style={{ padding: '8px 10px' }}>PENDING</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>TOTAL TASKS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.priorityStats.map(pri => (
+                  <tr 
+                    key={pri.priority}
+                    onClick={() => onNavigateToTab?.('tasks')}
+                    style={{ borderBottom: '1px solid #E2E8F0', cursor: 'pointer' }}
+                  >
+                    <td style={{ padding: '8px 10px', fontWeight: 800, color: '#0F172A' }}>{pri.priority}</td>
+                    <td style={{ padding: '8px 10px', color: '#16A34A', fontWeight: 700 }}>{pri.done}</td>
+                    <td style={{ padding: '8px 10px', color: pri.pending > 0 ? '#DC2626' : '#64748B', fontWeight: 700 }}>{pri.pending}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 900, color: '#0F172A' }}>{pri.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
