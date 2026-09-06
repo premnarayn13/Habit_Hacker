@@ -1349,6 +1349,7 @@ export default function App() {
                     updateTasksState(updated);
                   }}
                   onOpenQuickAdd={handleOpenGeneralQuickAdd}
+                  onNavigateToTaskDedicated={(item) => setDedicatedTaskPageItem(item)}
                 />
               )}
 
