@@ -67,6 +67,13 @@ export default function HomeDashboardView({
   onNavigateToTab,
   onNavigateToTaskDedicated 
 }) {
+  // Safe scalar discipline score extraction (disciplineScore prop may be passed as object or number)
+  const numericDisciplineScore = useMemo(() => {
+    if (typeof disciplineScore === 'object' && disciplineScore !== null) {
+      return Number(disciplineScore.disciplineScore) || 84;
+    }
+    return Number(disciplineScore) || 84;
+  }, [disciplineScore]);
   // ---------------------------------------------------------------------------
   // PHASE 1: FOUNDATION, MULTI-LAYER DATA PIPELINE & DYNAMIC HEADER
   // ---------------------------------------------------------------------------
@@ -180,7 +187,7 @@ export default function HomeDashboardView({
     // Deterministic Productivity Score (0 - 100)
     const consistencyScore = 81;
     const momentumScore = 79;
-    const productivityScore = Math.round((completionRate * 0.4) + (consistencyScore * 0.3) + (momentumScore * 0.15) + (disciplineScore * 0.15));
+    const productivityScore = Math.round((completionRate * 0.4) + (consistencyScore * 0.3) + (momentumScore * 0.15) + (numericDisciplineScore * 0.15));
 
     // Task Type Distribution
     const endDateTasks = periodFilteredTasks.filter(t => t.trackingMode === 'end_date');
@@ -374,11 +381,11 @@ export default function HomeDashboardView({
         completionScore: completionRate,
         consistencyScore: 81,
         momentumScore: 79,
-        disciplineScore: disciplineScore || 89
+        disciplineScore: numericDisciplineScore
       },
       agingTasksCount: periodFilteredTasks.filter(t => t && !t.isDoneToday && t.progressPercent < 100 && t.created_at && (new Date() - new Date(t.created_at)) > 14 * 24 * 60 * 60 * 1000).length || 1
     };
-  }, [periodFilteredTasks, parentTasks, subtasksMap, disciplineScore, missedDaysLogs]);
+  }, [periodFilteredTasks, parentTasks, subtasksMap, numericDisciplineScore, missedDaysLogs]);
 
   // Dynamically Generated Executive Status Statement
   const statusStatement = useMemo(() => {
@@ -1500,7 +1507,7 @@ export default function HomeDashboardView({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
           
           {/* Missed Activity Intelligence */}
-          {visibility.hasMissedLogs && (
+          {(visibility.hasMissedActivity || (missedDaysLogs && missedDaysLogs.length > 0)) && (
             <div style={{ padding: '14px', background: '#FEF2F2', borderRadius: '12px', border: '1px solid #FCA5A5', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '11px', fontWeight: 800, color: '#991B1B', letterSpacing: '0.05em' }}>
@@ -1680,7 +1687,7 @@ export default function HomeDashboardView({
               width: '90px',
               height: '90px',
               borderRadius: '50%',
-              background: 'conic-gradient(#DC2626 0% 84%, #FEE2E2 84% 100%)',
+              background: `conic-gradient(#DC2626 0% ${stats.productivityScore}%, #FEE2E2 ${stats.productivityScore}% 100%)`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
