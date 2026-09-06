@@ -611,6 +611,11 @@ export default function TodayDashboard({
               return (
                 <div 
                   key={task.id} 
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    if (onNavigateToTaskDedicated) onNavigateToTaskDedicated(task);
+                  }}
+                  title="Double-click to open task info page"
                   style={{ 
                     background: statusObj.isCompleted ? '#F0FDF4' : '#F8FAFC', 
                     border: statusObj.isCompleted ? '1px solid #BBF7D0' : '1px solid #E2E8F0', 
@@ -618,7 +623,8 @@ export default function TodayDashboard({
                     borderRadius: '14px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '8px'
+                    gap: '8px',
+                    cursor: 'pointer'
                   }}
                 >
                   {/* Parent Task Header Row (NO line-through cut on text) */}
@@ -627,7 +633,7 @@ export default function TodayDashboard({
                       {/* Checkbox */}
                       {children.length === 0 ? (
                         <button
-                          onClick={() => handleInitiateTaskCompletion(task)}
+                          onClick={(e) => { e.stopPropagation(); handleInitiateTaskCompletion(task); }}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                         >
                           {statusObj.isCompleted ? (
@@ -638,7 +644,7 @@ export default function TodayDashboard({
                         </button>
                       ) : (
                         <button
-                          onClick={() => toggleParentExpand(task.id)}
+                          onClick={(e) => { e.stopPropagation(); toggleParentExpand(task.id); }}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                         >
                           {statusObj.isCompleted ? (
@@ -683,7 +689,7 @@ export default function TodayDashboard({
                       {/* Dropdown Toggle Button for Subtasks */}
                       {children.length > 0 && (
                         <button
-                          onClick={() => toggleParentExpand(task.id)}
+                          onClick={(e) => { e.stopPropagation(); toggleParentExpand(task.id); }}
                           style={{ background: '#FFF', border: '1px solid #CBD5E1', borderRadius: '6px', padding: '3px 6px', fontSize: '10px', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
                         >
                           {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -692,14 +698,19 @@ export default function TodayDashboard({
                     </div>
                   </div>
 
-                  {/* IN-LINE SUBTASKS DROPDOWN (Click to mark subtasks complete directly) */}
+                  {/* IN-LINE SUBTASKS DROPDOWN (Double-click opens subtask info page) */}
                   {children.length > 0 && isExpanded && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px', paddingLeft: '10px', borderLeft: '2px solid #BFDBFE' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B' }}>Subtasks (Click to complete):</span>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B' }}>Subtasks (Click to complete, double-click for info):</span>
                       {children.map(st => (
                         <div 
                           key={st.id} 
-                          onClick={() => onToggleTask && onToggleTask(st.id)}
+                          onClick={(e) => { e.stopPropagation(); if (onToggleTask) onToggleTask(st.id); }}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            if (onNavigateToTaskDedicated) onNavigateToTaskDedicated(st);
+                          }}
+                          title="Double-click to open subtask info page"
                           style={{ 
                             display: 'flex', 
                             alignItems: 'center', 
@@ -759,7 +770,15 @@ export default function TodayDashboard({
               const isMeasureTask = task.hasMeasureTracking || (task.measureTarget && Number(task.measureTarget) > 0) || task.trackingMode === 'measure';
 
               return (
-                <div key={task.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFF7ED', border: '1px solid #FFEDD5', padding: '12px 14px', borderRadius: '12px' }}>
+                <div 
+                  key={task.id} 
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    if (onNavigateToTaskDedicated) onNavigateToTaskDedicated(task);
+                  }}
+                  title="Double-click to open task info page"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFF7ED', border: '1px solid #FFEDD5', padding: '12px 14px', borderRadius: '12px', cursor: 'pointer' }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#EA580C' }} />
                     <div>
@@ -782,7 +801,7 @@ export default function TodayDashboard({
                   <div>
                     {isCompletable ? (
                       <button
-                        onClick={() => handleInitiateTaskCompletion(task)}
+                        onClick={(e) => { e.stopPropagation(); handleInitiateTaskCompletion(task); }}
                         style={{
                           background: 'linear-gradient(135deg, #F97316, #EA580C)',
                           color: '#FFF',
@@ -848,7 +867,15 @@ export default function TodayDashboard({
                     const statusObj = calculateParentCompletionStatus(task, children);
 
                     return (
-                      <div key={task.id} style={{ background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '8px 10px' }}>
+                      <div 
+                        key={task.id} 
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          if (onNavigateToTaskDedicated) onNavigateToTaskDedicated(task);
+                        }}
+                        title="Double-click to open task info page"
+                        style={{ background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer' }}
+                      >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: '11px', fontWeight: 800, color: statusObj.isCompleted ? '#15803D' : '#0F172A', textDecoration: 'none' }}>
                             {task.title}
@@ -862,9 +889,17 @@ export default function TodayDashboard({
                         {children.length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px', paddingLeft: '8px', borderLeft: '2px solid #E2E8F0' }}>
                             {children.map(st => (
-                              <div key={st.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: '#475569' }}>
+                              <div 
+                                key={st.id} 
+                                onDoubleClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onNavigateToTaskDedicated) onNavigateToTaskDedicated(st);
+                                }}
+                                title="Double-click to open subtask info page"
+                                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: '#475569', cursor: 'pointer' }}
+                              >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <button onClick={() => onToggleTask && onToggleTask(st.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                                  <button onClick={(e) => { e.stopPropagation(); if (onToggleTask) onToggleTask(st.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                                     {st.isDoneToday ? <CheckCircle2 size={13} color="#16A34A" /> : <Circle size={13} color="#CBD5E1" />}
                                   </button>
                                   <span style={{ textDecoration: 'none', fontWeight: 600, color: st.isDoneToday ? '#16A34A' : '#0F172A' }}>
@@ -905,7 +940,15 @@ export default function TodayDashboard({
             completedParentTasks.map(parent => {
               if (!parent) return null;
               return (
-                <div key={parent.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '10px 12px', borderRadius: '12px' }}>
+                <div 
+                  key={parent.id} 
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    if (onNavigateToTaskDedicated) onNavigateToTaskDedicated(parent);
+                  }}
+                  title="Double-click to open task info page"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '10px 12px', borderRadius: '12px', cursor: 'pointer' }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button onClick={() => onToggleTask && onToggleTask(parent.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                       <CheckCircle2 size={20} color="#16A34A" />
