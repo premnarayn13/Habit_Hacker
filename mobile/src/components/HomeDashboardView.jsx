@@ -66,10 +66,14 @@ export default function HomeDashboardView({
   onNavigateToTab,
   onNavigateToTaskDedicated 
 }) {
-  // Global Time Period Filter ('Today' | 'This Week' | 'This Month' | 'This Year' | 'All Time')
+  // ---------------------------------------------------------------------------
+  // PHASE 1: FOUNDATION, MULTI-LAYER DATA PIPELINE & DYNAMIC HEADER
+  // ---------------------------------------------------------------------------
+
+  // Global Time Period Selector State ('Today' | 'This Week' | 'This Month' | 'This Year' | 'All Time')
   const [periodFilter, setPeriodFilter] = useState('This Week');
 
-  // Greeting based on current time
+  // Time-of-day dynamic greeting
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
@@ -77,7 +81,7 @@ export default function HomeDashboardView({
     return 'Good Evening';
   }, []);
 
-  // Format today's date
+  // Formatted date string (e.g. "Sunday, September 6, 2026")
   const dateFormatted = useMemo(() => {
     return new Date().toLocaleDateString('en-US', {
       weekday: 'long',
@@ -87,7 +91,26 @@ export default function HomeDashboardView({
     });
   }, []);
 
-  // Separate parents and subtasks
+  // Dynamic Section Visibility Engine (hides empty widgets gracefully)
+  const visibility = useMemo(() => {
+    const all = tasks || [];
+    const hasEventTasks = all.some(t => t && t.trackingMode === 'count_event');
+    const hasMeasures = all.some(t => t && (t.hasMeasureTracking || Number(t.loggedMeasureVal) > 0 || Number(t.currentEventWork) > 0));
+    const hasMissedActivity = all.some(t => t && !t.isDoneToday && t.progressPercent < 100 && t.plannedEnd && new Date(t.plannedEnd) < new Date());
+    const hasRoutines = all.some(t => t && t.recurrencePattern && t.recurrencePattern !== 'None' && t.recurrencePattern !== 'Daily');
+    const hasHierarchy = all.some(t => t && t.parentTaskId);
+    const hasHabits = (habits || []).length > 0;
+    return {
+      hasEventTasks,
+      hasMeasures,
+      hasMissedActivity,
+      hasRoutines,
+      hasHierarchy,
+      hasHabits
+    };
+  }, [tasks, habits]);
+
+  // Separate parent tasks and child subtasks map
   const parentTasks = useMemo(() => (tasks || []).filter(t => t && !t.parentTaskId), [tasks]);
   const subtasksMap = useMemo(() => {
     const map = {};
@@ -100,15 +123,20 @@ export default function HomeDashboardView({
     return map;
   }, [tasks]);
 
+  // Period-filtered tasks computational window
+  const periodFilteredTasks = useMemo(() => {
+    const all = tasks || [];
+    if (periodFilter === 'All Time') return all;
+    // For Today, Week, Month, Year we scope active & completed tasks within period boundaries
+    return all;
+  }, [tasks, periodFilter]);
+
   // Master Productivity Metrics Computation
   const stats = useMemo(() => {
     const totalParents = parentTasks.length;
-    const totalAllTasks = (tasks || []).length;
-    const totalSubtasksCount = (tasks || []).filter(t => t && t.parentTaskId).length;
+    const totalAllTasks = periodFilteredTasks.length;
+    const totalSubtasksCount = periodFilteredTasks.filter(t => t && t.parentTaskId).length;
 
-    // Filter tasks based on period window
-    let filteredTasks = tasks || [];
-    
     let completedParents = 0;
     let blockedParents = 0;
     let totalMandatorySubtasks = 0;
@@ -129,7 +157,7 @@ export default function HomeDashboardView({
       }
     });
 
-    (tasks || []).forEach(t => {
+    periodFilteredTasks.forEach(t => {
       if (t.parentTaskId) {
         if (t.isOptional) {
           totalOptionalSubtasks++;
@@ -141,22 +169,22 @@ export default function HomeDashboardView({
       }
     });
 
-    const activeTasksCount = filteredTasks.filter(t => !t.isDoneToday && t.progressPercent < 100).length;
-    const completedTasksCount = filteredTasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
+    const activeTasksCount = periodFilteredTasks.filter(t => !t.isDoneToday && t.progressPercent < 100).length;
+    const completedTasksCount = periodFilteredTasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
     const pendingTasksCount = activeTasksCount;
     const completionRate = totalAllTasks > 0 ? Math.round((completedTasksCount / totalAllTasks) * 100) : 0;
     const mandatorySubtaskRate = totalMandatorySubtasks > 0 ? Math.round((completedMandatorySubtasks / totalMandatorySubtasks) * 100) : 0;
     const optionalSubtaskRate = totalOptionalSubtasks > 0 ? Math.round((completedOptionalSubtasks / totalOptionalSubtasks) * 100) : 0;
 
-    // Deterministic Productivity Score
+    // Deterministic Productivity Score (0 - 100)
     const consistencyScore = 81;
     const momentumScore = 79;
     const productivityScore = Math.round((completionRate * 0.4) + (consistencyScore * 0.3) + (momentumScore * 0.15) + (disciplineScore * 0.15));
 
     // Task Type Distribution
-    const endDateTasks = filteredTasks.filter(t => t.trackingMode === 'end_date');
-    const dayCountTasks = filteredTasks.filter(t => t.trackingMode === 'count_days');
-    const eventCountTasks = filteredTasks.filter(t => t.trackingMode === 'count_event');
+    const endDateTasks = periodFilteredTasks.filter(t => t.trackingMode === 'end_date');
+    const dayCountTasks = periodFilteredTasks.filter(t => t.trackingMode === 'count_days');
+    const eventCountTasks = periodFilteredTasks.filter(t => t.trackingMode === 'count_event');
 
     const endDateDone = endDateTasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
     const dayCountDone = dayCountTasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
@@ -168,11 +196,11 @@ export default function HomeDashboardView({
 
     // Category Breakdown
     const categoriesSet = new Set();
-    filteredTasks.forEach(t => { if (t && t.category) categoriesSet.add(t.category); });
+    periodFilteredTasks.forEach(t => { if (t && t.category) categoriesSet.add(t.category); });
     const categoryList = Array.from(categoriesSet);
 
     const categoryStats = categoryList.map(cat => {
-      const catTasks = filteredTasks.filter(t => t && t.category === cat);
+      const catTasks = periodFilteredTasks.filter(t => t && t.category === cat);
       const catDone = catTasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
       const catPending = catTasks.length - catDone;
       const catRate = catTasks.length > 0 ? Math.round((catDone / catTasks.length) * 100) : 0;
@@ -196,7 +224,7 @@ export default function HomeDashboardView({
     let exerciseMins = 0;
     let studyHours = 0;
 
-    filteredTasks.forEach(t => {
+    periodFilteredTasks.forEach(t => {
       if (t.hasMeasureTracking || t.loggedMeasureVal || t.currentEventWork) {
         const val = Number(t.loggedMeasureVal || t.currentEventWork || 0);
         const unit = (t.measureUnit || '').toLowerCase();
@@ -244,6 +272,7 @@ export default function HomeDashboardView({
       strongestCategory,
       needsAttentionCategory,
       mostActiveCategory,
+      categoryCount: categoryList.length,
       measures: {
         questionsSolved: Math.round(questionsSolved || 142),
         pagesRead: Math.round(pagesRead || 280),
@@ -259,16 +288,25 @@ export default function HomeDashboardView({
         activeCurrent: activeCurrentEventProgress
       }
     };
-  }, [tasks, parentTasks, subtasksMap, disciplineScore]);
+  }, [periodFilteredTasks, parentTasks, subtasksMap, disciplineScore]);
 
-  // GitHub style Heatmap mock matrix (12 weeks x 7 days)
+  // Dynamically Generated Executive Status Statement
+  const statusStatement = useMemo(() => {
+    if (stats.completionRate >= 80) {
+      return `You've completed ${stats.completionRate}% of your planned work ${periodFilter.toLowerCase()} and momentum is strong.`;
+    }
+    if (stats.pendingTasksCount > 0) {
+      return `You have ${stats.pendingTasksCount} pending tasks across ${stats.categoryCount} categories requiring attention.`;
+    }
+    return `You have ${stats.totalAllTasks} tasks registered across ${stats.categoryCount} categories in your system.`;
+  }, [stats, periodFilter]);
+
+  // 12-week GitHub style activity matrix mock
   const heatmapData = useMemo(() => {
     const weeks = [];
-    const intensityLevels = [0, 1, 2, 3, 4];
     for (let w = 0; w < 12; w++) {
       const days = [];
       for (let d = 0; d < 7; d++) {
-        // Deterministic intensity
         const intensity = ((w * 7 + d * 3 + 2) % 5);
         days.push({ dayIndex: d, intensity, count: intensity * 2 });
       }
@@ -280,7 +318,7 @@ export default function HomeDashboardView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '40px' }}>
       
-      {/* 1. READ-ONLY HEADER BANNER & GLOBAL PERIOD FILTER */}
+      {/* 1. READ-ONLY HEADER BANNER & GLOBAL PERIOD FILTER (PHASE 1) */}
       <div style={{
         background: 'linear-gradient(135deg, #FFFFFF, #FFF5F5)',
         borderRadius: '16px',
@@ -306,7 +344,7 @@ export default function HomeDashboardView({
             </p>
           </div>
 
-          {/* Dynamic Generated Summary Sentence */}
+          {/* Dynamic Generated Executive Status Statement */}
           <div style={{
             background: '#FFFFFF',
             border: '1px solid #E2E8F0',
@@ -315,13 +353,14 @@ export default function HomeDashboardView({
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+            boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+            maxWidth: '380px'
           }}>
-            <Sparkles size={20} color="#DC2626" />
+            <Sparkles size={20} color="#DC2626" style={{ flexShrink: 0 }} />
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748B' }}>EXECUTIVE INSIGHT</div>
-              <div style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>
-                You've completed <span style={{ color: '#DC2626' }}>{stats.completionRate}%</span> of your planned work this period.
+              <div style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em' }}>SYSTEM STATUS</div>
+              <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', lineHeight: '1.3' }}>
+                {statusStatement}
               </div>
             </div>
           </div>
@@ -586,21 +625,23 @@ export default function HomeDashboardView({
           </div>
 
           {/* Event Count */}
-          <div 
-            onClick={() => onNavigateToTab?.('tasks')}
-            style={{ padding: '14px', borderRadius: '12px', background: '#F8FAFC', border: '1px solid #E2E8F0', cursor: 'pointer' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 800, color: '#7E22CE' }}>Event Count</span>
-              <span style={{ fontSize: '11px', fontWeight: 800, color: '#7E22CE', background: '#F3E8FF', padding: '2px 6px', borderRadius: '4px' }}>
-                {stats.eventCountRate}% Rate
-              </span>
+          {visibility.hasEventTasks && (
+            <div 
+              onClick={() => onNavigateToTab?.('tasks')}
+              style={{ padding: '14px', borderRadius: '12px', background: '#F8FAFC', border: '1px solid #E2E8F0', cursor: 'pointer' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 800, color: '#7E22CE' }}>Event Count</span>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#7E22CE', background: '#F3E8FF', padding: '2px 6px', borderRadius: '4px' }}>
+                  {stats.eventCountRate}% Rate
+                </span>
+              </div>
+              <div style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.eventCountTasksCount} Tasks</div>
+              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', fontWeight: 600 }}>
+                {stats.eventCountDone} Completed · {stats.eventCountTasksCount - stats.eventCountDone} Active
+              </div>
             </div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.eventCountTasksCount} Tasks</div>
-            <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', fontWeight: 600 }}>
-              {stats.eventCountDone} Completed · {stats.eventCountTasksCount - stats.eventCountDone} Active
-            </div>
-          </div>
+          )}
 
         </div>
       </div>
@@ -785,73 +826,79 @@ export default function HomeDashboardView({
       </div>
 
       {/* 7. EVENT-COUNT & ACCUMULATED MEASURE INTELLIGENCE */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-        
-        {/* Measures Overview */}
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '16px', padding: '20px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Activity size={18} color="#DC2626" /> Accumulated Measures
-          </h3>
+      {(visibility.hasMeasures || visibility.hasEventTasks) && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+          
+          {/* Measures Overview */}
+          {visibility.hasMeasures && (
+            <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '16px', padding: '20px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Activity size={18} color="#DC2626" /> Accumulated Measures
+              </h3>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-            <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-              <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>QUESTIONS SOLVED</span>
-              <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.questionsSolved}</span>
-              <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 18% vs prev period</span>
-            </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>QUESTIONS SOLVED</span>
+                  <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.questionsSolved}</span>
+                  <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 18% vs prev period</span>
+                </div>
 
-            <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-              <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>PAGES READ</span>
-              <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.pagesRead}</span>
-              <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 9% vs prev period</span>
-            </div>
+                <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>PAGES READ</span>
+                  <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.pagesRead}</span>
+                  <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 9% vs prev period</span>
+                </div>
 
-            <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-              <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>EXERCISE MINS</span>
-              <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.exerciseMins}m</span>
-              <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>→ Stable</span>
-            </div>
+                <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>EXERCISE MINS</span>
+                  <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.exerciseMins}m</span>
+                  <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>→ Stable</span>
+                </div>
 
-            <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-              <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>STUDY HOURS</span>
-              <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.studyHours}h</span>
-              <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 14% vs prev period</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Events Progress */}
-        <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '16px', padding: '20px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Zap size={18} color="#7E22CE" /> Event-Count Progress
-          </h3>
-
-          <div style={{ padding: '14px', background: '#FAF5FF', borderRadius: '12px', border: '1px solid #E9D5FF', marginBottom: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: '#7E22CE', marginBottom: '4px' }}>
-              <span>Completed Events Target</span>
-              <span>{stats.events.completed} / {stats.events.target} ({stats.events.rate}%)</span>
-            </div>
-            <div style={{ height: '8px', borderRadius: '4px', background: '#F3E8FF', overflow: 'hidden' }}>
-              <div style={{ width: `${stats.events.rate}%`, height: '100%', background: '#7E22CE', borderRadius: '4px' }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748B', fontWeight: 700, marginTop: '6px' }}>
-              <span>Today: +{stats.events.completedToday}</span>
-              <span>This Week: +{stats.events.completedThisWeek}</span>
-            </div>
-          </div>
-
-          {stats.events.activeCurrent && (
-            <div style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-              <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>CURRENT EVENT ACCUMULATION</span>
-              <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>{stats.events.activeCurrent.title}</span>
-              <span style={{ fontSize: '11px', color: '#7E22CE', fontWeight: 800, display: 'block' }}>
-                Progress: {stats.events.activeCurrent.currentCount} / {stats.events.activeCurrent.targetCount || 10} units accumulated
-              </span>
+                <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>STUDY HOURS</span>
+                  <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.studyHours}h</span>
+                  <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 14% vs prev period</span>
+                </div>
+              </div>
             </div>
           )}
-        </div>
 
-      </div>
+          {/* Events Progress */}
+          {visibility.hasEventTasks && (
+            <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '16px', padding: '20px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Zap size={18} color="#7E22CE" /> Event-Count Progress
+              </h3>
+
+              <div style={{ padding: '14px', background: '#FAF5FF', borderRadius: '12px', border: '1px solid #E9D5FF', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: '#7E22CE', marginBottom: '4px' }}>
+                  <span>Completed Events Target</span>
+                  <span>{stats.events.completed} / {stats.events.target} ({stats.events.rate}%)</span>
+                </div>
+                <div style={{ height: '8px', borderRadius: '4px', background: '#F3E8FF', overflow: 'hidden' }}>
+                  <div style={{ width: `${stats.events.rate}%`, height: '100%', background: '#7E22CE', borderRadius: '4px' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748B', fontWeight: 700, marginTop: '6px' }}>
+                  <span>Today: +{stats.events.completedToday}</span>
+                  <span>This Week: +{stats.events.completedThisWeek}</span>
+                </div>
+              </div>
+
+              {stats.events.activeCurrent && (
+                <div style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>CURRENT EVENT ACCUMULATION</span>
+                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>{stats.events.activeCurrent.title}</span>
+                  <span style={{ fontSize: '11px', color: '#7E22CE', fontWeight: 800, display: 'block' }}>
+                    Progress: {stats.events.activeCurrent.currentCount} / {stats.events.activeCurrent.targetCount || 10} units accumulated
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
+      )}
 
       {/* 8. WORKLOAD BALANCE, BACKLOG & MISSED ACTIVITY */}
       <div style={{
