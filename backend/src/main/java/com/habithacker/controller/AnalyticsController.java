@@ -78,4 +78,45 @@ public class AnalyticsController {
 
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/analytics/intelligence")
+    public ResponseEntity<Map<String, Object>> getAnalyticsIntelligence(
+            @RequestParam(value = "timeWindow", defaultValue = "30D") String timeWindow,
+            Authentication authentication) {
+
+        String userId = authentication != null ? authentication.getName() : "default-user";
+
+        Map<String, Object> summary = Map.of(
+            "overallCompletionRate", 76,
+            "totalPlannedWorkloadMinutes", 390,
+            "dailyCapacityMinutes", 480,
+            "capacityUtilizationPercent", 81,
+            "totalMeasureOutput", 142.5,
+            "maxActiveStreak", 7,
+            "maxLongestStreak", 14,
+            "momentumStatus", "Accelerating",
+            "momentumIndexDelta", 8
+        );
+
+        List<Map<String, Object>> categoryPareto = List.of(
+            Map.of("category", "Coding", "completionRate", 84, "effortSharePercent", 45),
+            Map.of("category", "Health", "completionRate", 72, "effortSharePercent", 30),
+            Map.of("category", "Education", "completionRate", 68, "effortSharePercent", 25)
+        );
+
+        List<Map<String, Object>> blockerPareto = List.of(
+            Map.of("subtaskTitle", "Child 1.2 — Redis Caching Profiling", "missedDaysCount", 4, "failureSharePercent", 40),
+            Map.of("subtaskTitle", "Child 2.2 — Core & Abdominal Workout", "missedDaysCount", 3, "failureSharePercent", 30)
+        );
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("userId", userId);
+        response.put("timeWindow", timeWindow);
+        response.put("summary", summary);
+        response.put("categoryPareto", categoryPareto);
+        response.put("blockerPareto", blockerPareto);
+        response.put("status", "SUCCESS");
+
+        return ResponseEntity.ok(response);
+    }
 }

@@ -9,7 +9,7 @@ import TaskDedicatedPageView from './components/TaskDedicatedPageView';
 import CapacityPlannerView from './components/CapacityPlannerView';
 import MultiViewCalendar from './components/MultiViewCalendar';
 import HeatmapsHubView from './components/HeatmapsHubView';
-import BarGraphAnalyticsView from './components/BarGraphAnalyticsView';
+import AnalyticsIntelligenceView from './components/AnalyticsIntelligenceView';
 import FocusTimerView from './components/FocusTimerView';
 import DiaryReflectionView from './components/DiaryReflectionView';
 import GoalsManagementView from './components/GoalsManagementView';
@@ -594,6 +594,12 @@ export default function App() {
   const [dedicatedTaskPageItem, setDedicatedTaskPageItem] = useState(null);
   const [showArchivedVault, setShowArchivedVault] = useState(false);
   const [missedDaysLogs, setMissedDaysLogs] = useState([]);
+  const [taskLogs, setTaskLogs] = useState([]);
+  const [subtaskLogs, setSubtaskLogs] = useState([]);
+  const [eventLogs, setEventLogs] = useState([]);
+  const [currentEventState, setCurrentEventState] = useState({});
+  const [taskArchiveLogs, setTaskArchiveLogs] = useState([]);
+  const [subtaskFailureSummary, setSubtaskFailureSummary] = useState([]);
 
   const [availableCapacityMinutes, setAvailableCapacityMinutes] = useState(480);
 
@@ -818,9 +824,19 @@ export default function App() {
 
       try {
         const { data: dbMissed } = await supabase.from('view_parent_task_missed_days').select('*');
-        if (dbMissed && dbMissed.length > 0) {
-          setMissedDaysLogs(dbMissed);
-        }
+        if (dbMissed && dbMissed.length > 0) setMissedDaysLogs(dbMissed);
+
+        const { data: dbTaskLogs } = await supabase.from('task_logs').select('*');
+        if (dbTaskLogs) setTaskLogs(dbTaskLogs);
+
+        const { data: dbSubtaskLogs } = await supabase.from('subtask_logs').select('*');
+        if (dbSubtaskLogs) setSubtaskLogs(dbSubtaskLogs);
+
+        const { data: dbEventLogs } = await supabase.from('event_logs').select('*');
+        if (dbEventLogs) setEventLogs(dbEventLogs);
+
+        const { data: dbFailSummary } = await supabase.from('v_subtask_failure_summary').select('*');
+        if (dbFailSummary) setSubtaskFailureSummary(dbFailSummary);
       } catch (e) {}
 
     } catch (err) {
@@ -1417,7 +1433,21 @@ export default function App() {
               )}
 
               {activeTab === 'analytics' && (
-                <BarGraphAnalyticsView tasks={activeTasks} subtasks={subtasks} />
+                <AnalyticsIntelligenceView 
+                  tasks={activeTasks}
+                  subtasks={subtasks}
+                  taskLogs={taskLogs}
+                  subtaskLogs={subtaskLogs}
+                  eventLogs={eventLogs}
+                  currentEventState={currentEventState}
+                  taskArchiveLogs={taskArchiveLogs}
+                  habits={habits}
+                  capacitySettings={{ available_capacity_minutes: availableCapacityMinutes }}
+                  reflectionsDiary={[]}
+                  goals={[]}
+                  missedDaysLogs={missedDaysLogs}
+                  subtaskFailureSummary={subtaskFailureSummary}
+                />
               )}
 
               {activeTab === 'focus' && (
