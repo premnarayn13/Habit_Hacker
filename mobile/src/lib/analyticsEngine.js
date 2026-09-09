@@ -765,6 +765,34 @@ export function computeAnalyticsIntelligenceData({
     contextSwitchScore: contextSwitchingStrainIndex.velocityScore
   };
 
+  // 8. Level 8 Evidence-Backed Insights
+  const generatedInsights = [
+    {
+      id: 'ins-1',
+      title: 'Peak Circadian Focus Window',
+      category: 'Time Allocation',
+      priorityRank: 1,
+      description: `Your highest task completion velocity occurs during Morning focus hours (${timeOfDayDistribution.morning.percent}% output).`,
+      evidence: `Calculated from ${completedTaskLogsCount} completion logs across 4 daily circadian focus windows.`
+    },
+    {
+      id: 'ins-2',
+      title: 'Mandatory Subtask Execution Shield',
+      category: 'Hierarchy Synergy',
+      priorityRank: 2,
+      description: `Configuring mandatory subtasks provides a +${hierarchySynergyMetrics.mandatorySubtaskBoostPercent}% boost to parent task completion rates.`,
+      evidence: `Parent completion rate: ${hierarchySynergyMetrics.parentWithSubtasksCompletionRate}% vs Standalone: ${hierarchySynergyMetrics.standaloneTasksCompletionRate}%.`
+    },
+    {
+      id: 'ins-3',
+      title: 'Context Switching Strain Index',
+      category: 'Focus Strain',
+      priorityRank: 3,
+      description: `You average ${contextSwitchingStrainIndex.avgTasksPerDay} distinct task switches per active day (Strain Level: ${contextSwitchingStrainIndex.strainLevel}).`,
+      evidence: `Calculated from ${contextSwitchingStrainIndex.totalDistinctSwitches} task switches across ${contextSwitchingStrainIndex.activeLogDaysCount} active days.`
+    }
+  ];
+
   return {
     // Level 1
     totalTaskCount,
@@ -814,11 +842,14 @@ export function computeAnalyticsIntelligenceData({
     contextSwitchingStrainIndex,
     habitTaskSynergyCorrelations,
     executiveScorecard,
+    taskDifficultyClassifications: taskDifficultyClassifications || [],
+    inverseTradeOffCorrelations: inverseTradeOffCorrelations || [],
+    actionableDecisions: actionableDecisions || [],
 
     // Level 7
-    unfeasibleTasksList,
-    atRiskTasksList,
-    projectForecastRanges,
+    unfeasibleTasksList: unfeasibleTasksList || [],
+    atRiskTasksList: atRiskTasksList || [],
+    projectForecastRanges: projectForecastRanges || [],
 
     // Level 8
     generatedInsights: generatedInsights.sort((a, b) => a.priorityRank - b.priorityRank)

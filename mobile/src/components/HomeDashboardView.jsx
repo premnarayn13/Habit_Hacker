@@ -576,15 +576,14 @@ export default function HomeDashboardView({
         </div>
 
         {/* Global Time Filter Selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', paddingTop: '8px', borderTop: '1px solid #FEE2E2' }}>
-          <span style={{ fontSize: '12px', fontWeight: 800, color: '#64748B', marginRight: '6px' }}>Filter Period:</span>
-          {['Today', 'This Week', 'This Month', 'This Year', 'All Time'].map(period => {
-            const isActive = periodFilter === period;
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', paddingTop: '8px', borderTop: '1px solid #FEE2E2' }}>
+          {['Today', 'Week', 'Month', 'Year', 'All'].map(period => {
+            const isActive = periodFilter === period || (periodFilter === 'This Week' && period === 'Week') || (periodFilter === 'This Month' && period === 'Month') || (periodFilter === 'This Year' && period === 'Year') || (periodFilter === 'All Time' && period === 'All');
             return (
               <button
                 key={period}
                 type="button"
-                onClick={() => setPeriodFilter(period)}
+                onClick={() => setPeriodFilter(period === 'Week' ? 'This Week' : (period === 'Month' ? 'This Month' : (period === 'Year' ? 'This Year' : (period === 'All' ? 'All Time' : period))))}
                 style={{
                   padding: '6px 14px',
                   borderRadius: '20px',
@@ -595,7 +594,8 @@ export default function HomeDashboardView({
                   fontWeight: isActive ? 800 : 600,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
-                  boxShadow: isActive ? '0 2px 8px rgba(220, 38, 38, 0.25)' : 'none'
+                  boxShadow: isActive ? '0 2px 8px rgba(220, 38, 38, 0.25)' : 'none',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 {period}
@@ -605,76 +605,97 @@ export default function HomeDashboardView({
         </div>
       </div>
 
-      {/* 2. LAYER A: MY PRODUCTIVITY SYSTEM & MASTER COUNTERS (PHASE 2) */}
+      {/* 2. EXECUTIVE 5-ROW x 2-COLUMN LANDING PAGE KPI SCORECARD DECK */}
       <div style={{
         background: '#FFFFFF',
         border: '1px solid #E2E8F0',
         borderRadius: '16px',
-        padding: '20px'
+        padding: '20px',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>
-            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Grid size={18} color="#DC2626" /> My Productivity System Infrastructure
+            <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              <Grid size={18} color="#DC2626" /> Master System KPI Scorecard (5-Row × 2-Column Grid)
             </h3>
-            <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
-              Master inventory counters and structural complexity analysis.
+            <p style={{ fontSize: '12px', color: '#64748B', margin: '2px 0 0 0', fontWeight: 500 }}>
+              Dynamic database inventory calculations (Finished, Active, History, Pending, Standalone, Subtasks & Archive)
             </p>
           </div>
           <button 
             onClick={() => onNavigateToTab?.('tasks')}
-            style={{ background: 'transparent', border: 'none', color: '#DC2626', fontSize: '12px', fontWeight: 800, cursor: 'pointer' }}
+            style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#DC2626', borderRadius: '8px', padding: '6px 12px', fontSize: '11px', fontWeight: 800, cursor: 'pointer' }}
           >
             Explore Tasks Repository →
           </button>
         </div>
 
-        {/* 9 Compact Master System Counters */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+        {/* 5-Row x 2-Column KPI Card Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '16px' }}>
           
-          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>TOTAL TASKS</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.totalAllTasks}</span>
+          {/* ROW 1: Completed Tasks vs Active Tasks */}
+          <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#F0FDF4', borderRadius: '14px', border: '1px solid #BBF7D0', borderLeft: '4px solid #16A34A', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#15803D', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R1 · C1 — COMPLETED TASKS</span>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: '#16A34A', marginTop: '2px' }}>{stats.completedTasksCount}</div>
+            <span style={{ fontSize: '11px', color: '#166534', fontWeight: 600 }}>Tasks that have reached planned end date / finished</span>
           </div>
 
-          <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>ACTIVE TASKS</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#2563EB' }}>{stats.activeTasksCount}</span>
+          <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#EFF6FF', borderRadius: '14px', border: '1px solid #BFDBFE', borderLeft: '4px solid #2563EB', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#1E40AF', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R1 · C2 — ACTIVE TASKS</span>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: '#2563EB', marginTop: '2px' }}>{stats.activeTasksCount}</div>
+            <span style={{ fontSize: '11px', color: '#1D4ED8', fontWeight: 600 }}>Tasks yet to reach planned end date</span>
           </div>
 
-          <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '10px 12px', background: '#F0FDF4', borderRadius: '10px', border: '1px solid #BBF7D0', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#15803D', fontWeight: 800, display: 'block' }}>COMPLETED</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#16A34A' }}>{stats.completedTasksCount}</span>
+          {/* ROW 2: Total Tasks History vs Pending Today */}
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #CBD5E1', borderLeft: '4px solid #0F172A', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#475569', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R2 · C1 — TOTAL TASKS (HISTORY)</span>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', marginTop: '2px' }}>{stats.totalAllTasks}</div>
+            <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>All historical tasks (incl. active & archive)</span>
           </div>
 
-          <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '10px 12px', background: '#FFFBEB', borderRadius: '10px', border: '1px solid #FDE68A', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#B45309', fontWeight: 800, display: 'block' }}>PENDING</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#D97706' }}>{stats.pendingTasksCount}</span>
+          <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#FFFBEB', borderRadius: '14px', border: '1px solid #FDE68A', borderLeft: '4px solid #D97706', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#B45309', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R2 · C2 — PENDING TODAY</span>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: '#D97706', marginTop: '2px' }}>{stats.pendingTasksCount}</div>
+            <span style={{ fontSize: '11px', color: '#92400E', fontWeight: 600 }}>Tasks scheduled for today pending completion</span>
           </div>
 
-          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>PARENTS</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.totalParents}</span>
+          {/* ROW 3: Active Standalone Tasks vs Optional Subtasks */}
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F5F3FF', borderRadius: '14px', border: '1px solid #DDD6FE', borderLeft: '4px solid #8B5CF6', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#6D28D9', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R3 · C1 — ACTIVE STANDALONE TASKS</span>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: '#7C3AED', marginTop: '2px' }}>{stats.standaloneTasksCount}</div>
+            <span style={{ fontSize: '11px', color: '#5B21B6', fontWeight: 600 }}>Active tasks with no end date reached & no subtasks</span>
           </div>
 
-          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>STANDALONE</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.standaloneTasksCount}</span>
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #E2E8F0', borderLeft: '4px solid #64748B', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#475569', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R3 · C2 — OPTIONAL SUBTASKS COUNT</span>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: '#475569', marginTop: '2px' }}>{stats.totalOptionalSubtasks}</div>
+            <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>Total optional subtasks across active tasks</span>
           </div>
 
-          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>SUBTASKS</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.totalSubtasksCount}</span>
+          {/* ROW 4: Archived Tasks (In Pause) vs Mandatory Subtasks */}
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#FEF2F2', borderRadius: '14px', border: '1px solid #FECACA', borderLeft: '4px solid #DC2626', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R4 · C1 — ARCHIVED TASKS (IN PAUSE)</span>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>{stats.blockedParents}</div>
+            <span style={{ fontSize: '11px', color: '#991B1B', fontWeight: 600 }}>Tasks currently in archive / pause state</span>
           </div>
 
-          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#FEF2F2', borderRadius: '10px', border: '1px solid #FCA5A5', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 800, display: 'block' }}>MANDATORY</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#DC2626' }}>{stats.totalMandatorySubtasks}</span>
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#FEF2F2', borderRadius: '14px', border: '1px solid #FCA5A5', borderLeft: '4px solid #B91C1C', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R4 · C2 — MANDATORY SUBTASKS COUNT</span>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: '#B91C1C', marginTop: '2px' }}>{stats.totalMandatorySubtasks}</div>
+            <span style={{ fontSize: '11px', color: '#7F1D1D', fontWeight: 600 }}>Mandatory required subtasks across tasks</span>
           </div>
 
-          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>OPTIONAL</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#64748B' }}>{stats.totalOptionalSubtasks}</span>
+          {/* ROW 5: Active Parent Tasks vs Today Completion Pace */}
+          <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F0F9FF', borderRadius: '14px', border: '1px solid #BAE6FD', borderLeft: '4px solid #0284C7', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#0369A1', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R5 · C1 — ACTIVE PARENT TASKS</span>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: '#0284C7', marginTop: '2px' }}>{stats.totalParents}</div>
+            <span style={{ fontSize: '11px', color: '#075985', fontWeight: 600 }}>Active parent tasks with child subtasks</span>
+          </div>
+
+          <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#F0FDF4', borderRadius: '14px', border: '1px solid #BBF7D0', borderLeft: '4px solid #15803D', cursor: 'pointer' }}>
+            <span style={{ fontSize: '10px', color: '#166534', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R5 · C2 — TODAY COMPLETION PACE</span>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: '#15803D', marginTop: '2px' }}>{stats.completionRate}%</div>
+            <span style={{ fontSize: '11px', color: '#14532D', fontWeight: 600 }}>Completion pace for scheduled target</span>
           </div>
 
         </div>
