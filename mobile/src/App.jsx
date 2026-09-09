@@ -33,6 +33,37 @@ import {
 } from './lib/taskHierarchyEngine';
 import { Flame } from 'lucide-react';
 
+class AnalyticsErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("Analytics Error Boundary Caught:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '24px', background: '#FFF', borderRadius: '16px', border: '1px solid #FCA5A5', color: '#991B1B', margin: '20px' }}>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 900 }}>Analytics Intelligence Workspace Notice</h3>
+          <p style={{ margin: '0 0 12px 0', fontSize: '12px' }}>Updating analytical log data models ({this.state.error?.message || 'Syncing data engine'}).</p>
+          <button 
+            onClick={() => this.setState({ hasError: false })}
+            style={{ padding: '8px 16px', background: '#DC2626', color: '#FFF', border: 'none', borderRadius: '8px', fontWeight: 800, cursor: 'pointer' }}
+          >
+            Reload Analytics Workspace
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+
 const INITIAL_DEFAULT_TASKS = [
   // TASK 1: Start Date End Date (5 Subtasks)
   {
@@ -1433,21 +1464,23 @@ export default function App() {
               )}
 
               {activeTab === 'analytics' && (
-                <AnalyticsIntelligenceView 
-                  tasks={activeTasks}
-                  subtasks={subtasks}
-                  taskLogs={taskLogs}
-                  subtaskLogs={subtaskLogs}
-                  eventLogs={eventLogs}
-                  currentEventState={currentEventState}
-                  taskArchiveLogs={taskArchiveLogs}
-                  habits={habits}
-                  capacitySettings={{ available_capacity_minutes: availableCapacityMinutes }}
-                  reflectionsDiary={[]}
-                  goals={[]}
-                  missedDaysLogs={missedDaysLogs}
-                  subtaskFailureSummary={subtaskFailureSummary}
-                />
+                <AnalyticsErrorBoundary>
+                  <AnalyticsIntelligenceView 
+                    tasks={activeTasks}
+                    subtasks={subtasks}
+                    taskLogs={taskLogs}
+                    subtaskLogs={subtaskLogs}
+                    eventLogs={eventLogs}
+                    currentEventState={currentEventState}
+                    taskArchiveLogs={taskArchiveLogs}
+                    habits={habits}
+                    capacitySettings={{ available_capacity_minutes: availableCapacityMinutes }}
+                    reflectionsDiary={[]}
+                    goals={[]}
+                    missedDaysLogs={missedDaysLogs}
+                    subtaskFailureSummary={subtaskFailureSummary}
+                  />
+                </AnalyticsErrorBoundary>
               )}
 
               {activeTab === 'focus' && (

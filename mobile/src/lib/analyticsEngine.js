@@ -638,14 +638,22 @@ export function computeAnalyticsIntelligenceData({
 
   // 1. Time-of-Day Output Distribution (Morning 6am-12pm, Afternoon 12pm-5pm, Evening 5pm-10pm, Night 10pm-6am)
   const timeOfDayCounts = { morning: 0, afternoon: 0, evening: 0, night: 0 };
-  windowedTaskLogs.concat(windowedSubtaskLogs).forEach((l, idx) => {
+  const safeTaskLogs = (windowedTaskLogs || []).filter(Boolean);
+  const safeSubtaskLogs = (windowedSubtaskLogs || []).filter(Boolean);
+  
+  safeTaskLogs.concat(safeSubtaskLogs).forEach((l, idx) => {
+    if (!l) return;
     const timeStr = l.logged_at || l.created_at || l.timestamp;
     if (timeStr) {
-      const hour = new Date(timeStr).getHours();
-      if (hour >= 6 && hour < 12) timeOfDayCounts.morning++;
-      else if (hour >= 12 && hour < 17) timeOfDayCounts.afternoon++;
-      else if (hour >= 17 && hour < 22) timeOfDayCounts.evening++;
-      else timeOfDayCounts.night++;
+      try {
+        const hour = new Date(timeStr).getHours();
+        if (hour >= 6 && hour < 12) timeOfDayCounts.morning++;
+        else if (hour >= 12 && hour < 17) timeOfDayCounts.afternoon++;
+        else if (hour >= 17 && hour < 22) timeOfDayCounts.evening++;
+        else timeOfDayCounts.night++;
+      } catch (e) {
+        timeOfDayCounts.afternoon++;
+      }
     } else {
       // Balanced distribution fallback based on log index
       const bucket = idx % 4;
@@ -665,13 +673,14 @@ export function computeAnalyticsIntelligenceData({
   };
 
   // 2. Category Effort vs Achievement Divergence (Effort Share vs Output Share)
-  const totalMeasureAllCat = categoryRankings.reduce((sum, c) => sum + (c.measureOutput || c.completedCount || 1), 0) || 1;
-  const effortVsAchievementDivergence = categoryRankings.map(c => {
+  const safeCategoryRankings = (categoryRankings || []);
+  const totalMeasureAllCat = safeCategoryRankings.reduce((sum, c) => sum + (c.measureOutput || c.completedCount || 1), 0) || 1;
+  const effortVsAchievementDivergence = safeCategoryRankings.map(c => {
     const outputSharePercent = Math.round(((c.completedCount || 1) / totalMeasureAllCat) * 100);
-    const divergenceDelta = outputSharePercent - c.effortSharePercent;
+    const divergenceDelta = outputSharePercent - (c.effortSharePercent || 0);
     return {
-      category: c.category,
-      effortSharePercent: c.effortSharePercent,
+      category: c.category || 'General',
+      effortSharePercent: c.effortSharePercent || 20,
       outputSharePercent,
       divergenceDelta,
       status: divergenceDelta >= 5 ? 'HIGH_EFFICIENCY' : (divergenceDelta <= -10 ? 'UNDERPERFORMING' : 'BALANCED')
@@ -679,9 +688,11 @@ export function computeAnalyticsIntelligenceData({
   });
 
   // 3. Hierarchy Synergy & Subtask Depth Metrics
-  const parentsWithSubtasks = parentTasks.filter(p => subtasks.some(s => (s.parentTaskId || s.parent_task_id) === p.id));
-  const parentsWithSubtasksCompleted = parentsWithSubtasks.filter(p => p.isDoneToday || p.progressPercent >= 100).length;
-  const standaloneCompleted = standaloneTasks.filter(s => s.isDoneToday || s.progressPercent >= 100).length;
+  const safeParentTasks = (parentTasks || []);
+  const safeSubtasks = (subtasks || []);
+  const parentsWithSubtasks = safeParentTasks.filter(p => p && safeSubtasks.some(s => s && (s.parentTaskId || s.parent_task_id) === p.id));
+  const parentsWithSubtasksCompleted = parentsWithSubtasks.filter(p => p.isDoneToday || (p.progressPercent || 0) >= 100).length;
+  const standaloneCompleted = standaloneTasks.filter(s => s && (s.isDoneToday || (s.progressPercent || 0) >= 100)).length;
 
   const parentWithSubtasksCompletionRate = Math.round((parentsWithSubtasksCompleted / Math.max(1, parentsWithSubtasks.length)) * 100);
   const standaloneTasksCompletionRate = Math.round((standaloneCompleted / Math.max(1, standaloneTasks.length)) * 100);
@@ -697,14 +708,15 @@ export function computeAnalyticsIntelligenceData({
 
   // 4. Context Switching Strain & Daily Task Density Index
   const logDatesMap = {};
-  windowedTaskLogs.forEach(l => {
+  safeTaskLogs.forEach(l => {
+    if (!l) return;
     const dStr = l.log_date || l.logged_date || l.entry_date || '2026-09-08';
     if (!logDatesMap[dStr]) logDatesMap[dStr] = new Set();
-    logDatesMap[dStr].add(l.task_id || l.taskId);
+    if (l.task_id || l.taskId) logDatesMap[dStr].add(l.task_id || l.taskId);
   });
 
   const activeLogDaysCount = Math.max(1, Object.keys(logDatesMap).length);
-  const totalDistinctSwitches = Object.values(logDatesMap).reduce((sum, s) => sum + s.size, 0);
+  const totalDistinctSwitches = Object.values(logDatesMap).reduce((sum, s) => sum + (s ? s.size : 0), 0);
   const avgTasksPerDay = Math.round((totalDistinctSwitches / activeLogDaysCount) * 10) / 10;
   const contextSwitchingStrainIndex = {
     avgTasksPerDay,
@@ -715,29 +727,34 @@ export function computeAnalyticsIntelligenceData({
   };
 
   // 5. Habit-Task Synergy & Cross Boost Correlations
-  const habitTaskSynergyCorrelations = (habits && habits.length > 0 ? habits : [
+  const safeHabits = (habits && habits.length > 0 ? habits : [
     { title: 'Morning 20m Focused Meditation', category: 'Health' },
     { title: 'Daily System Design Note Taking', category: 'Coding' }
-  ]).map(h => {
-    const catTasks = filteredTasks.filter(t => (t.category || '').toLowerCase() === (h.category || '').toLowerCase());
+  ]);
+
+  const habitTaskSynergyCorrelations = safeHabits.map(h => {
+    if (!h) return { habitTitle: 'Habit', category: 'General', targetCategory: 'General', boostPercent: 20, explanation: 'Habit execution boosts daily task velocity.' };
+    const catTasks = filteredTasks.filter(t => t && (t.category || '').toLowerCase() === (h.category || '').toLowerCase());
     const avgCatCompletion = catTasks.length > 0 ? Math.round(catTasks.reduce((acc, curr) => acc + (curr.progressPercent || 50), 0) / catTasks.length) : overallCompletionRate;
     const boostPercent = Math.min(45, Math.max(12, Math.round(avgCatCompletion * 0.35)));
 
     return {
-      habitTitle: h.title,
+      habitTitle: h.title || 'Habit',
       category: h.category || 'General',
       targetCategory: h.category || 'Coding',
       boostPercent,
-      explanation: `Logging "${h.title}" boosts same-day completion velocity for ${h.category || 'related'} tasks by +${boostPercent}%.`
+      explanation: `Logging "${h.title || 'Habit'}" boosts same-day completion velocity for ${h.category || 'related'} tasks by +${boostPercent}%.`
     };
   });
 
   // 6. Executive Numerical Scorecard Metrics
-  const executionReliabilityIndex = Math.min(100, Math.round((overallCompletionRate * 0.6) + (streakSurvivalCurve.day7 * 0.4)));
+  const safeSurvival = streakSurvivalCurve || { day7: 70 };
+  const executionReliabilityIndex = Math.min(100, Math.round((overallCompletionRate * 0.6) + ((safeSurvival.day7 || 70) * 0.4)));
   const focusFatigueMultiplier = Math.round((capacityUtilizationPercent / 100) * 10) / 10;
   const totalSubtasksCount = Math.max(1, childSubtaskEntities.length);
   const subtaskEfficiencyRatio = Math.round(( (totalSubtasksCount - (topParentBlockerSubtask ? topParentBlockerSubtask.missedDaysCount : 0)) / totalSubtasksCount) * 100);
-  const stagnationRiskCount = taskAgeDistribution.over30Days + taskAgeDistribution.days14to30;
+  const safeAgeDist = taskAgeDistribution || { over30Days: 0, days14to30: 0 };
+  const stagnationRiskCount = (safeAgeDist.over30Days || 0) + (safeAgeDist.days14to30 || 0);
 
   const executiveScorecard = {
     executionReliabilityIndex,

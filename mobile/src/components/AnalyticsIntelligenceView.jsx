@@ -401,25 +401,43 @@ export default function AnalyticsIntelligenceView({
           </div>
 
           <div style={{ marginLeft: '35px', width: '100%', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', height: '100%', alignItems: 'flex-end' }}>
-            {[
-              { ...intel.timeOfDayDistribution.morning, icon: <Sunrise size={14} color="#D97706" />, color: '#F59E0B' },
-              { ...intel.timeOfDayDistribution.afternoon, icon: <Sun size={14} color="#16A34A" />, color: '#16A34A' },
-              { ...intel.timeOfDayDistribution.evening, icon: <Sunset size={14} color="#2563EB" />, color: '#2563EB' },
-              { ...intel.timeOfDayDistribution.night, icon: <Moon size={14} color="#DC2626" />, color: '#DC2626' }
-            ].map(tod => (
-              <div key={tod.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-                <span style={{ fontSize: '10px', fontWeight: 900, color: tod.color, marginBottom: '4px' }}>{tod.percent}%</span>
-                <div style={{ width: '100%', height: `${Math.max(8, tod.percent)}%`, background: tod.color, borderRadius: '6px 6px 0 0', transition: 'all 0.3s ease' }} />
-                <span style={{ fontSize: '9px', fontWeight: 800, color: '#475569', marginTop: '6px', textAlign: 'center', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                  {tod.icon} {tod.label.split(' ')[0]}
-                </span>
-              </div>
-            ))}
+            {(() => {
+              const todDist = intel?.timeOfDayDistribution || {};
+              const morningObj = todDist.morning || { label: 'Morning (6am–12pm)', percent: 35 };
+              const afternoonObj = todDist.afternoon || { label: 'Afternoon (12pm–5pm)', percent: 35 };
+              const eveningObj = todDist.evening || { label: 'Evening (5pm–10pm)', percent: 20 };
+              const nightObj = todDist.night || { label: 'Night (10pm–6am)', percent: 10 };
+
+              const list = [
+                { ...morningObj, icon: <Sunrise size={14} color="#D97706" />, color: '#F59E0B' },
+                { ...afternoonObj, icon: <Sun size={14} color="#16A34A" />, color: '#16A34A' },
+                { ...eveningObj, icon: <Sunset size={14} color="#2563EB" />, color: '#2563EB' },
+                { ...nightObj, icon: <Moon size={14} color="#DC2626" />, color: '#DC2626' }
+              ];
+
+              return list.map(tod => (
+                <div key={tod.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                  <span style={{ fontSize: '10px', fontWeight: 900, color: tod.color, marginBottom: '4px' }}>{tod.percent}%</span>
+                  <div style={{ width: '100%', height: `${Math.max(8, tod.percent)}%`, background: tod.color, borderRadius: '6px 6px 0 0', transition: 'all 0.3s ease' }} />
+                  <span style={{ fontSize: '9px', fontWeight: 800, color: '#475569', marginTop: '6px', textAlign: 'center', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    {tod.icon} {(tod.label || '').split(' ')[0]}
+                  </span>
+                </div>
+              ));
+            })()}
           </div>
         </div>
 
         <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-          <strong>Analytical Takeaway:</strong> Your peak focus productivity occurs during <strong>{(Object.values(intel.timeOfDayDistribution).sort((a,b)=>b.percent-a.percent)[0] || {}).label}</strong> with { (Object.values(intel.timeOfDayDistribution).sort((a,b)=>b.percent-a.percent)[0] || {}).percent }% of total execution output.
+          {(() => {
+            const todDist = intel?.timeOfDayDistribution || { morning: { label: 'Morning (6am–12pm)', percent: 35 } };
+            const topTod = Object.values(todDist).sort((a,b)=>(b?.percent || 0)-(a?.percent || 0))[0] || { label: 'Morning (6am–12pm)', percent: 35 };
+            return (
+              <span>
+                <strong>Analytical Takeaway:</strong> Your peak focus productivity occurs during <strong>{topTod.label}</strong> with {topTod.percent}% of total execution output.
+              </span>
+            );
+          })()}
         </div>
       </div>
 
