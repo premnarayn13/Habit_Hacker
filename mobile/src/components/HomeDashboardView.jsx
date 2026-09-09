@@ -65,9 +65,36 @@ export default function HomeDashboardView({
   habits = [], 
   disciplineScore = 84,
   missedDaysLogs = [],
+  taskLogs = [],
+  subtaskLogs = [],
+  taskArchiveLogs = [],
   onNavigateToTab,
   onNavigateToTaskDedicated 
 }) {
+  // Collect all unique completion date strings (YYYY-MM-DD) from actual database logs
+  const logCompletionDatesSet = useMemo(() => {
+    const set = new Set();
+    (taskLogs || []).forEach(l => {
+      if (l && (l.is_completed || l.isCompleted || l.is_successful)) {
+        const d = l.log_date || l.logged_date || l.entry_date;
+        if (d) set.add(d);
+      }
+    });
+    (subtaskLogs || []).forEach(l => {
+      if (l && (l.is_completed || l.isCompleted)) {
+        const d = l.log_date || l.logged_date || l.entry_date;
+        if (d) set.add(d);
+      }
+    });
+    (tasks || []).forEach(t => {
+      if (t && (t.isDoneToday || t.progressPercent >= 100)) {
+        const d = t.completedDate || t.plannedStart || new Date().toISOString().split('T')[0];
+        if (d) set.add(d);
+      }
+    });
+    return set;
+  }, [tasks, taskLogs, subtaskLogs]);
+
   // Safe scalar discipline score extraction (disciplineScore prop may be passed as object or number)
   const numericDisciplineScore = useMemo(() => {
     if (typeof disciplineScore === 'object' && disciplineScore !== null) {
@@ -217,12 +244,54 @@ export default function HomeDashboardView({
     const optionalSubtaskRate = totalOptionalSubtasks > 0 ? Math.round((completedOptionalSubtasks / totalOptionalSubtasks) * 100) : 0;
 
     // Real-Time Dynamic Streaks & Momentum Calculations
-    const currentStreak = completedTasksCount > 0 ? Math.max(1, Math.min(totalAllTasks, completedTasksCount + 2)) : 0;
-    const longestStreak = Math.max(currentStreak, Math.min(totalAllTasks + 5, 27));
-    const averageStreak = Math.round((currentStreak + longestStreak) / 2);
+    const todayObj = new Date();
+    const todayStr = todayObj.toISOString().split('T')[0];
+    let currentConsecutive = 0;
+    let checkDate = new Date(todayObj);
+
+    if (!logCompletionDatesSet.has(todayStr)) {
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    while (true) {
+      const cStr = checkDate.toISOString().split('T')[0];
+      if (logCompletionDatesSet.has(cStr)) {
+        currentConsecutive++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    let currentStreak = currentConsecutive;
+
+    const sortedDates = Array.from(logCompletionDatesSet).sort();
+    let longestStreak = 0;
+    let tempStreak = 0;
+    let prevDateMs = null;
+
+    sortedDates.forEach(dStr => {
+      const currMs = new Date(dStr).getTime();
+      if (prevDateMs === null) {
+        tempStreak = 1;
+      } else {
+        const diffDays = Math.round((currMs - prevDateMs) / (1000 * 60 * 60 * 24));
+        if (diffDays === 1) {
+          tempStreak++;
+        } else {
+          tempStreak = 1;
+        }
+      }
+      prevDateMs = currMs;
+      if (tempStreak > longestStreak) longestStreak = tempStreak;
+    });
+
+    if (currentStreak > longestStreak) longestStreak = currentStreak;
+
+    const averageStreak = Math.round((currentStreak + longestStreak) / 2) || currentStreak;
     const toRecord = Math.max(0, longestStreak - currentStreak);
     const toRecordText = toRecord === 0 ? 'At personal record!' : `${toRecord} days to record`;
-    const momentumPts = Math.min(100, Math.round(completionRate * 0.7 + (completedTasksCount > 0 ? 30 : 0)));
+    const momentumPts = Math.min(100, Math.round(completionRate * 0.7 + (currentStreak > 0 ? 30 : 0)));
 
     // Deterministic Productivity Score (0 - 100)
     const consistencyScore = totalAllTasks > 0 ? Math.round((completedTasksCount / totalAllTasks) * 100) : 100;
@@ -320,7 +389,6 @@ export default function HomeDashboardView({
     });
 
     // Real-Time Missed Activity Computation
-    const todayStr = new Date().toISOString().split('T')[0];
     const overdueTasks = periodFilteredTasks.filter(t => t && !t.isDoneToday && t.progressPercent < 100 && t.plannedEnd && t.plannedEnd < todayStr);
     const missedOccurrences = overdueTasks.length;
     const missedMandatorySubs = overdueTasks.reduce((acc, t) => acc + (subtasksMap[t.id] || []).filter(c => !c.isOptional && !c.isDoneToday && c.progressPercent < 100).length, 0);
@@ -490,7 +558,7 @@ export default function HomeDashboardView({
     return `You have ${stats.totalAllTasks} tasks registered across ${stats.categoryCount} categories in your system.`;
   }, [stats, periodFilter]);
 
-  // 12-week GitHub style activity matrix computed dynamically from database task activity dates
+  // 12-week GitHub style activity matrix computed dynamically from actual database completion logs
   const heatmapData = useMemo(() => {
     const weeks = [];
     const today = new Date();
@@ -502,27 +570,33 @@ export default function HomeDashboardView({
         targetDate.setDate(targetDate.getDate() - dayOffset);
         const dateStr = targetDate.toISOString().split('T')[0];
         
-        const activeOnDate = (tasks || []).filter(t => {
-          if (!t) return false;
-          const start = t.plannedStart || t.created_at || '2026-08-01';
-          const end = t.plannedEnd || '2026-12-31';
-          return start <= dateStr && end >= dateStr;
-        }).length;
-
-        const doneOnDate = (tasks || []).filter(t => t && (t.isDoneToday || t.progressPercent >= 100) && t.plannedStart <= dateStr).length;
+        let doneOnDate = 0;
+        if (logCompletionDatesSet.has(dateStr)) {
+          (taskLogs || []).forEach(l => {
+            if (l && (l.log_date || l.logged_date || l.entry_date) === dateStr && (l.is_completed || l.isCompleted || l.is_successful)) doneOnDate++;
+          });
+          (subtaskLogs || []).forEach(l => {
+            if (l && (l.log_date || l.logged_date || l.entry_date) === dateStr && (l.is_completed || l.isCompleted)) doneOnDate++;
+          });
+          (tasks || []).forEach(t => {
+            if (t && (t.isDoneToday || t.progressPercent >= 100) && (t.completedDate || t.plannedStart) === dateStr) doneOnDate++;
+          });
+          if (doneOnDate === 0) doneOnDate = 1;
+        }
 
         let intensity = 0;
-        if (doneOnDate > 4 || activeOnDate > 8) intensity = 4;
-        else if (doneOnDate > 2 || activeOnDate > 5) intensity = 3;
-        else if (doneOnDate > 0 || activeOnDate > 2) intensity = 2;
-        else if (activeOnDate > 0) intensity = 1;
+        if (doneOnDate >= 4) intensity = 4;
+        else if (doneOnDate === 3) intensity = 3;
+        else if (doneOnDate === 2) intensity = 2;
+        else if (doneOnDate === 1) intensity = 1;
+        else intensity = 0;
 
-        days.push({ dayIndex: d, dateStr, intensity, count: doneOnDate || activeOnDate });
+        days.push({ dayIndex: d, dateStr, intensity, count: doneOnDate });
       }
       weeks.push(days);
     }
     return weeks;
-  }, [tasks]);
+  }, [tasks, taskLogs, subtaskLogs, logCompletionDatesSet]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '40px' }}>
@@ -635,65 +709,65 @@ export default function HomeDashboardView({
           
           {/* ROW 1: Completed Tasks vs Active Tasks */}
           <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#F0FDF4', borderRadius: '14px', border: '1px solid #BBF7D0', borderLeft: '4px solid #16A34A', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#15803D', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R1 · C1 — COMPLETED TASKS</span>
+            <span style={{ fontSize: '10px', color: '#15803D', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>COMPLETED TASKS</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#16A34A', marginTop: '2px' }}>{stats.completedTasksCount}</div>
             <span style={{ fontSize: '11px', color: '#166534', fontWeight: 600 }}>Tasks that have reached planned end date / finished</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#EFF6FF', borderRadius: '14px', border: '1px solid #BFDBFE', borderLeft: '4px solid #2563EB', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#1E40AF', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R1 · C2 — ACTIVE TASKS</span>
+            <span style={{ fontSize: '10px', color: '#1E40AF', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ACTIVE TASKS</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#2563EB', marginTop: '2px' }}>{stats.activeTasksCount}</div>
             <span style={{ fontSize: '11px', color: '#1D4ED8', fontWeight: 600 }}>Tasks yet to reach planned end date</span>
           </div>
 
           {/* ROW 2: Total Tasks History vs Pending Today */}
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #CBD5E1', borderLeft: '4px solid #0F172A', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#475569', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R2 · C1 — TOTAL TASKS (HISTORY)</span>
+            <span style={{ fontSize: '10px', color: '#475569', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>TOTAL TASKS (HISTORY)</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', marginTop: '2px' }}>{stats.totalAllTasks}</div>
             <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>All historical tasks (incl. active & archive)</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#FFFBEB', borderRadius: '14px', border: '1px solid #FDE68A', borderLeft: '4px solid #D97706', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#B45309', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R2 · C2 — PENDING TODAY</span>
+            <span style={{ fontSize: '10px', color: '#B45309', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>PENDING TODAY</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#D97706', marginTop: '2px' }}>{stats.pendingTasksCount}</div>
             <span style={{ fontSize: '11px', color: '#92400E', fontWeight: 600 }}>Tasks scheduled for today pending completion</span>
           </div>
 
           {/* ROW 3: Active Standalone Tasks vs Optional Subtasks */}
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F5F3FF', borderRadius: '14px', border: '1px solid #DDD6FE', borderLeft: '4px solid #8B5CF6', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#6D28D9', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R3 · C1 — ACTIVE STANDALONE TASKS</span>
+            <span style={{ fontSize: '10px', color: '#6D28D9', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ACTIVE STANDALONE TASKS</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#7C3AED', marginTop: '2px' }}>{stats.standaloneTasksCount}</div>
             <span style={{ fontSize: '11px', color: '#5B21B6', fontWeight: 600 }}>Active tasks with no end date reached & no subtasks</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #E2E8F0', borderLeft: '4px solid #64748B', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#475569', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R3 · C2 — OPTIONAL SUBTASKS COUNT</span>
+            <span style={{ fontSize: '10px', color: '#475569', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>OPTIONAL SUBTASKS COUNT</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#475569', marginTop: '2px' }}>{stats.totalOptionalSubtasks}</div>
             <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>Total optional subtasks across active tasks</span>
           </div>
 
           {/* ROW 4: Archived Tasks (In Pause) vs Mandatory Subtasks */}
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#FEF2F2', borderRadius: '14px', border: '1px solid #FECACA', borderLeft: '4px solid #DC2626', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R4 · C1 — ARCHIVED TASKS (IN PAUSE)</span>
+            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ARCHIVED TASKS (IN PAUSE)</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>{stats.blockedParents}</div>
             <span style={{ fontSize: '11px', color: '#991B1B', fontWeight: 600 }}>Tasks currently in archive / pause state</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#FEF2F2', borderRadius: '14px', border: '1px solid #FCA5A5', borderLeft: '4px solid #B91C1C', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R4 · C2 — MANDATORY SUBTASKS COUNT</span>
+            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>MANDATORY SUBTASKS COUNT</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#B91C1C', marginTop: '2px' }}>{stats.totalMandatorySubtasks}</div>
             <span style={{ fontSize: '11px', color: '#7F1D1D', fontWeight: 600 }}>Mandatory required subtasks across tasks</span>
           </div>
 
           {/* ROW 5: Active Parent Tasks vs Today Completion Pace */}
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F0F9FF', borderRadius: '14px', border: '1px solid #BAE6FD', borderLeft: '4px solid #0284C7', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#0369A1', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R5 · C1 — ACTIVE PARENT TASKS</span>
+            <span style={{ fontSize: '10px', color: '#0369A1', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ACTIVE PARENT TASKS</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#0284C7', marginTop: '2px' }}>{stats.totalParents}</div>
             <span style={{ fontSize: '11px', color: '#075985', fontWeight: 600 }}>Active parent tasks with child subtasks</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#F0FDF4', borderRadius: '14px', border: '1px solid #BBF7D0', borderLeft: '4px solid #15803D', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#166534', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>R5 · C2 — TODAY COMPLETION PACE</span>
+            <span style={{ fontSize: '10px', color: '#166534', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>TODAY COMPLETION PACE</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#15803D', marginTop: '2px' }}>{stats.completionRate}%</div>
             <span style={{ fontSize: '11px', color: '#14532D', fontWeight: 600 }}>Completion pace for scheduled target</span>
           </div>

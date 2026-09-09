@@ -264,37 +264,35 @@ export default function AnalyticsIntelligenceView({
             <Flame size={16} color="#F59E0B" /> {intel.maxActiveStreak}d
           </div>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B' }}>Best: {intel.maxLongestStreak} days</span>
-        </div>
-
-        <div style={{ background: '#FFF', padding: '14px', borderRadius: '16px', border: '1px solid #E2E8F0', borderLeft: '4px solid #2563EB' }}>
+            <div style={{ background: '#FFF', padding: '14px', borderRadius: '16px', border: '1px solid #E2E8F0', borderLeft: '4px solid #2563EB' }}>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Execution Reliability</span>
-          <div style={{ fontSize: '22px', fontWeight: 900, color: '#2563EB', marginTop: '2px' }}>{scorecard.executionReliabilityIndex || 82}%</div>
+          <div style={{ fontSize: '22px', fontWeight: 900, color: '#2563EB', marginTop: '2px' }}>{scorecard.executionReliabilityIndex ?? 0}%</div>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#16A34A' }}>High Consistency</span>
         </div>
 
         <div style={{ background: '#FFF', padding: '14px', borderRadius: '16px', border: '1px solid #E2E8F0', borderLeft: '4px solid #DC2626' }}>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Focus Fatigue Index</span>
-          <div style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>{scorecard.focusFatigueMultiplier || 1.1}x</div>
+          <div style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>{scorecard.focusFatigueMultiplier ?? 1.0}x</div>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B' }}>Capacity Load Factor</span>
         </div>
 
         <div style={{ background: '#FFF', padding: '14px', borderRadius: '16px', border: '1px solid #E2E8F0', borderLeft: '4px solid #16A34A' }}>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Subtask Efficiency</span>
-          <div style={{ fontSize: '22px', fontWeight: 900, color: '#16A34A', marginTop: '2px' }}>{scorecard.subtaskEfficiencyRatio || 88}%</div>
+          <div style={{ fontSize: '22px', fontWeight: 900, color: '#16A34A', marginTop: '2px' }}>{scorecard.subtaskEfficiencyRatio ?? 0}%</div>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#16A34A' }}>Parent Shield Ratio</span>
         </div>
 
         <div style={{ background: '#FFF', padding: '14px', borderRadius: '16px', border: '1px solid #E2E8F0', borderLeft: '4px solid #D97706' }}>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Daily Context Switches</span>
-          <div style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A', marginTop: '2px' }}>{(intel.contextSwitchingStrainIndex || {}).avgTasksPerDay || 3.2}/d</div>
+          <div style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A', marginTop: '2px' }}>{intel.contextSwitchingStrainIndex?.avgTasksPerDay ?? 0}/d</div>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#2563EB' }}>Optimal Density</span>
         </div>
 
         <div style={{ background: '#FFF', padding: '14px', borderRadius: '16px', border: '1px solid #E2E8F0', borderLeft: '4px solid #DC2626' }}>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Stagnation Risk</span>
-          <div style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>{scorecard.stagnationRiskCount || 0} Tasks</div>
+          <div style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>{scorecard.stagnationRiskCount ?? 0} Tasks</div>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B' }}>&gt;14d Untouched</span>
-        </div>
+        </div>      </div>
 
       </div>
 
@@ -489,7 +487,7 @@ export default function AnalyticsIntelligenceView({
           <div style={{ padding: '14px', background: '#F0FDF4', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#166534', textTransform: 'uppercase', display: 'block' }}>Parent Tasks with Subtasks</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#15803D', marginTop: '2px' }}>
-              {(intel.hierarchySynergyMetrics || {}).parentWithSubtasksCompletionRate || 85}%
+              {intel?.hierarchySynergyMetrics?.parentWithSubtasksCompletionRate ?? 0}%
             </div>
             <span style={{ fontSize: '10px', fontWeight: 700, color: '#166534' }}>
               High Completion Shield
@@ -499,7 +497,7 @@ export default function AnalyticsIntelligenceView({
           <div style={{ padding: '14px', background: '#FEF2F2', borderRadius: '12px', border: '1px solid #FCA5A5' }}>
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#991B1B', textTransform: 'uppercase', display: 'block' }}>Standalone Tasks (No Subtasks)</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>
-              {(intel.hierarchySynergyMetrics || {}).standaloneTasksCompletionRate || 62}%
+              {intel?.hierarchySynergyMetrics?.standaloneTasksCompletionRate ?? 0}%
             </div>
             <span style={{ fontSize: '10px', fontWeight: 700, color: '#991B1B' }}>
               Vulnerable to Procrastination
@@ -509,7 +507,7 @@ export default function AnalyticsIntelligenceView({
           <div style={{ padding: '14px', background: '#FFFBEB', borderRadius: '12px', border: '1px solid #FDE68A' }}>
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#B45309', textTransform: 'uppercase', display: 'block' }}>Mandatory Subtask Boost</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#D97706', marginTop: '2px' }}>
-              +{(intel.hierarchySynergyMetrics || {}).mandatorySubtaskBoostPercent || 23}%
+              +{(intel?.hierarchySynergyMetrics?.mandatorySubtaskBoostPercent ?? 0)}%
             </div>
             <span style={{ fontSize: '10px', fontWeight: 700, color: '#B45309' }}>
               Completion Acceleration
@@ -518,7 +516,7 @@ export default function AnalyticsIntelligenceView({
         </div>
 
         <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-          <strong>Analytical Takeaway:</strong> Configuring mandatory subtasks boosts parent task completion rate by <strong>+{(intel.hierarchySynergyMetrics || {}).mandatorySubtaskBoostPercent || 23}%</strong> compared to unstructured standalone tasks.
+          <strong>Analytical Takeaway:</strong> Configuring mandatory subtasks boosts parent task completion rate by <strong>+{(intel?.hierarchySynergyMetrics?.mandatorySubtaskBoostPercent ?? 0)}%</strong> compared to unstructured standalone tasks.
         </div>
       </div>
 
@@ -537,17 +535,17 @@ export default function AnalyticsIntelligenceView({
           <div style={{ flex: 1, minWidth: '180px', background: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
             <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Avg Task Switches / Day</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', marginTop: '2px' }}>
-              {(intel.contextSwitchingStrainIndex || {}).avgTasksPerDay || 3.2}
+              {intel?.contextSwitchingStrainIndex?.avgTasksPerDay ?? 0}
             </div>
             <span style={{ fontSize: '10px', fontWeight: 800, color: '#16A34A', marginTop: '4px', display: 'block' }}>
-              Level: {(intel.contextSwitchingStrainIndex || {}).strainLevel || 'OPTIMAL'}
+              Level: {intel?.contextSwitchingStrainIndex?.strainLevel || 'NORMAL'}
             </span>
           </div>
 
           <div style={{ flex: 1, minWidth: '180px', background: '#EFF6FF', padding: '14px', borderRadius: '12px', border: '1px solid #BFDBFE' }}>
             <span style={{ fontSize: '10px', fontWeight: 800, color: '#1E40AF', textTransform: 'uppercase', display: 'block' }}>Context Velocity Score</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#2563EB', marginTop: '2px' }}>
-              {(intel.contextSwitchingStrainIndex || {}).velocityScore || 82}/100
+              {intel?.contextSwitchingStrainIndex?.velocityScore ?? 0}/100
             </div>
             <span style={{ fontSize: '10px', fontWeight: 800, color: '#1E40AF', marginTop: '4px', display: 'block' }}>
               Friction Margin: Low

@@ -1393,6 +1393,9 @@ export default function App() {
                   habits={habits}
                   disciplineScore={disciplineScore}
                   missedDaysLogs={missedDaysLogs}
+                  taskLogs={taskLogs}
+                  subtaskLogs={subtaskLogs}
+                  taskArchiveLogs={taskArchiveLogs}
                   onNavigateToTab={(tab) => handleTabSwitch(tab)}
                   onNavigateToTaskDedicated={(item) => setDedicatedTaskPageItem(item)}
                 />

@@ -180,10 +180,7 @@ export function computeAnalyticsIntelligenceData({
       if (catLogs && catLogs[dIdx] && catLogs[dIdx].total > 0) {
         return Math.round((catLogs[dIdx].completed / catLogs[dIdx].total) * 100);
       }
-      // If no logs for this specific weekday, fallback to base category completion rate with weekday variance
-      const base = c.completionRate;
-      const variance = ((dIdx * 7 + c.category.length * 3) % 21) - 10;
-      return Math.max(10, Math.min(100, base + variance));
+      return 0;
     });
     return {
       category: c.category,
@@ -192,25 +189,81 @@ export function computeAnalyticsIntelligenceData({
   });
 
   // ---------------------------------------------------------------------------
-  // LEVEL 3: HOW WELL (Consistency, Output Velocity & Streak Metrics)
+  // LEVEL 3: HOW WELL (Consistency, Output Velocity & Real Database Streaks)
   // ---------------------------------------------------------------------------
-  let maxActiveStreak = 0;
-  let maxLongestStreak = 0;
-  filteredTasks.forEach(t => {
-    const activeS = t.streakCount || t.activeStreak || 0;
-    const bestS = t.maxStreak || t.bestStreak || activeS;
-    if (activeS > maxActiveStreak) maxActiveStreak = activeS;
-    if (bestS > maxLongestStreak) maxLongestStreak = bestS;
+  const logCompletionDatesSet = new Set();
+  (windowedTaskLogs || []).forEach(l => {
+    if (l && (l.is_completed || l.isCompleted || l.is_successful)) {
+      const d = l.log_date || l.logged_date || l.entry_date;
+      if (d) logCompletionDatesSet.add(d);
+    }
+  });
+  (windowedSubtaskLogs || []).forEach(l => {
+    if (l && (l.is_completed || l.isCompleted)) {
+      const d = l.log_date || l.logged_date || l.entry_date;
+      if (d) logCompletionDatesSet.add(d);
+    }
+  });
+  (filteredTasks || []).forEach(t => {
+    if (t && (t.isDoneToday || t.progressPercent >= 100)) {
+      const d = t.completedDate || t.plannedStart || new Date().toISOString().split('T')[0];
+      if (d) logCompletionDatesSet.add(d);
+    }
   });
 
-  const allStreaksSample = filteredTasks.map(t => t.maxStreak || t.streakCount || 1).filter(s => s > 0);
-  const totalStreaksSample = allStreaksSample.length || 1;
+  // Calculate actual active streak (consecutive calendar days leading up to today/yesterday)
+  const todayObj = new Date();
+  const todayStr = todayObj.toISOString().split('T')[0];
+  let currentConsecutive = 0;
+  let checkDate = new Date(todayObj);
+
+  if (!logCompletionDatesSet.has(todayStr)) {
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+
+  while (true) {
+    const cStr = checkDate.toISOString().split('T')[0];
+    if (logCompletionDatesSet.has(cStr)) {
+      currentConsecutive++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  let maxActiveStreak = currentConsecutive;
+
+  // Calculate max longest streak across all contiguous date blocks in history
+  const sortedDates = Array.from(logCompletionDatesSet).sort();
+  let maxLongestStreak = 0;
+  let tempStreak = 0;
+  let prevDateMs = null;
+
+  sortedDates.forEach(dStr => {
+    const currMs = new Date(dStr).getTime();
+    if (prevDateMs === null) {
+      tempStreak = 1;
+    } else {
+      const diffDays = Math.round((currMs - prevDateMs) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        tempStreak++;
+      } else {
+        tempStreak = 1;
+      }
+    }
+    prevDateMs = currMs;
+    if (tempStreak > maxLongestStreak) maxLongestStreak = tempStreak;
+  });
+
+  if (maxActiveStreak > maxLongestStreak) maxLongestStreak = maxActiveStreak;
+
+  const totalLogDaysCount = Math.max(1, logCompletionDatesSet.size);
   const streakSurvivalCurve = {
-    day1: Math.round((allStreaksSample.filter(s => s >= 1).length / totalStreaksSample) * 100),
-    day3: Math.round((allStreaksSample.filter(s => s >= 3).length / totalStreaksSample) * 100),
-    day7: Math.round((allStreaksSample.filter(s => s >= 7).length / totalStreaksSample) * 100),
-    day14: Math.round((allStreaksSample.filter(s => s >= 14).length / totalStreaksSample) * 100),
-    day30: Math.round((allStreaksSample.filter(s => s >= 30).length / totalStreaksSample) * 100)
+    day1: Math.round((maxLongestStreak >= 1 ? 1 : 0) * 100),
+    day3: Math.round((maxLongestStreak >= 3 ? 1 : 0) * 100),
+    day7: Math.round((maxLongestStreak >= 7 ? 1 : 0) * 100),
+    day14: Math.round((maxLongestStreak >= 14 ? 1 : 0) * 100),
+    day30: Math.round((maxLongestStreak >= 30 ? 1 : 0) * 100)
   };
 
   // ---------------------------------------------------------------------------
@@ -428,95 +481,7 @@ export function computeAnalyticsIntelligenceData({
     }
   }
 
-  // If no live inverse correlations detected from sparse sample logs, construct meaningful relational insight from existing distinct category tasks
-  if (inverseTradeOffCorrelations.length === 0 && filteredTasks.length >= 2) {
-    const t1 = filteredTasks[0];
-    const t2 = filteredTasks[1];
-    inverseTradeOffCorrelations.push({
-      taskAId: t1.id,
-      taskATitle: t1.title,
-      taskBId: t2.id,
-      taskBTitle: t2.title,
-      dropPercentage: 45,
-      explanation: `Logging intensive work on "${t1.title}" correlates with a 45% drop in "${t2.title}" completion on the same dates.`,
-      recommendedAction: `Reschedule "${t2.title}" to morning focus blocks prior to starting "${t1.title}" to protect execution quality.`
-    });
-  }
-
-  // ---------------------------------------------------------------------------
-  // NEW: ACTIONABLE PRODUCTIVITY DECISIONS DECK
-  // ---------------------------------------------------------------------------
-  const actionableDecisions = [];
-
-  // Decision 1: Hard Tasks Intervention
-  const hardTasks = taskDifficultyClassifications.filter(d => d.difficultyType === 'HARD');
-  if (hardTasks.length > 0) {
-    actionableDecisions.push({
-      id: 'dec-hard-1',
-      title: `High Concentration Alert: ${hardTasks.length} Hard Task(s) Requiring Workload Decomposition`,
-      category: hardTasks[0].category,
-      urgency: 'HIGH',
-      detectedPattern: `Task "${hardTasks[0].title}" has high planned workload (${hardTasks[0].workloadMinutes}m) with low completion rate (${hardTasks[0].completionRate}%).`,
-      impactMagnitude: 'Increases Task Completion by +38%',
-      recommendedAction: `Decompose "${hardTasks[0].title}" into 15-minute subtasks and assign mandatory subtasks with morning deadline triggers.`
-    });
-  }
-
-  // Decision 2: Irregular Volatility Anchor
-  const irregularTasks = taskDifficultyClassifications.filter(d => d.difficultyType === 'IRREGULAR');
-  if (irregularTasks.length > 0) {
-    actionableDecisions.push({
-      id: 'dec-irregular-1',
-      title: `Consistency Fix: Anchor Volatile Task "${irregularTasks[0].title}"`,
-      category: irregularTasks[0].category,
-      urgency: 'MEDIUM',
-      detectedPattern: `Execution fluctuates heavily across days. Active streak broken at ${irregularTasks[0].streak} days.`,
-      impactMagnitude: 'Stabilizes Streak Survival to 85%',
-      recommendedAction: `Pair "${irregularTasks[0].title}" with a daily fixed habit anchor (e.g. immediately after morning coffee).`
-    });
-  }
-
-  // Decision 3: Priority Inversion Fix
-  if (isPriorityInversionDetected) {
-    actionableDecisions.push({
-      id: 'dec-priority-1',
-      title: `Priority Inversion Fix: Reallocate Time from Low to Critical Tasks`,
-      category: 'System Wide',
-      urgency: 'CRITICAL',
-      detectedPattern: `Low Priority task completion (${lowRate}%) exceeds Critical Priority completion (${criticalRate}%).`,
-      impactMagnitude: 'Protects High-Impact Goal Deadlines',
-      recommendedAction: `Block calendar focus time for Critical tasks first thing in the morning before processing Low Priority tasks.`
-    });
-  }
-
-  // Decision 4: Inverse Trade-Off Scheduling Fix
-  if (inverseTradeOffCorrelations.length > 0) {
-    const tradeOff = inverseTradeOffCorrelations[0];
-    actionableDecisions.push({
-      id: 'dec-tradeoff-1',
-      title: `Inverse Trade-Off Resolution: Separating Mutual Blocker Tasks`,
-      category: 'Cross Task Relational',
-      urgency: 'HIGH',
-      detectedPattern: tradeOff.explanation,
-      impactMagnitude: `Eliminates ${tradeOff.dropPercentage}% Cross-Task Penalty`,
-      recommendedAction: tradeOff.recommendedAction
-    });
-  }
-
-  // ---------------------------------------------------------------------------
-  // LEVEL 6: WHAT IS CHANGING (Momentum Engine & Productivity Pulse Points)
-  // ---------------------------------------------------------------------------
-  const recent7DaysLogs = filterLogsByTimeWindow(windowedTaskLogs, '7D');
-  const recent7CompletionRate = Math.round((recent7DaysLogs.filter(l => l.is_completed || l.is_successful).length / Math.max(1, recent7DaysLogs.length)) * 100);
-  const momentumIndexDelta = recent7CompletionRate - overallCompletionRate;
-
-  let momentumStatus = 'Stable';
-  if (momentumIndexDelta >= 10) momentumStatus = 'Accelerating';
-  else if (momentumIndexDelta >= 3) momentumStatus = 'Improving';
-  else if (momentumIndexDelta <= -10) momentumStatus = 'Declining';
-  else if (momentumIndexDelta <= -3) momentumStatus = 'Weakening';
-
-  // Pulse Time Series: Generate 14 day rolling window derived directly from logs if available
+  // Pulse Time Series: Generate 14 day rolling window derived directly from database logs
   const pulseTimeSeriesPoints = Array.from({ length: 14 }).map((_, idx) => {
     const dayNum = idx + 1;
     const targetDate = new Date();
@@ -524,9 +489,9 @@ export function computeAnalyticsIntelligenceData({
     const targetDateStr = targetDate.toISOString().split('T')[0];
 
     const dayLogs = windowedTaskLogs.filter(l => (l.log_date || l.logged_date || l.entry_date) === targetDateStr);
-    let completionRate = overallCompletionRate;
-    let workloadMins = Math.round(totalPlannedWorkloadMinutes / 14);
-    let measureVal = Math.round((totalMeasureOutput / 14) * 10) / 10;
+    let completionRate = 0;
+    let workloadMins = 0;
+    let measureVal = 0;
 
     if (dayLogs.length > 0) {
       const completedCount = dayLogs.filter(l => l.is_completed || l.is_successful || l.isCompleted).length;
@@ -534,10 +499,9 @@ export function computeAnalyticsIntelligenceData({
       workloadMins = dayLogs.reduce((acc, curr) => acc + Number(curr.workload_mins || 30), 0);
       measureVal = dayLogs.reduce((acc, curr) => acc + Number(curr.measured_value || 0), 0);
     } else {
-      // Variance smoothing for visually clean baseline display
-      completionRate = Math.max(15, Math.min(100, Math.round(overallCompletionRate + ((idx * 11) % 35) - 15)));
-      workloadMins = Math.round((totalPlannedWorkloadMinutes / 14) * (0.8 + (idx % 5) * 0.1));
-      measureVal = Math.round((totalMeasureOutput / 14) * (0.7 + (idx % 4) * 0.2) * 10) / 10;
+      completionRate = 0;
+      workloadMins = 0;
+      measureVal = 0;
     }
 
     return {
@@ -550,8 +514,7 @@ export function computeAnalyticsIntelligenceData({
     };
   });
 
-  // 365-Day Calendar Heatmap Cells calculated dynamically from log date set
-  const logDatesSet = new Set(windowedTaskLogs.map(l => l.log_date || l.logged_date || l.entry_date).filter(Boolean));
+  // 365-Day Calendar Heatmap Cells calculated dynamically from actual log dates
   const heatmap365Cells = Array.from({ length: 52 }).map((_, wIdx) => {
     return Array.from({ length: 7 }).map((_, dIdx) => {
       const daysAgo = (51 - wIdx) * 7 + (6 - dIdx);
@@ -560,10 +523,24 @@ export function computeAnalyticsIntelligenceData({
       const cellDateStr = cellDate.toISOString().split('T')[0];
 
       let intensity = 0;
-      if (logDatesSet.has(cellDateStr)) {
-        intensity = 3;
+      if (logCompletionDatesSet.has(cellDateStr)) {
+        let doneCountOnDate = 0;
+        (windowedTaskLogs || []).forEach(l => {
+          if (l && (l.log_date || l.logged_date || l.entry_date) === cellDateStr && (l.is_completed || l.isCompleted || l.is_successful)) doneCountOnDate++;
+        });
+        (windowedSubtaskLogs || []).forEach(l => {
+          if (l && (l.log_date || l.logged_date || l.entry_date) === cellDateStr && (l.is_completed || l.isCompleted)) doneCountOnDate++;
+        });
+        (filteredTasks || []).forEach(t => {
+          if (t && (t.isDoneToday || t.progressPercent >= 100) && (t.completedDate || t.plannedStart) === cellDateStr) doneCountOnDate++;
+        });
+
+        if (doneCountOnDate >= 4) intensity = 4;
+        else if (doneCountOnDate === 3) intensity = 3;
+        else if (doneCountOnDate === 2) intensity = 2;
+        else intensity = 1;
       } else {
-        intensity = (daysAgo % 5 === 0) ? 0 : Math.min(4, Math.max(1, (daysAgo % 4) + 1));
+        intensity = 0;
       }
 
       return {
@@ -755,13 +732,37 @@ export function computeAnalyticsIntelligenceData({
   const subtaskEfficiencyRatio = Math.round(( (totalSubtasksCount - (topParentBlockerSubtask ? topParentBlockerSubtask.missedDaysCount : 0)) / totalSubtasksCount) * 100);
   const safeAgeDist = taskAgeDistribution || { over30Days: 0, days14to30: 0 };
   const stagnationRiskCount = (safeAgeDist.over30Days || 0) + (safeAgeDist.days14to30 || 0);
+  const momentumIndexDelta = (maxActiveStreak > 0) ? Math.min(15, maxActiveStreak * 2) : 0;
+  const recent7CompletionRate = overallCompletionRate;
+  const momentumStatus = maxActiveStreak >= 7 ? 'ELITE_STREAK' : (maxActiveStreak >= 3 ? 'BUILDING' : (maxActiveStreak > 0 ? 'ACTIVE' : 'STAGNANT'));
+
+  const actionableDecisions = [
+    ...(taskDifficultyClassifications.filter(d => d.difficultyType === 'HARD').map(d => ({
+      type: 'CONCENTRATION_NEEDED',
+      title: `Break down "${d.title}" into 15m subtasks`,
+      reason: `Workload is ${d.workloadMinutes}m with completion rate (${d.completionRate}%).`,
+      impact: 'HIGH'
+    }))),
+    ...(taskDifficultyClassifications.filter(d => d.difficultyType === 'IRREGULAR').map(d => ({
+      type: 'SET_DAILY_TRIGGER',
+      title: `Set daily trigger anchor for "${d.title}"`,
+      reason: 'Irregular completion history detected.',
+      impact: 'MEDIUM'
+    }))),
+    ...(topParentBlockerSubtask ? [{
+      type: 'SUBTASK_PARALLELIZATION',
+      title: `Address subtask blocker "${topParentBlockerSubtask.subtaskTitle}"`,
+      reason: `Responsible for ${topParentBlockerSubtask.failureSharePercent}% of parent task delays.`,
+      impact: 'CRITICAL'
+    }] : [])
+  ];
 
   const executiveScorecard = {
     executionReliabilityIndex,
     focusFatigueMultiplier,
     subtaskEfficiencyRatio,
     stagnationRiskCount,
-    dailyMomentumVelocity: Math.round(overallCompletionRate + momentumIndexDelta),
+    dailyMomentumVelocity: Math.min(100, Math.round(overallCompletionRate + momentumIndexDelta)),
     contextSwitchScore: contextSwitchingStrainIndex.velocityScore
   };
 
