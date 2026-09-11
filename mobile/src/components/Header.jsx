@@ -140,11 +140,11 @@ export default function Header({
             </button>
 
             <button 
-              className={`btn-secondary ${activeTab === 'analytics' ? 'btn-primary' : ''}`}
-              onClick={() => setActiveTab('analytics')}
-              style={{ border: 'none', padding: '6px 12px', fontSize: '12px', background: activeTab === 'analytics' ? 'linear-gradient(135deg, #DC2626, #B91C1C)' : 'transparent', color: activeTab === 'analytics' ? '#FFF' : '#334155' }}
+              className={`btn-secondary ${activeTab === 'diary' || activeTab === 'focus' ? 'btn-primary' : ''}`}
+              onClick={() => setActiveTab('diary')}
+              style={{ border: 'none', padding: '6px 12px', fontSize: '12px', background: activeTab === 'diary' || activeTab === 'focus' ? 'linear-gradient(135deg, #DC2626, #B91C1C)' : 'transparent', color: activeTab === 'diary' || activeTab === 'focus' ? '#FFF' : '#334155' }}
             >
-              <BarChart3 size={14} /> Analytics
+              <BookOpen size={14} /> Diary
             </button>
           </nav>
 
@@ -211,9 +211,9 @@ export default function Header({
           <span>Analytics</span>
         </button>
 
-        <button className={`bottom-nav-item ${activeTab === 'focus' ? 'active' : ''}`} onClick={() => setActiveTab('focus')}>
-          <Zap size={18} />
-          <span>Focus</span>
+        <button className={`bottom-nav-item ${activeTab === 'diary' || activeTab === 'focus' ? 'active' : ''}`} onClick={() => setActiveTab('diary')}>
+          <BookOpen size={18} />
+          <span>Diary</span>
         </button>
       </nav>
     </>

@@ -212,8 +212,8 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
     { id: 'calendar', label: 'Smart Calendar', icon: Calendar },
     { id: 'planner', label: 'Capacity Planner', icon: Clock },
     { id: 'analytics', label: 'Visual Analytics', icon: BarChart3 },
-    { id: 'focus', label: 'Focus Timer', icon: Zap },
-    { id: 'diary', label: 'Diary & Reflection', icon: BookOpen },
+    { id: 'focus', label: 'Private Diary', icon: BookOpen },
+    { id: 'diary', label: 'Private Diary', icon: BookOpen },
     { id: 'goals', label: 'Goals Management', icon: Target },
     { id: 'settings', label: 'Settings & Profile', icon: Sliders }
   ];

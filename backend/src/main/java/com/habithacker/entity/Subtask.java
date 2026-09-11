@@ -66,4 +66,12 @@ public class Subtask {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    // Helper alias methods for engine compatibility
+    public Boolean getHasMeasureTracking() { return false; }
+    public Integer getLoggedMeasureVal() { return completedValue != null ? completedValue : 0; }
+    public Integer getMeasureTarget() { return targetValue != null ? targetValue : 1; }
+    public String getTrackingMode() { return "count_days"; }
+    public Integer getCurrentCount() { return completedValue != null ? completedValue : 0; }
+    public Boolean getIsDoneToday() { return "COMPLETED".equalsIgnoreCase(status); }
 }

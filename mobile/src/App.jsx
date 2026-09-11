@@ -10,7 +10,7 @@ import CapacityPlannerView from './components/CapacityPlannerView';
 import MultiViewCalendar from './components/MultiViewCalendar';
 import HeatmapsHubView from './components/HeatmapsHubView';
 import AnalyticsIntelligenceView from './components/AnalyticsIntelligenceView';
-import FocusTimerView from './components/FocusTimerView';
+import DiaryMainView from './components/DiaryMainView';
 import DiaryReflectionView from './components/DiaryReflectionView';
 import GoalsManagementView from './components/GoalsManagementView';
 import ProjectsKanbanView from './components/ProjectsKanbanView';
@@ -1486,12 +1486,8 @@ export default function App() {
                 </AnalyticsErrorBoundary>
               )}
 
-              {activeTab === 'focus' && (
-                <FocusTimerView tasks={activeTasks} subtasks={subtasks} />
-              )}
-
-              {activeTab === 'diary' && (
-                <DiaryReflectionView />
+              {(activeTab === 'diary' || activeTab === 'focus') && (
+                <DiaryMainView user={currentUser} />
               )}
 
               {activeTab === 'goals' && (
