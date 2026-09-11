@@ -8,6 +8,7 @@ import TaskSubtaskView from './components/TaskSubtaskView';
 import TaskDedicatedPageView from './components/TaskDedicatedPageView';
 import CapacityPlannerView from './components/CapacityPlannerView';
 import MultiViewCalendar from './components/MultiViewCalendar';
+import CalendarMainView from './components/CalendarMainView';
 import HeatmapsHubView from './components/HeatmapsHubView';
 import AnalyticsIntelligenceView from './components/AnalyticsIntelligenceView';
 import DiaryMainView from './components/DiaryMainView';
@@ -1453,9 +1454,18 @@ export default function App() {
               )}
 
               {activeTab === 'calendar' && (
-                <MultiViewCalendar 
-                  calendarData={{ tasks: activeTasks, subtasks, habits }}
-                  onSelectDate={(date) => console.log('Selected Date:', date)}
+                <CalendarMainView 
+                  tasks={activeTasks}
+                  subtasks={subtasks}
+                  habits={habits}
+                  logs={[]}
+                  capacityMinutes={availableCapacityMinutes}
+                  onToggleTask={(taskId) => toggleTaskCompletion(taskId)}
+                  onUpdateTaskProgress={(taskId, val) => updateTaskProgress(taskId, val)}
+                  onRescheduleTask={(taskId, newStart, newEnd) => {
+                    const updated = tasks.map(t => t.id === taskId ? { ...t, plannedStart: newStart, plannedEnd: newEnd } : t);
+                    updateTasksState(updated);
+                  }}
                 />
               )}
 
