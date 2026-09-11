@@ -446,12 +446,20 @@ export default function TodayDashboard({
       `}</style>
 
       {/* ========================================================================= */}
-      {/* TODAY HEADER & DATE NAVIGATOR */}
+      {/* TODAY HEADER & DATE NAVIGATOR (3D UI ENHANCED) */}
       {/* ========================================================================= */}
-      <div style={{ padding: '16px 20px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+      <div style={{
+        padding: '18px 22px',
+        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+        borderRadius: '20px',
+        border: '1px solid #CBD5E1',
+        borderBottom: '4px solid #94A3B8',
+        borderLeft: '6px solid #DC2626',
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.9)'
+      }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <h1 style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
               Today
             </h1>
             <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', marginTop: '2px' }}>
@@ -461,24 +469,24 @@ export default function TodayDashboard({
 
           {/* Date Controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', background: '#F1F5F9', padding: '3px', borderRadius: '10px', border: '1px solid #CBD5E1' }}>
+            <div style={{ display: 'flex', alignItems: 'center', background: '#F1F5F9', padding: '3px', borderRadius: '10px', border: '1px solid #CBD5E1', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)' }}>
               <button 
                 onClick={() => setDateOffset(prev => prev - 1)}
-                style={{ background: '#FFF', border: '1px solid #CBD5E1', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: 800, color: '#0F172A', cursor: 'pointer' }}
+                style={{ background: '#FFF', border: '1px solid #CBD5E1', borderBottom: '2px solid #94A3B8', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: 800, color: '#0F172A', cursor: 'pointer' }}
               >
                 ‹ Prev
               </button>
 
               <button 
                 onClick={() => setDateOffset(0)}
-                style={{ background: dateOffset === 0 ? '#EA580C' : '#FFF', color: dateOffset === 0 ? '#FFF' : '#0F172A', border: '1px solid #CBD5E1', borderRadius: '6px', padding: '5px 12px', fontSize: '11px', fontWeight: 900, cursor: 'pointer', margin: '0 3px' }}
+                style={{ background: dateOffset === 0 ? 'linear-gradient(135deg, #DC2626, #B91C1C)' : '#FFF', color: dateOffset === 0 ? '#FFF' : '#0F172A', border: dateOffset === 0 ? 'none' : '1px solid #CBD5E1', borderBottom: dateOffset === 0 ? '2px solid #991B1B' : '2px solid #94A3B8', borderRadius: '6px', padding: '5px 14px', fontSize: '11px', fontWeight: 900, cursor: 'pointer', margin: '0 3px', boxShadow: dateOffset === 0 ? '0 2px 4px rgba(220, 38, 38, 0.2)' : 'none' }}
               >
                 Today
               </button>
 
               <button 
                 onClick={() => setDateOffset(prev => prev + 1)}
-                style={{ background: '#FFF', border: '1px solid #CBD5E1', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: 800, color: '#0F172A', cursor: 'pointer' }}
+                style={{ background: '#FFF', border: '1px solid #CBD5E1', borderBottom: '2px solid #94A3B8', borderRadius: '6px', padding: '5px 10px', fontSize: '11px', fontWeight: 800, color: '#0F172A', cursor: 'pointer' }}
               >
                 Next ›
               </button>
@@ -497,54 +505,97 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* TOP SUMMARY SCORECARD (ACCURATE DAILY COUNTS) */}
+      {/* TOP SUMMARY SCORECARD (3D TACTILE SCORECARDS) */}
       {/* ========================================================================= */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
         
         {/* Card 1: Total Tasks */}
-        <div style={{ background: '#FFF', padding: '12px 14px', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
+        <div style={{
+          background: 'linear-gradient(145deg, #FFFFFF 0%, #F8FAFC 100%)',
+          padding: '14px 16px',
+          borderRadius: '16px',
+          border: '1px solid #CBD5E1',
+          borderBottom: '3px solid #94A3B8',
+          borderLeft: '5px solid #475569',
+          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.8)'
+        }}>
           <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Total Tasks</span>
-          <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>{stats.totalCount}</span>
+          <span style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>{stats.totalCount}</span>
         </div>
 
         {/* Card 2: Completed Tasks */}
-        <div style={{ background: '#F0FDF4', padding: '12px 14px', borderRadius: '14px', border: '1px solid #BBF7D0', boxShadow: '0 2px 6px rgba(22,163,74,0.03)' }}>
+        <div style={{
+          background: 'linear-gradient(145deg, #F0FDF4 0%, #DCFCE7 100%)',
+          padding: '14px 16px',
+          borderRadius: '16px',
+          border: '1px solid #86EFAC',
+          borderBottom: '3px solid #4ADE80',
+          borderLeft: '5px solid #16A34A',
+          boxShadow: '0 8px 16px rgba(22, 163, 74, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8)'
+        }}>
           <span style={{ fontSize: '10px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase', display: 'block' }}>Completed</span>
-          <span style={{ fontSize: '20px', fontWeight: 900, color: '#15803D', marginTop: '2px', display: 'block' }}>{stats.completedCount}</span>
+          <span style={{ fontSize: '22px', fontWeight: 900, color: '#15803D', marginTop: '2px', display: 'block' }}>{stats.completedCount}</span>
         </div>
 
         {/* Card 3: Pending Tasks */}
-        <div style={{ background: '#FEF3C7', padding: '12px 14px', borderRadius: '14px', border: '1px solid #FDE68A', boxShadow: '0 2px 6px rgba(217,119,6,0.03)' }}>
+        <div style={{
+          background: 'linear-gradient(145deg, #FEF3C7 0%, #FDE68A 100%)',
+          padding: '14px 16px',
+          borderRadius: '16px',
+          border: '1px solid #FCD34D',
+          borderBottom: '3px solid #FBBF24',
+          borderLeft: '5px solid #D97706',
+          boxShadow: '0 8px 16px rgba(217, 119, 6, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8)'
+        }}>
           <span style={{ fontSize: '10px', fontWeight: 800, color: '#B45309', textTransform: 'uppercase', display: 'block' }}>Pending</span>
-          <span style={{ fontSize: '20px', fontWeight: 900, color: '#D97706', marginTop: '2px', display: 'block' }}>{stats.pendingCount}</span>
+          <span style={{ fontSize: '22px', fontWeight: 900, color: '#D97706', marginTop: '2px', display: 'block' }}>{stats.pendingCount}</span>
         </div>
 
         {/* Card 4: Completion Rate */}
-        <div style={{ background: '#EFF6FF', padding: '12px 14px', borderRadius: '14px', border: '1px solid #BFDBFE', boxShadow: '0 2px 6px rgba(37,99,235,0.03)' }}>
+        <div style={{
+          background: 'linear-gradient(145deg, #EFF6FF 0%, #DBEAFE 100%)',
+          padding: '14px 16px',
+          borderRadius: '16px',
+          border: '1px solid #93C5FD',
+          borderBottom: '3px solid #60A5FA',
+          borderLeft: '5px solid #2563EB',
+          boxShadow: '0 8px 16px rgba(37, 99, 235, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8)'
+        }}>
           <span style={{ fontSize: '10px', fontWeight: 800, color: '#1E40AF', textTransform: 'uppercase', display: 'block' }}>Completion Rate</span>
-          <span style={{ fontSize: '20px', fontWeight: 900, color: '#2563EB', marginTop: '2px', display: 'block' }}>{stats.completionRate}%</span>
+          <span style={{ fontSize: '22px', fontWeight: 900, color: '#2563EB', marginTop: '2px', display: 'block' }}>{stats.completionRate}%</span>
         </div>
 
       </div>
 
       {/* ========================================================================= */}
-      {/* CUSTOM MANUALLY CODED DROPDOWNS BAR (NO DEFAULT SELECT, NO VARIETY) */}
+      {/* CUSTOM MANUALLY CODED DROPDOWNS BAR (3D ENHANCED) */}
       {/* ========================================================================= */}
-      <div style={{ padding: '14px 16px', background: '#FFF', borderRadius: '18px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div style={{
+        padding: '16px 18px',
+        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+        borderRadius: '20px',
+        border: '1px solid #CBD5E1',
+        borderBottom: '4px solid #94A3B8',
+        borderLeft: '6px solid #2563EB',
+        boxShadow: '0 10px 20px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.9)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px'
+      }}>
         
         {/* Search Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', background: '#F8FAFC', padding: '8px 12px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-          <Search size={15} color="#64748B" style={{ marginRight: '6px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', background: '#FFFFFF', padding: '10px 14px', borderRadius: '12px', border: '1px solid #CBD5E1', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.03)' }}>
+          <Search size={16} color="#64748B" style={{ marginRight: '8px' }} />
           <input 
             type="text" 
             placeholder="Search tasks by name..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ border: 'none', background: 'transparent', fontSize: '12px', color: '#0F172A', outline: 'none', width: '100%', fontWeight: 600 }}
+            style={{ border: 'none', background: 'transparent', fontSize: '13px', color: '#0F172A', outline: 'none', width: '100%', fontWeight: 600 }}
           />
         </div>
 
-        {/* Custom Manually Coded Dropdowns Grid (4 Controls, No Variety) */}
+        {/* Custom Manually Coded Dropdowns Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px' }}>
           
           <CustomDropdown 
@@ -584,9 +635,17 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* 1. ALL SCHEDULED TASKS FOR TODAY (TEXT UN-CUT & BOLD) */}
+      {/* 1. ALL SCHEDULED TASKS FOR TODAY (3D ENHANCED CONTAINER) */}
       {/* ========================================================================= */}
-      <div style={{ padding: '16px 20px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+      <div style={{
+        padding: '18px 22px',
+        background: 'linear-gradient(145deg, #FFFFFF 0%, #F8FAFC 100%)',
+        borderRadius: '20px',
+        border: '1px solid #CBD5E1',
+        borderBottom: '4px solid #94A3B8',
+        borderLeft: '6px solid #2563EB',
+        boxShadow: '0 12px 24px -4px rgba(37, 99, 235, 0.06), 0 4px 6px -2px rgba(0,0,0,0.02), inset 0 1px 0 rgba(255,255,255,0.8)'
+      }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <h2 style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
             <CalendarDays size={17} color="#2563EB" /> 1. All Tasks Scheduled for Today
@@ -832,9 +891,17 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. CATEGORY-WISE TASKS & SUBTASKS LIST */}
+      {/* 3. CATEGORY-WISE TASKS & SUBTASKS LIST (3D ENHANCED CONTAINER) */}
       {/* ========================================================================= */}
-      <div style={{ padding: '16px 20px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+      <div style={{
+        padding: '18px 22px',
+        background: 'linear-gradient(145deg, #FFFFFF 0%, #F8FAFC 100%)',
+        borderRadius: '20px',
+        border: '1px solid #CBD5E1',
+        borderBottom: '4px solid #94A3B8',
+        borderLeft: '6px solid #7E22CE',
+        boxShadow: '0 12px 24px -4px rgba(126, 34, 206, 0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
+      }}>
         <h2 style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Layers size={17} color="#7E22CE" /> 3. Tasks & Subtasks by Category
         </h2>
@@ -846,11 +913,11 @@ export default function TodayDashboard({
             const catPct = Math.round((catDone / Math.max(1, catTasks.length)) * 100);
 
             return (
-              <div key={cat} style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px', padding: '12px 14px' }}>
+              <div key={cat} style={{ background: '#F8FAFC', border: '1px solid #CBD5E1', borderBottom: '3px solid #E2E8F0', borderRadius: '14px', padding: '12px 14px', boxShadow: '0 4px 8px rgba(0,0,0,0.02)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>{cat}</span>
-                    <span style={{ fontSize: '9px', fontWeight: 800, color: '#7E22CE', background: '#FAF5FF', padding: '1px 6px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '9px', fontWeight: 800, color: '#7E22CE', background: '#FAF5FF', padding: '1px 6px', borderRadius: '4px', border: '1px solid #F3E8FF' }}>
                       {catTasks.length} Tasks
                     </span>
                   </div>
@@ -874,7 +941,7 @@ export default function TodayDashboard({
                           if (onNavigateToTaskDedicated) onNavigateToTaskDedicated(task);
                         }}
                         title="Double-click to open task info page"
-                        style={{ background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer' }}
+                        style={{ background: '#FFF', border: '1px solid #CBD5E1', borderBottom: '2px solid #E2E8F0', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer' }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: '11px', fontWeight: 800, color: statusObj.isCompleted ? '#15803D' : '#0F172A', textDecoration: 'none' }}>
@@ -924,9 +991,17 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. COMPLETED TASKS TODAY SECTION (TEXT UN-CUT) */}
+      {/* 4. COMPLETED TASKS TODAY SECTION (3D ENHANCED CONTAINER) */}
       {/* ========================================================================= */}
-      <div style={{ padding: '16px 20px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+      <div style={{
+        padding: '18px 22px',
+        background: 'linear-gradient(145deg, #F0FDF4 0%, #FFFFFF 100%)',
+        borderRadius: '20px',
+        border: '1px solid #86EFAC',
+        borderBottom: '4px solid #4ADE80',
+        borderLeft: '6px solid #16A34A',
+        boxShadow: '0 12px 24px -4px rgba(22, 163, 74, 0.08), inset 0 1px 0 rgba(255,255,255,0.8)'
+      }}>
         <h3 style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <CheckCircle2 size={17} color="#16A34A" /> 4. Completed Today
         </h3>
@@ -985,9 +1060,20 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* 5. ENHANCED STATISTICAL PERFORMANCE & INSIGHTS (SINGLE LINE TASK TYPE ROW) */}
+      {/* 5. ENHANCED STATISTICAL PERFORMANCE & INSIGHTS (3D ENHANCED CONTAINER) */}
       {/* ========================================================================= */}
-      <div style={{ padding: '20px', background: '#FFF', borderRadius: '24px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{
+        padding: '22px',
+        background: 'linear-gradient(145deg, #FFFFFF 0%, #F8FAFC 100%)',
+        borderRadius: '24px',
+        border: '1px solid #CBD5E1',
+        borderBottom: '4px solid #94A3B8',
+        borderLeft: '6px solid #EA580C',
+        boxShadow: '0 12px 24px -4px rgba(234, 88, 12, 0.08), inset 0 1px 0 rgba(255,255,255,0.8)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px'
+      }}>
         
         {/* Section Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

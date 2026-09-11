@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Lightbulb, Quote, Calendar, Lock, Plus, Search, ChevronRight, FileText, StickyNote, Bell, ShieldCheck, Download } from 'lucide-react';
+import { BookOpen, Lightbulb, Quote, Calendar, Lock, Plus, Search, ChevronRight, FileText, StickyNote, Bell, ShieldCheck, Download, Trash2 } from 'lucide-react';
 import { diaryDB, initDiaryDB, DEFAULT_DIARIES, safeUUID } from '../../lib/diaryDB';
 
 export default function DiaryHomeDashboard({ onOpenDiary, onOpenStoryLibrary, onOpenNotes, onOpenTodos, onLockVault, securityConfig, isUnlocked }) {
@@ -36,7 +36,7 @@ export default function DiaryHomeDashboard({ onOpenDiary, onOpenStoryLibrary, on
 
     const newDiary = {
       id: 'diary-custom-' + safeUUID(),
-      name: newDiaryName,
+      name: newDiaryName.trim(),
       type: 'CUSTOM',
       icon: 'BookOpen',
       isLocked: false,
@@ -49,6 +49,18 @@ export default function DiaryHomeDashboard({ onOpenDiary, onOpenStoryLibrary, on
     setNewDiaryName('');
     setShowAddModal(false);
     loadData();
+  };
+
+  const handleDeleteDiary = async (e, diary) => {
+    e.stopPropagation();
+    if (window.confirm(`Are you sure you want to delete "${diary.name}" and all its saved entries?`)) {
+      await diaryDB.diaries.delete(diary.id);
+      const assocEntries = await diaryDB.entries.where('diaryId').equals(diary.id).toArray();
+      for (const ent of assocEntries) {
+        await diaryDB.entries.delete(ent.id);
+      }
+      loadData();
+    }
   };
 
   const getIconComponent = (iconName) => {
@@ -69,7 +81,7 @@ export default function DiaryHomeDashboard({ onOpenDiary, onOpenStoryLibrary, on
         border: '1px solid #E2E8F0',
         boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)',
         display: 'flex',
-        justifyContent: 'space-between',
+        justify: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: '16px'
@@ -118,12 +130,13 @@ export default function DiaryHomeDashboard({ onOpenDiary, onOpenStoryLibrary, on
               border: 'none',
               padding: '10px 16px',
               borderRadius: '10px',
-              fontWeight: 700,
+              fontWeight: 800,
               fontSize: '13px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              boxShadow: '0 2px 6px rgba(220, 38, 38, 0.25)'
             }}
           >
             <Plus size={16} /> New Diary
@@ -133,23 +146,24 @@ export default function DiaryHomeDashboard({ onOpenDiary, onOpenStoryLibrary, on
 
       {/* Add Custom Diary Modal */}
       {showAddModal && (
-        <form onSubmit={handleCreateCustomDiary} style={{ backgroundColor: '#FFFFFF', padding: '18px', borderRadius: '14px', border: '1px solid #DC2626' }}>
+        <form onSubmit={handleCreateCustomDiary} style={{ backgroundColor: '#FFFFFF', padding: '18px', borderRadius: '14px', border: '2px solid #DC2626', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
           <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>Create Custom Diary Folder</h4>
           <input
             type="text"
             placeholder="e.g. Travel Journal, Internship Notes, Project Ideas"
             value={newDiaryName}
             onChange={(e) => setNewDiaryName(e.target.value)}
+            required
             style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', marginBottom: '12px', boxSizing: 'border-box' }}
           />
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-            <button type="button" onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', color: '#64748B', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-            <button type="submit" style={{ backgroundColor: '#DC2626', color: '#FFFFFF', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>Create Diary</button>
+            <button type="button" onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', color: '#64748B', fontWeight: 600, cursor: 'pointer', padding: '6px 12px' }}>Cancel</button>
+            <button type="submit" style={{ backgroundColor: '#DC2626', color: '#FFFFFF', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 800, cursor: 'pointer' }}>Create Diary</button>
           </div>
         </form>
       )}
 
-      {/* Main 5 Default Diaries & Collections Library */}
+      {/* Main Default & Custom Diaries Library */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
@@ -171,13 +185,14 @@ export default function DiaryHomeDashboard({ onOpenDiary, onOpenStoryLibrary, on
                 borderRadius: '16px',
                 padding: '20px',
                 border: '1px solid #E2E8F0',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
                 cursor: 'pointer',
                 transition: 'transform 0.15s ease, border-color 0.15s ease',
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'space-between',
-                minHeight: '120px'
+                justify: 'space-between',
+                minHeight: '125px',
+                position: 'relative'
               }}
             >
               <div>
@@ -185,7 +200,16 @@ export default function DiaryHomeDashboard({ onOpenDiary, onOpenStoryLibrary, on
                   <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {getIconComponent(d.icon)}
                   </div>
-                  {d.isLocked && <Lock size={16} color="#DC2626" title="Locked Password Protected" />}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {d.isLocked && <Lock size={16} color="#DC2626" title="Locked Password Protected" />}
+                    <button
+                      onClick={(e) => handleDeleteDiary(e, d)}
+                      style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px', borderRadius: '4px' }}
+                      title="Delete Diary"
+                    >
+                      <Trash2 size={16} color="#94A3B8" />
+                    </button>
+                  </div>
                 </div>
                 <h4 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', margin: '12px 0 4px 0' }}>
                   {d.name}
@@ -217,7 +241,7 @@ export default function DiaryHomeDashboard({ onOpenDiary, onOpenStoryLibrary, on
             padding: '20px',
             border: '1px solid #FCD34D',
             cursor: 'pointer',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+            boxShadow: '0 4px 8px rgba(217, 119, 6, 0.08)'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
@@ -238,7 +262,7 @@ export default function DiaryHomeDashboard({ onOpenDiary, onOpenStoryLibrary, on
             padding: '20px',
             border: '1px solid #7DD3FC',
             cursor: 'pointer',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+            boxShadow: '0 4px 8px rgba(2, 132, 199, 0.08)'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
