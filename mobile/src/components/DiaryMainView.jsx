@@ -7,7 +7,7 @@ import TodoRemindersView from './diary/TodoRemindersView';
 import DiaryLockModal from './diary/DiaryLockModal';
 import DiaryExportModal from './diary/DiaryExportModal';
 import { diaryDB, initDiaryDB, safeUUID } from '../lib/diaryDB';
-import { ArrowLeft, Plus, Lock, Download, ChevronRight, FileText } from 'lucide-react';
+import { ArrowLeft, Plus, Lock, Download, ChevronRight, FileText, Trash2, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
 export default function DiaryMainView({ user }) {
@@ -78,9 +78,31 @@ export default function DiaryMainView({ user }) {
     setViewState('ENTRIES_LIST');
   };
 
+  const handleBackFromEditor = async () => {
+    if (activeDiary) {
+      const list = await diaryDB.entries
+        .where('diaryId')
+        .equals(activeDiary.id)
+        .reverse()
+        .sortBy('updatedAt');
+      setEntries(list || []);
+      setViewState('ENTRIES_LIST');
+    } else {
+      setViewState('DASHBOARD');
+    }
+  };
+
   const handleOpenEntry = (entryObj) => {
     setActiveEntry(entryObj);
     setViewState('EDITOR');
+  };
+
+  const handleDeleteEntry = async (e, entryId) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this diary entry?')) {
+      setEntries(prev => prev.filter(ent => ent.id !== entryId));
+      await diaryDB.entries.delete(entryId);
+    }
   };
 
   const handleCreateNewEntry = () => {
@@ -123,7 +145,7 @@ export default function DiaryMainView({ user }) {
             <ArrowLeft size={16} /> Back to Library
           </button>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <h2 style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A', margin: 0 }}>
                 {activeDiary.name}
@@ -142,7 +164,7 @@ export default function DiaryMainView({ user }) {
               </button>
               <button
                 onClick={handleCreateNewEntry}
-                style={{ backgroundColor: '#DC2626', color: '#FFFFFF', border: 'none', padding: '10px 16px', borderRadius: '10px', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ backgroundColor: '#DC2626', color: '#FFFFFF', border: 'none', padding: '10px 16px', borderRadius: '10px', fontWeight: 800, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 6px rgba(220, 38, 38, 0.25)' }}
               >
                 <Plus size={16} /> Today's Entry
               </button>
@@ -154,7 +176,7 @@ export default function DiaryMainView({ user }) {
               <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#FFFFFF', borderRadius: '14px', border: '1px dashed #CBD5E1', color: '#64748B' }}>
                 <FileText size={32} color="#DC2626" style={{ margin: '0 auto 8px auto' }} />
                 <p style={{ margin: 0, fontWeight: 700, fontSize: '14px' }}>No entries in this diary yet</p>
-                <p style={{ fontSize: '12px', margin: '4px 0 0 0' }}>Click "Today's Entry" above to start writing.</p>
+                <p style={{ fontSize: '12px', margin: '4px 0 0 0' }}>Click "Today's Entry" above to start writing your first entry.</p>
               </div>
             ) : (
               entries.map(ent => (
@@ -173,13 +195,28 @@ export default function DiaryMainView({ user }) {
                     boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                   }}
                 >
-                  <div>
-                    <div style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A' }}>{ent.title}</div>
-                    <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
-                      {ent.date} • {(ent.content || '').replace(/<[^>]*>?/gm, '').slice(0, 80)}...
+                  <div style={{ flex: 1, paddingRight: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {ent.mood && <span style={{ fontSize: '14px' }}>{ent.mood}</span>}
+                      <span style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A' }}>{ent.title}</span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span><Calendar size={12} style={{ display: 'inline', marginRight: '3px' }} />{ent.date}</span>
+                      <span>•</span>
+                      <span>{(ent.content || '').replace(/<[^>]*>?/gm, '').slice(0, 75)}...</span>
                     </div>
                   </div>
-                  <ChevronRight size={18} color="#DC2626" />
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      onClick={(e) => handleDeleteEntry(e, ent.id)}
+                      style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '6px' }}
+                      title="Delete Entry"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <ChevronRight size={18} color="#DC2626" />
+                  </div>
                 </div>
               ))
             )}
@@ -190,7 +227,7 @@ export default function DiaryMainView({ user }) {
       {viewState === 'EDITOR' && (
         <DiaryEditorView
           entry={activeEntry}
-          onBack={() => setViewState(activeDiary ? 'ENTRIES_LIST' : 'DASHBOARD')}
+          onBack={handleBackFromEditor}
           onOpenExport={() => setShowExportModal(true)}
         />
       )}

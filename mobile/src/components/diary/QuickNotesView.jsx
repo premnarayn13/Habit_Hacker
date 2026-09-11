@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Pin, Archive, Trash2, Search, Edit3, Check, Sparkles, StickyNote } from 'lucide-react';
+import { Plus, Pin, Archive, Trash2, Search, Edit3, Check, Sparkles, StickyNote, X } from 'lucide-react';
 import { diaryDB, safeUUID } from '../../lib/diaryDB';
 
 export default function QuickNotesView() {
   const [notes, setNotes] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeNote, setActiveNote] = useState(null);
+  const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedColor, setSelectedColor] = useState('#FEF3C7');
@@ -21,56 +22,70 @@ export default function QuickNotesView() {
     setNotes(all || []);
   };
 
+  const handleOpenNewNote = () => {
+    setActiveNote(null);
+    setTitle('');
+    setContent('');
+    setSelectedColor('#FEF3C7');
+    setShowForm(true);
+  };
+
   const handleSaveNote = async () => {
     if (!title.trim() && !content.trim()) return;
 
     const now = new Date().toISOString();
-    if (activeNote) {
+    if (activeNote && activeNote.id) {
       await diaryDB.notes.update(activeNote.id, {
-        title,
-        content,
+        title: title || 'Quick Note',
+        content: content || '',
         color: selectedColor,
         updatedAt: now
       });
     } else {
-      await diaryDB.notes.add({
+      const newNote = {
         id: 'note-' + safeUUID(),
         title: title || 'Quick Note',
-        content,
+        content: content || '',
         isPinned: false,
         isArchived: false,
         color: selectedColor,
         createdAt: now,
         updatedAt: now
-      });
+      };
+      await diaryDB.notes.add(newNote);
     }
 
     setTitle('');
     setContent('');
     setActiveNote(null);
+    setShowForm(false);
     loadNotes();
   };
 
-  const togglePin = async (note) => {
+  const togglePin = async (e, note) => {
+    e.stopPropagation();
     await diaryDB.notes.update(note.id, { isPinned: !note.isPinned });
     loadNotes();
   };
 
-  const deleteNote = async (id) => {
+  const deleteNote = async (e, id) => {
+    e.stopPropagation();
     await diaryDB.notes.delete(id);
     if (activeNote && activeNote.id === id) {
       setActiveNote(null);
       setTitle('');
       setContent('');
+      setShowForm(false);
     }
     loadNotes();
   };
 
   const openEditor = (note) => {
     setActiveNote(note);
-    setTitle(note.title);
+    setTitle(note.title || '');
     setContent(note.content || '');
     setSelectedColor(note.color || '#FEF3C7');
+    setShowForm(true);
   };
 
   const filteredNotes = notes.filter(n => {
@@ -104,37 +119,51 @@ export default function QuickNotesView() {
           />
         </div>
         <button
-          onClick={() => { setActiveNote(null); setTitle(''); setContent(''); }}
+          onClick={handleOpenNewNote}
           style={{
             backgroundColor: '#DC2626',
             color: '#FFFFFF',
             border: 'none',
-            padding: '10px 16px',
+            padding: '10px 18px',
             borderRadius: '10px',
-            fontWeight: 700,
+            fontWeight: 800,
             fontSize: '13px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            boxShadow: '0 2px 6px rgba(220, 38, 38, 0.2)'
           }}
         >
           <Plus size={16} /> New Note
         </button>
       </div>
 
-      {/* Editor Modal / Inline Form */}
-      {(activeNote !== null || title || content) && (
+      {/* Editor Card / Inline Form */}
+      {showForm && (
         <div style={{
           backgroundColor: selectedColor,
           borderRadius: '14px',
-          padding: '16px',
-          border: '1px solid #CBD5E1',
-          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+          padding: '18px',
+          border: '2px solid #DC2626',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          position: 'relative'
         }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <span style={{ fontSize: '11px', fontWeight: 800, color: '#DC2626', textTransform: 'uppercase' }}>
+              {activeNote ? 'Edit Note' : 'Create New Note'}
+            </span>
+            <button
+              onClick={() => { setShowForm(false); setActiveNote(null); }}
+              style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer' }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+
           <input
             type="text"
-            placeholder="Note Title"
+            placeholder="Note Title (e.g. Project Idea / Shopping List)"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             style={{
@@ -149,7 +178,7 @@ export default function QuickNotesView() {
             }}
           />
           <textarea
-            placeholder="Write a quick note..."
+            placeholder="Write your quick note here..."
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={4}
@@ -162,44 +191,50 @@ export default function QuickNotesView() {
               resize: 'vertical',
               color: '#334155',
               fontFamily: 'inherit',
-              marginBottom: '12px'
+              marginBottom: '14px'
             }}
           />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '6px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B' }}>Color:</span>
               {COLORS.map(c => (
                 <button
                   key={c}
+                  type="button"
                   onClick={() => setSelectedColor(c)}
                   style={{
-                    width: '22px',
-                    height: '22px',
+                    width: '24px',
+                    height: '24px',
                     borderRadius: '50%',
                     backgroundColor: c,
-                    border: selectedColor === c ? '2px solid #DC2626' : '1px solid #94A3B8',
-                    cursor: 'pointer'
+                    border: selectedColor === c ? '2px solid #DC2626' : '1px solid #CBD5E1',
+                    cursor: 'pointer',
+                    boxShadow: selectedColor === c ? '0 0 0 2px rgba(220, 38, 38, 0.2)' : 'none'
                   }}
                 />
               ))}
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
-                onClick={() => { setActiveNote(null); setTitle(''); setContent(''); }}
-                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+                type="button"
+                onClick={() => { setShowForm(false); setActiveNote(null); }}
+                style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: '12px', fontWeight: 600, padding: '6px 12px' }}
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleSaveNote}
                 style={{
                   backgroundColor: '#DC2626',
                   color: '#FFFFFF',
                   border: 'none',
-                  padding: '6px 14px',
-                  borderRadius: '6px',
-                  fontWeight: 700,
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  fontWeight: 800,
                   fontSize: '12px',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(220, 38, 38, 0.25)'
                 }}
               >
                 Save Note
@@ -255,7 +290,7 @@ export default function QuickNotesView() {
           boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between',
+          justify: 'space-between',
           minHeight: '120px'
         }}
       >
@@ -263,8 +298,9 @@ export default function QuickNotesView() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
             <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>{n.title}</h4>
             <button
-              onClick={(e) => { e.stopPropagation(); togglePin(n); }}
-              style={{ background: 'none', border: 'none', color: n.isPinned ? '#DC2626' : '#94A3B8', cursor: 'pointer' }}
+              onClick={(e) => togglePin(e, n)}
+              style={{ background: 'none', border: 'none', color: n.isPinned ? '#DC2626' : '#94A3B8', cursor: 'pointer', padding: '2px 4px' }}
+              title={n.isPinned ? "Unpin Note" : "Pin Note"}
             >
               <Pin size={14} />
             </button>
@@ -273,13 +309,14 @@ export default function QuickNotesView() {
             {n.content}
           </p>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', pt: '8px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '8px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
           <span style={{ fontSize: '10px', color: '#64748B' }}>
             {new Date(n.updatedAt).toLocaleDateString()}
           </span>
           <button
-            onClick={(e) => { e.stopPropagation(); deleteNote(n.id); }}
-            style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer' }}
+            onClick={(e) => deleteNote(e, n.id)}
+            style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', padding: '4px 6px', borderRadius: '4px' }}
+            title="Delete Note"
           >
             <Trash2 size={14} />
           </button>

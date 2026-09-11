@@ -28,7 +28,7 @@ export default function TodoRemindersView() {
 
     const newTodo = {
       id: 'todo-' + safeUUID(),
-      title,
+      title: title.trim(),
       dueDate,
       dueTime,
       reminderDate: reminderDate || dueDate,
@@ -39,7 +39,9 @@ export default function TodoRemindersView() {
       updatedAt: new Date().toISOString()
     };
 
+    setTodos(prev => [newTodo, ...prev]);
     await diaryDB.todos.add(newTodo);
+
     if (newTodo.reminderDate && newTodo.reminderTime) {
       await scheduleTodoNotification(newTodo);
     }
@@ -53,12 +55,17 @@ export default function TodoRemindersView() {
     loadTodos();
   };
 
-  const toggleComplete = async (todo) => {
-    await diaryDB.todos.update(todo.id, { isCompleted: !todo.isCompleted });
+  const toggleComplete = async (e, todo) => {
+    if (e) e.stopPropagation();
+    const updatedStatus = !todo.isCompleted;
+    setTodos(prev => prev.map(t => t.id === todo.id ? { ...t, isCompleted: updatedStatus } : t));
+    await diaryDB.todos.update(todo.id, { isCompleted: updatedStatus, updatedAt: new Date().toISOString() });
     loadTodos();
   };
 
-  const deleteTodo = async (id) => {
+  const deleteTodo = async (e, id) => {
+    if (e) e.stopPropagation();
+    setTodos(prev => prev.filter(t => t.id !== id));
     await diaryDB.todos.delete(id);
     loadTodos();
   };
@@ -69,7 +76,7 @@ export default function TodoRemindersView() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
             Personal Reminders & Local Todos
@@ -86,12 +93,13 @@ export default function TodoRemindersView() {
             border: 'none',
             padding: '10px 16px',
             borderRadius: '10px',
-            fontWeight: 700,
+            fontWeight: 800,
             fontSize: '13px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px'
+            gap: '6px',
+            boxShadow: '0 2px 6px rgba(220, 38, 38, 0.25)'
           }}
         >
           <Plus size={16} /> Add Reminder
@@ -104,8 +112,8 @@ export default function TodoRemindersView() {
           backgroundColor: '#FFFFFF',
           borderRadius: '14px',
           padding: '18px',
-          border: '1px solid #DC2626',
-          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+          border: '2px solid #DC2626',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.06)'
         }}>
           <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>
             New Personal Reminder
@@ -170,13 +178,13 @@ export default function TodoRemindersView() {
             <button
               type="button"
               onClick={() => setShowAddForm(false)}
-              style={{ background: 'none', border: 'none', color: '#64748B', fontWeight: 600, cursor: 'pointer' }}
+              style={{ background: 'none', border: 'none', color: '#64748B', fontWeight: 600, cursor: 'pointer', padding: '6px 12px' }}
             >
               Cancel
             </button>
             <button
               type="submit"
-              style={{ backgroundColor: '#DC2626', color: '#FFFFFF', border: 'none', padding: '8px 18px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
+              style={{ backgroundColor: '#DC2626', color: '#FFFFFF', border: 'none', padding: '8px 18px', borderRadius: '8px', fontWeight: 800, cursor: 'pointer' }}
             >
               Schedule Reminder
             </button>
@@ -190,8 +198,8 @@ export default function TodoRemindersView() {
           Upcoming Reminders ({pendingTodos.length})
         </div>
         {pendingTodos.length === 0 ? (
-          <div style={{ padding: '24px', textAlign: 'center', backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px border #E2E8F0', color: '#64748B' }}>
-            No upcoming reminders.
+          <div style={{ padding: '24px', textAlign: 'center', backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', color: '#64748B' }}>
+            No upcoming reminders. Click "Add Reminder" above to set one up.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -206,7 +214,7 @@ export default function TodoRemindersView() {
           <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
             Completed ({completedTodos.length})
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', opacity: 0.7 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', opacity: 0.8 }}>
             {completedTodos.map(t => renderTodoRow(t))}
           </div>
         </div>
@@ -232,28 +240,44 @@ export default function TodoRemindersView() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
           <button
-            onClick={() => toggleComplete(t)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.isCompleted ? '#16A34A' : '#94A3B8' }}
+            onClick={(e) => toggleComplete(e, t)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.isCompleted ? '#16A34A' : '#94A3B8', padding: '4px' }}
+            title={t.isCompleted ? "Mark as Pending" : "Mark as Completed"}
           >
-            {t.isCompleted ? <CheckSquare size={20} /> : <Square size={20} />}
+            {t.isCompleted ? <CheckSquare size={22} color="#16A34A" /> : <Square size={22} color="#94A3B8" />}
           </button>
           <div>
             <div style={{ fontSize: '14px', fontWeight: 700, color: t.isCompleted ? '#94A3B8' : '#0F172A', textDecoration: t.isCompleted ? 'line-through' : 'none' }}>
               {t.title}
             </div>
             {(t.dueDate || t.reminderDate) && (
-              <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+              <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
                 {t.dueDate && <span>Due: {t.dueDate} {t.dueTime}</span>}
-                {t.reminderDate && <span style={{ color: '#DC2626', fontWeight: 600 }}>🔔 Remind: {t.reminderDate} {t.reminderTime}</span>}
+                {t.reminderDate && <span style={{ color: '#DC2626', fontWeight: 700 }}>🔔 Remind: {t.reminderDate} {t.reminderTime}</span>}
               </div>
             )}
           </div>
         </div>
+        
+        {/* Delete Button */}
         <button
-          onClick={() => deleteTodo(t.id)}
-          style={{ background: 'none', border: 'none', color: '#CBD5E1', cursor: 'pointer' }}
+          onClick={(e) => deleteTodo(e, t.id)}
+          style={{
+            backgroundColor: '#FEF2F2',
+            border: '1px solid #FCA5A5',
+            color: '#DC2626',
+            borderRadius: '8px',
+            padding: '8px 10px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontSize: '12px',
+            fontWeight: 700
+          }}
+          title="Delete Reminder"
         >
-          <Trash2 size={16} />
+          <Trash2 size={15} color="#DC2626" /> Delete
         </button>
       </div>
     );
