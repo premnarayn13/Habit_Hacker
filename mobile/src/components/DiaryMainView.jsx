@@ -6,7 +6,7 @@ import QuickNotesView from './diary/QuickNotesView';
 import TodoRemindersView from './diary/TodoRemindersView';
 import DiaryLockModal from './diary/DiaryLockModal';
 import DiaryExportModal from './diary/DiaryExportModal';
-import { diaryDB, initDiaryDB } from '../lib/diaryDB';
+import { diaryDB, initDiaryDB, safeUUID } from '../lib/diaryDB';
 import { ArrowLeft, Plus, Lock, Download, ChevronRight, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
@@ -86,7 +86,7 @@ export default function DiaryMainView({ user }) {
   const handleCreateNewEntry = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const newEntry = {
-      id: 'entry-' + crypto.randomUUID(),
+      id: 'entry-' + safeUUID(),
       diaryId: activeDiary ? activeDiary.id : 'diary-personal',
       title: `${activeDiary ? activeDiary.name : 'Personal'} - ${todayStr}`,
       content: '',

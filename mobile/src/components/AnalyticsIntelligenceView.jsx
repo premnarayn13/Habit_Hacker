@@ -264,7 +264,9 @@ export default function AnalyticsIntelligenceView({
             <Flame size={16} color="#F59E0B" /> {intel.maxActiveStreak}d
           </div>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B' }}>Best: {intel.maxLongestStreak} days</span>
-            <div style={{ background: '#FFF', padding: '14px', borderRadius: '16px', border: '1px solid #E2E8F0', borderLeft: '4px solid #2563EB' }}>
+        </div>
+
+        <div style={{ background: '#FFF', padding: '14px', borderRadius: '16px', border: '1px solid #E2E8F0', borderLeft: '4px solid #2563EB' }}>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Execution Reliability</span>
           <div style={{ fontSize: '22px', fontWeight: 900, color: '#2563EB', marginTop: '2px' }}>{scorecard.executionReliabilityIndex ?? 0}%</div>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#16A34A' }}>High Consistency</span>
@@ -292,8 +294,7 @@ export default function AnalyticsIntelligenceView({
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Stagnation Risk</span>
           <div style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>{scorecard.stagnationRiskCount ?? 0} Tasks</div>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B' }}>&gt;14d Untouched</span>
-        </div>      </div>
-
+        </div>
       </div>
 
       {/* ========================================================================= */}

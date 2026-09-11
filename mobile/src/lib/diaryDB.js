@@ -18,6 +18,17 @@ export const DEFAULT_DIARIES = [
   { id: 'diary-personal', name: "Personal Diary", type: 'PERSONAL_JOURNAL', icon: 'Lock', isLocked: true, displayOrder: 5 }
 ];
 
+export function safeUUID() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxx-4xxx-yxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  }) + '-' + Date.now().toString(36);
+}
+
 export async function initDiaryDB() {
   const count = await diaryDB.diaries.count();
   if (count === 0) {

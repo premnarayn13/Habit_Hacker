@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, BookOpen, ChevronRight, Edit3, Trash2, ArrowLeft, Layers } from 'lucide-react';
-import { diaryDB } from '../../lib/diaryDB';
+import { diaryDB, safeUUID } from '../../lib/diaryDB';
 
 export default function StoryLibraryView({ onOpenEntry }) {
   const [stories, setStories] = useState([]);
@@ -23,7 +23,7 @@ export default function StoryLibraryView({ onOpenEntry }) {
     if (!newStoryTitle.trim()) return;
 
     const newStory = {
-      id: 'story-' + crypto.randomUUID(),
+      id: 'story-' + safeUUID(),
       diaryId: 'diary-story',
       title: newStoryTitle,
       author: 'User',

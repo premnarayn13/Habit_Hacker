@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Lightbulb, Quote, Calendar, Lock, Plus, Search, ChevronRight, FileText, StickyNote, Bell, ShieldCheck, Download } from 'lucide-react';
-import { diaryDB, initDiaryDB, DEFAULT_DIARIES } from '../../lib/diaryDB';
+import { diaryDB, initDiaryDB, DEFAULT_DIARIES, safeUUID } from '../../lib/diaryDB';
 
 export default function DiaryHomeDashboard({ onOpenDiary, onOpenStoryLibrary, onOpenNotes, onOpenTodos, onLockVault, securityConfig, isUnlocked }) {
   const [diaries, setDiaries] = useState([]);
@@ -35,7 +35,7 @@ export default function DiaryHomeDashboard({ onOpenDiary, onOpenStoryLibrary, on
     if (!newDiaryName.trim()) return;
 
     const newDiary = {
-      id: 'diary-custom-' + crypto.randomUUID(),
+      id: 'diary-custom-' + safeUUID(),
       name: newDiaryName,
       type: 'CUSTOM',
       icon: 'BookOpen',

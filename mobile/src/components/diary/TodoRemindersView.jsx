@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Bell, Calendar, Clock, CheckSquare, Square, Trash2, AlertCircle, Volume2, CheckCircle2 } from 'lucide-react';
-import { diaryDB } from '../../lib/diaryDB';
+import { diaryDB, safeUUID } from '../../lib/diaryDB';
 import { scheduleTodoNotification } from '../../lib/diaryReminderScheduler';
 
 export default function TodoRemindersView() {
@@ -27,7 +27,7 @@ export default function TodoRemindersView() {
     if (!title.trim()) return;
 
     const newTodo = {
-      id: 'todo-' + crypto.randomUUID(),
+      id: 'todo-' + safeUUID(),
       title,
       dueDate,
       dueTime,

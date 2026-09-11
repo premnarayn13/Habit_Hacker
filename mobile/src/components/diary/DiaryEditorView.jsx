@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Save, ShieldCheck, Download, Bold, Italic, List, ListOrdered, Quote, Heading1, Heading2, Heading3 } from 'lucide-react';
-import { diaryDB } from '../../lib/diaryDB';
+import { diaryDB, safeUUID } from '../../lib/diaryDB';
 
 export default function DiaryEditorView({ entry, onBack, onOpenExport }) {
   const [title, setTitle] = useState(entry ? entry.title : '');
@@ -42,7 +42,7 @@ export default function DiaryEditorView({ entry, onBack, onOpenExport }) {
 
   const saveCurrentEntry = async (tStr, cStr, dStr) => {
     const now = new Date().toISOString();
-    const entryId = entry && entry.id ? entry.id : 'entry-' + crypto.randomUUID();
+    const entryId = entry && entry.id ? entry.id : 'entry-' + safeUUID();
 
     const record = {
       id: entryId,

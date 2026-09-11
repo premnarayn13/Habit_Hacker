@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Pin, Archive, Trash2, Search, Edit3, Check, Sparkles, StickyNote } from 'lucide-react';
-import { diaryDB } from '../../lib/diaryDB';
+import { diaryDB, safeUUID } from '../../lib/diaryDB';
 
 export default function QuickNotesView() {
   const [notes, setNotes] = useState([]);
@@ -34,7 +34,7 @@ export default function QuickNotesView() {
       });
     } else {
       await diaryDB.notes.add({
-        id: 'note-' + crypto.randomUUID(),
+        id: 'note-' + safeUUID(),
         title: title || 'Quick Note',
         content,
         isPinned: false,
