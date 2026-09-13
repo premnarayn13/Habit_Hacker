@@ -27,6 +27,8 @@ import {
   Key
 } from 'lucide-react';
 
+import { getApiBaseUrl } from '../lib/apiConfig';
+
 export default function SettingsProfileView({ 
   currentUser, 
   onLogout, 
@@ -78,8 +80,9 @@ export default function SettingsProfileView({
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    const baseUrl = getApiBaseUrl();
     // Fetch backend settings if available
-    fetch('http://localhost:8080/api/v1/settings?userId=demo-user-123')
+    fetch(`${baseUrl}/api/v1/settings?userId=demo-user-123`)
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data) {
@@ -120,7 +123,8 @@ export default function SettingsProfileView({
 
     // Persist to Spring Boot REST backend
     try {
-      await fetch('http://localhost:8080/api/v1/settings?userId=demo-user-123', {
+      const baseUrl = getApiBaseUrl();
+      await fetch(`${baseUrl}/api/v1/settings?userId=demo-user-123`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(profileData)
@@ -145,7 +149,8 @@ export default function SettingsProfileView({
     }
 
     try {
-      const res = await fetch('http://localhost:8080/api/v1/settings/change-password?userId=demo-user-123', {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/settings/change-password?userId=demo-user-123`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(passwordForm)
