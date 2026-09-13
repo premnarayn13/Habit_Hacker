@@ -208,7 +208,7 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
   const menuItems = [
     { id: 'widgets', label: 'Master Home Dashboard', icon: Grid },
     { id: 'today', label: 'Today Dashboard', icon: CheckSquare },
-    { id: 'tasks', label: 'Tasks & Subtasks', icon: Layers },
+    { id: 'tasks', label: 'Habits & Subtasks', icon: Layers },
     { id: 'calendar', label: 'Smart Calendar', icon: Calendar },
     { id: 'planner', label: 'Capacity Planner', icon: Clock },
     { id: 'analytics', label: 'Visual Analytics', icon: BarChart3 },

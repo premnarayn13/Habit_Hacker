@@ -75,7 +75,7 @@ export default function Header({
               </div>
               <div style={{ lineHeight: 1.1 }}>
                 <h1 style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap', margin: 0 }}>HABIT HACKER</h1>
-                <p className="desktop-only-sub" style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, margin: 0 }}>Task System</p>
+                <p className="desktop-only-sub" style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, margin: 0 }}>Habit System</p>
               </div>
             </div>
           </div>
@@ -128,7 +128,7 @@ export default function Header({
               onClick={() => setActiveTab('tasks')}
               style={{ border: 'none', padding: '6px 12px', fontSize: '12px', background: activeTab === 'tasks' ? 'linear-gradient(135deg, #DC2626, #B91C1C)' : 'transparent', color: activeTab === 'tasks' ? '#FFF' : '#334155' }}
             >
-              <Layers size={14} /> Tasks
+              <Layers size={14} /> Habits
             </button>
 
             <button 
