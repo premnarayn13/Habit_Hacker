@@ -6,6 +6,8 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "expo:start": "npx expo start",
+    "expo:tunnel": "npx expo start --tunnel",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -14,11 +16,15 @@
     "date-fns": "^4.4.0",
     "dexie": "^4.4.6",
     "docx": "^9.7.1",
+    "expo": "^57.0.22",
+    "expo-status-bar": "^57.0.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.344.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-native": "^0.87.1",
+    "react-native-web": "^0.21.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
