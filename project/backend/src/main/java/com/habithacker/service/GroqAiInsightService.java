@@ -13,13 +13,13 @@ import java.util.*;
 @Service
 public class GroqAiInsightService {
 
-    @Value("${groq.api-key:gsk_demo_key}")
+    @Value("${groq.api.key:gsk_demo_key}")
     private String apiKey;
 
-    @Value("${groq.model:llama-3.3-70b-versatile}")
+    @Value("${groq.model.id:openai/gpt-oss-120b}")
     private String modelName;
 
-    @Value("${groq.endpoint:https://api.groq.com/openai/v1/chat/completions}")
+    @Value("${groq.api.url:https://api.groq.com/openai/v1/chat/completions}")
     private String groqEndpoint;
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -59,7 +59,7 @@ public class GroqAiInsightService {
                         Map message = (Map) firstChoice.get("message");
                         String content = (String) message.get("content");
 
-                        response.put("provider", "Groq AI (Llama 3.3 70B)");
+                        response.put("provider", "Groq AI (" + modelName + ")");
                         response.put("insightContent", content);
                         response.put("disciplineScore", 88);
                         response.put("recommendations", List.of(
@@ -78,7 +78,7 @@ public class GroqAiInsightService {
         }
 
         // Fallback Intelligent Heuristics when Groq API key is offline or unconfigured
-        response.put("provider", "Habit Hacker AI Engine (Local Heuristic)");
+        response.put("provider", "Habit Hacker AI Engine (" + modelName + " - Fallback)");
         response.put("insightContent", "Your habit discipline score is 86%. Consistency across morning focus blocks remains high.");
         response.put("disciplineScore", 86);
         response.put("recommendations", List.of(

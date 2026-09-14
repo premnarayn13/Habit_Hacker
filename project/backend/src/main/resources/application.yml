@@ -34,7 +34,9 @@ management:
         include: health,info,metrics
 
 groq:
-  api-key: ${GROQ_API_KEY:gsk_demo_key}
-  model: ${GROQ_MODEL:llama-3.3-70b-versatile}
-  endpoint: https://api.groq.com/openai/v1/chat/completions
+  api:
+    url: ${GROQ_API_URL:https://api.groq.com/openai/v1/chat/completions}
+    key: ${GROQ_API_KEY:gsk_demo_key}
+  model:
+    id: ${GROQ_MODEL_ID:openai/gpt-oss-120b}
 
