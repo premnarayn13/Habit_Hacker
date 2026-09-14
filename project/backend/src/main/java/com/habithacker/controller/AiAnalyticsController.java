@@ -21,12 +21,18 @@ public class AiAnalyticsController {
             @RequestParam(defaultValue = "demo-user-123") String userId,
             @RequestParam(defaultValue = "10") Integer totalTasks,
             @RequestParam(defaultValue = "8") Integer completedTasks,
-            @RequestParam(defaultValue = "2") Integer missedTasks) {
+            @RequestParam(defaultValue = "2") Integer missedTasks,
+            @RequestParam(defaultValue = "80") Integer completionRate,
+            @RequestParam(defaultValue = "5") Integer maxStreak,
+            @RequestParam(defaultValue = "380") Integer plannedMinutes) {
         
         Map<String, Object> taskMetrics = Map.of(
                 "totalTasks", totalTasks,
                 "completedTasks", completedTasks,
                 "missedTasks", missedTasks,
+                "completionRate", completionRate,
+                "maxStreak", maxStreak,
+                "plannedMinutes", plannedMinutes,
                 "capacityPercentage", Math.round((completedTasks.doubleValue() / Math.max(1, totalTasks)) * 100)
         );
 
@@ -34,3 +40,4 @@ public class AiAnalyticsController {
         return ResponseEntity.ok(insights);
     }
 }
+

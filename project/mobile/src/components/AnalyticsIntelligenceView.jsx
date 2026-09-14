@@ -91,7 +91,8 @@ export default function AnalyticsIntelligenceView({
     setAiState(prev => ({ ...prev, loading: true, error: null }));
     const baseUrl = getApiBaseUrl();
     try {
-      const res = await fetch(`${baseUrl}/api/v1/analytics/ai-insights?userId=demo-user-123&totalTasks=${tasks.length}&completedTasks=${intel.completedTasksCount || 8}&missedTasks=${intel.missedTasksCount || 2}`);
+      const url = `${baseUrl}/api/v1/analytics/ai-insights?userId=demo-user-123&totalTasks=${tasks.length}&completedTasks=${intel.completedTasksCount || 8}&missedTasks=${intel.missedTasksCount || 2}&completionRate=${intel.overallCompletionRate || 80}&maxStreak=${intel.maxActiveStreak || 5}&plannedMinutes=${intel.totalPlannedWorkloadMinutes || 380}`;
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setAiState({ loading: false, data, error: null, isOfflineCached: false, cachedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
@@ -432,13 +433,13 @@ export default function AnalyticsIntelligenceView({
             <Compass size={20} color="#DC2626" /> Actionable Productivity Decisions (Scrollable Mode)
           </h3>
           <span style={{ fontSize: '10px', fontWeight: 800, color: '#DC2626', background: '#FEF2F2', padding: '3px 9px', borderRadius: '12px', border: '1px solid #FCA5A5' }}>
-            {(intel.actionableDecisions || []).length} High-Impact Decisions
+            {((aiState.data?.actionableDecisions || intel.actionableDecisions) || []).length} AI-Generated Decisions
           </span>
         </div>
 
         {/* Scrollable Container with fixed height */}
         <div style={{ maxHeight: '290px', overflowY: 'auto', paddingRight: '6px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {(intel.actionableDecisions || []).map(dec => (
+          {((aiState.data?.actionableDecisions || intel.actionableDecisions) || []).map(dec => (
             <div key={dec.id} style={{ padding: '14px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
                 <span style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>{dec.title}</span>
@@ -481,7 +482,7 @@ export default function AnalyticsIntelligenceView({
         {/* Scrollable Container */}
         <div style={{ maxHeight: '310px', overflowY: 'auto', paddingRight: '6px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
-            {(intel.taskDifficultyClassifications || []).map(item => (
+            {((aiState.data?.taskDifficultyClassifications || intel.taskDifficultyClassifications) || []).map(item => (
               <div key={item.id} style={{
                 padding: '12px',
                 background: item.difficultyType === 'HARD' ? '#FEF2F2' : (item.difficultyType === 'IRREGULAR' ? '#FFFBEB' : '#F0FDF4'),
@@ -557,9 +558,10 @@ export default function AnalyticsIntelligenceView({
           {(() => {
             const todDist = intel?.timeOfDayDistribution || { morning: { label: 'Morning (6am–12pm)', percent: 35 } };
             const topTod = Object.values(todDist).sort((a,b)=>(b?.percent || 0)-(a?.percent || 0))[0] || { label: 'Morning (6am–12pm)', percent: 35 };
+            const fallbackText = `Your peak focus productivity occurs during ${topTod.label} with ${topTod.percent}% of total execution output.`;
             return (
               <span>
-                <strong>Analytical Takeaway:</strong> Your peak focus productivity occurs during <strong>{topTod.label}</strong> with {topTod.percent}% of total execution output.
+                <strong style={{ color: '#DC2626' }}>AI Analytical Takeaway:</strong> {aiState.data?.sectionTakeaways?.todTakeaway || fallbackText}
               </span>
             );
           })()}
@@ -595,7 +597,7 @@ export default function AnalyticsIntelligenceView({
         </div>
 
         <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-          <strong>Analytical Takeaway:</strong> Categories with positive output divergence demonstrate high ROI on invested workload time. Reallocate capacity from deficit categories to balance portfolio execution.
+          <strong style={{ color: '#DC2626' }}>AI Analytical Takeaway:</strong> {aiState.data?.sectionTakeaways?.categoryEffortTakeaway || "Categories with positive output divergence demonstrate high ROI on invested workload time. Reallocate capacity from deficit categories to balance portfolio execution."}
         </div>
       </div>
 
@@ -643,7 +645,7 @@ export default function AnalyticsIntelligenceView({
         </div>
 
         <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-          <strong>Analytical Takeaway:</strong> Configuring mandatory subtasks boosts parent task completion rate by <strong>+{(intel?.hierarchySynergyMetrics?.mandatorySubtaskBoostPercent ?? 0)}%</strong> compared to unstructured standalone tasks.
+          <strong style={{ color: '#DC2626' }}>AI Analytical Takeaway:</strong> {aiState.data?.sectionTakeaways?.subtaskHierarchyTakeaway || `Configuring mandatory subtasks boosts parent task completion rate by +${(intel?.hierarchySynergyMetrics?.mandatorySubtaskBoostPercent ?? 0)}% compared to unstructured standalone tasks.`}
         </div>
       </div>
 
@@ -681,7 +683,7 @@ export default function AnalyticsIntelligenceView({
         </div>
 
         <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-          <strong>Analytical Takeaway:</strong> Switching context across more than 5 distinct tasks per day reduces completion velocity by 20%. Keep daily task density capped at 3–4 core tasks.
+          <strong style={{ color: '#DC2626' }}>AI Analytical Takeaway:</strong> {aiState.data?.sectionTakeaways?.contextSwitchingTakeaway || "Switching context across more than 5 distinct tasks per day reduces completion velocity by 20%. Keep daily task density capped at 3–4 core tasks."}
         </div>
       </div>
 
@@ -711,7 +713,7 @@ export default function AnalyticsIntelligenceView({
         </div>
 
         <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-          <strong>Analytical Takeaway:</strong> Completing morning discipline habits creates positive momentum carryover, increasing main task execution velocity by an average of +28%.
+          <strong style={{ color: '#DC2626' }}>AI Analytical Takeaway:</strong> {aiState.data?.sectionTakeaways?.habitSynergyTakeaway || "Completing morning discipline habits creates positive momentum carryover, increasing main task execution velocity by an average of +28%."}
         </div>
       </div>
 
@@ -803,7 +805,7 @@ export default function AnalyticsIntelligenceView({
         </div>
 
         <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-          <strong>Analytical Takeaway:</strong> Performance momentum is currently <strong>{intel.momentumStatus}</strong> with a baseline completion rate of {intel.overallCompletionRate}%. Daily output fluctuates within an average range of {Math.round(intel.totalMeasureOutput / 14)} units/day.
+          <strong style={{ color: '#DC2626' }}>AI Analytical Takeaway:</strong> {aiState.data?.sectionTakeaways?.pulseTakeaway || `Performance momentum is currently ${intel.momentumStatus} with a baseline completion rate of ${intel.overallCompletionRate}%. Daily output fluctuates within an average range of ${Math.round(intel.totalMeasureOutput / 14)} units/day.`}
         </div>
       </div>
 
@@ -886,7 +888,7 @@ export default function AnalyticsIntelligenceView({
         </div>
 
         <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-          <strong>Analytical Takeaway:</strong> High-workload tasks (&gt;45 mins) exhibit a 32% lower completion rate compared to lightweight tasks (&lt;30 mins). Break heavy tasks into subtasks to push execution points into the top-right quadrant.
+          <strong style={{ color: '#DC2626' }}>AI Analytical Takeaway:</strong> {aiState.data?.sectionTakeaways?.scatterTakeaway || "High-workload tasks (>45 mins) exhibit a 32% lower completion rate compared to lightweight tasks (<30 mins). Break heavy tasks into subtasks to push execution points into the top-right quadrant."}
         </div>
       </div>
 
@@ -922,7 +924,7 @@ export default function AnalyticsIntelligenceView({
         </div>
 
         <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-          <strong>Analytical Takeaway:</strong> The top 20% of subtask blockers account for over 80% of all parent task missed days. Resolving subtask "{intel.topParentBlockerSubtask ? intel.topParentBlockerSubtask.subtaskTitle : 'Mandatory Subtask'}" will restore overall parent completion.
+          <strong style={{ color: '#DC2626' }}>AI Analytical Takeaway:</strong> {aiState.data?.sectionTakeaways?.paretoBlockerTakeaway || `The top 20% of subtask blockers account for over 80% of all parent task missed days. Resolving subtask "${intel.topParentBlockerSubtask ? intel.topParentBlockerSubtask.subtaskTitle : 'Mandatory Subtask'}" will restore overall parent completion.`}
         </div>
       </div>
 
@@ -972,7 +974,7 @@ export default function AnalyticsIntelligenceView({
         </div>
 
         <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-          <strong>Analytical Takeaway:</strong> Mid-week days (Tue–Thu) consistently show higher task completion rates than weekends (Sat–Sun). Shift heavy technical focus tasks away from weekends.
+          <strong style={{ color: '#DC2626' }}>AI Analytical Takeaway:</strong> {aiState.data?.sectionTakeaways?.weekdayMatrixTakeaway || "Mid-week days (Tue–Thu) consistently show higher task completion rates than weekends (Sat–Sun). Shift heavy technical focus tasks away from weekends."}
         </div>
       </div>
 
@@ -1010,7 +1012,7 @@ export default function AnalyticsIntelligenceView({
         </div>
 
         <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-          <strong>Analytical Takeaway:</strong> Operating at {intel.capacityUtilizationPercent}% utilization. Keeping total daily workload below {intel.dailyCapacityMinutes} mins avoids fatigue degradation.
+          <strong style={{ color: '#DC2626' }}>AI Analytical Takeaway:</strong> {aiState.data?.sectionTakeaways?.capacityGaugeTakeaway || `Operating at ${intel.capacityUtilizationPercent}% utilization. Keeping total daily workload below ${intel.dailyCapacityMinutes} mins avoids fatigue degradation.`}
         </div>
       </div>
 
@@ -1041,7 +1043,7 @@ export default function AnalyticsIntelligenceView({
         </div>
 
         <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-          <strong>Analytical Takeaway:</strong> The critical drop-off point occurs between Day 3 ({intel?.streakSurvivalCurve?.day3 || 85}%) and Day 7 ({intel?.streakSurvivalCurve?.day7 || 70}%). Surviving past Day 7 increases 30-day streak retention by 4.2x.
+          <strong style={{ color: '#DC2626' }}>AI Analytical Takeaway:</strong> {aiState.data?.sectionTakeaways?.streakSurvivalTakeaway || `The critical drop-off point occurs between Day 3 (${intel?.streakSurvivalCurve?.day3 || 85}%) and Day 7 (${intel?.streakSurvivalCurve?.day7 || 70}%). Surviving past Day 7 increases 30-day streak retention by 4.2x.`}
         </div>
       </div>
 
@@ -1079,7 +1081,7 @@ export default function AnalyticsIntelligenceView({
         </div>
 
         <div style={{ marginTop: '12px', padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-          <strong>Analytical Takeaway:</strong> High-density execution blocks are clustered in recent weeks. Maintain consistent daily activity to prevent white/grey low-intensity gaps.
+          <strong style={{ color: '#DC2626' }}>AI Analytical Takeaway:</strong> {aiState.data?.sectionTakeaways?.calendarGridTakeaway || "High-density execution blocks are clustered in recent weeks. Maintain consistent daily activity to prevent white/grey low-intensity gaps."}
         </div>
       </div>
 
