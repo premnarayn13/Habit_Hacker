@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -44,9 +44,11 @@ import {
   Sunrise,
   GitMerge,
   Cpu,
-  BarChart2
+  BarChart2,
+  RefreshCw
 } from 'lucide-react';
 import { computeAnalyticsIntelligenceData } from '../lib/analyticsEngine';
+import { getApiBaseUrl } from '../lib/apiConfig';
 
 export default function AnalyticsIntelligenceView({
   tasks = [],
@@ -75,6 +77,50 @@ export default function AnalyticsIntelligenceView({
   const [scatterYAxis, setScatterYAxis] = useState('COMPLETION'); // 'COMPLETION', 'OUTPUT'
 
   const [activeInsightModal, setActiveInsightModal] = useState(null); // Selected insight object for "Why?" popup
+
+  // Groq AI Productivity Coach State & Offline Cache
+  const [aiState, setAiState] = useState({
+    loading: false,
+    data: null,
+    error: null,
+    isOfflineCached: false,
+    cachedTime: null
+  });
+
+  const fetchGroqAiInsights = async () => {
+    setAiState(prev => ({ ...prev, loading: true, error: null }));
+    const baseUrl = getApiBaseUrl();
+    try {
+      const res = await fetch(`${baseUrl}/api/v1/analytics/ai-insights?userId=demo-user-123&totalTasks=${tasks.length}&completedTasks=${intel.completedTasksCount || 8}&missedTasks=${intel.missedTasksCount || 2}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAiState({ loading: false, data, error: null, isOfflineCached: false, cachedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+        try {
+          localStorage.setItem('habit_hacker_cached_ai_insight', JSON.stringify({ data, cachedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
+        } catch (e) {}
+        return;
+      }
+    } catch (err) {
+      try {
+        const cachedRaw = localStorage.getItem('habit_hacker_cached_ai_insight');
+        if (cachedRaw) {
+          const parsed = JSON.parse(cachedRaw);
+          setAiState({ loading: false, data: parsed.data, error: null, isOfflineCached: true, cachedTime: parsed.cachedAt });
+          return;
+        }
+      } catch (e) {}
+      setAiState({
+        loading: false,
+        data: null,
+        error: 'AI Productivity Insights require an active network connection. Connect online to generate fresh Groq Llama-3 analysis.',
+        isOfflineCached: false
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchGroqAiInsights();
+  }, []);
 
   // Dynamic User Categories List
   const userCategories = Array.from(new Set(tasks.map(t => t.category).filter(Boolean)));
@@ -295,6 +341,86 @@ export default function AnalyticsIntelligenceView({
           <div style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>{scorecard.stagnationRiskCount ?? 0} Tasks</div>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B' }}>&gt;14d Untouched</span>
         </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* GROQ AI PRODUCTIVITY COACH CARD (SPRING AI + GROQ LLM + OFFLINE VAULT) */}
+      {/* ========================================================================= */}
+      <div style={{
+        padding: '20px',
+        background: 'linear-gradient(135deg, #1E1B4B 0%, #0F172A 100%)',
+        borderRadius: '20px',
+        border: '1px solid #4338CA',
+        color: '#FFFFFF',
+        boxShadow: '0 8px 24px rgba(30, 27, 75, 0.25)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ padding: '8px', background: '#312E81', borderRadius: '12px' }}>
+              <Sparkles size={20} color="#818CF8" />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: 900, margin: 0, color: '#F8FAFC' }}>
+                Groq AI Productivity Coach
+              </h3>
+              <span style={{ fontSize: '11px', color: '#A5B4FC', fontWeight: 600 }}>
+                {aiState.data?.provider || 'Powered by Groq LLM & Spring AI'}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {aiState.isOfflineCached && (
+              <span style={{ fontSize: '10px', fontWeight: 800, background: 'rgba(217, 119, 6, 0.2)', color: '#FBBF24', padding: '4px 10px', borderRadius: '12px', border: '1px solid #D97706' }}>
+                Offline Cached ({aiState.cachedTime || 'Prior Session'})
+              </span>
+            )}
+            <button 
+              onClick={fetchGroqAiInsights}
+              disabled={aiState.loading}
+              style={{
+                background: '#3730A3',
+                border: '1px solid #4F46E5',
+                color: '#FFF',
+                padding: '6px 12px',
+                borderRadius: '10px',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <RefreshCw size={13} className={aiState.loading ? 'spin-animation' : ''} />
+              {aiState.loading ? 'Generating...' : 'Refresh AI'}
+            </button>
+          </div>
+        </div>
+
+        {aiState.error ? (
+          <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #F87171', padding: '12px 16px', borderRadius: '12px', fontSize: '12px', color: '#FCA5A5' }}>
+            <AlertCircle size={14} style={{ display: 'inline', marginRight: '6px' }} />
+            {aiState.error}
+          </div>
+        ) : (
+          <div>
+            <p style={{ fontSize: '13px', color: '#E0E7FF', lineHeight: 1.5, margin: '0 0 12px 0', fontWeight: 500 }}>
+              "{aiState.data?.insightContent || 'Analyzing your productivity velocity, focus blocks, and daily habit consistency...'}"
+            </p>
+
+            {aiState.data?.recommendations && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {aiState.data.recommendations.map((rec, idx) => (
+                  <div key={idx} style={{ background: 'rgba(255,255,255,0.06)', padding: '10px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '12px', color: '#C7D2FE', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Zap size={14} color="#818CF8" style={{ flexShrink: 0 }} />
+                    <span>{rec}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}

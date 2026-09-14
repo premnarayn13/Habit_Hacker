@@ -32,3 +32,9 @@ management:
     web:
       exposure:
         include: health,info,metrics
+
+groq:
+  api-key: ${GROQ_API_KEY:gsk_demo_key}
+  model: ${GROQ_MODEL:llama-3.3-70b-versatile}
+  endpoint: https://api.groq.com/openai/v1/chat/completions
+
