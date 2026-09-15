@@ -4,9 +4,11 @@
     "slug": "habit-hacker",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./public/favicon.ico",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
       "backgroundColor": "#0B0F19"
     },
     "assetBundlePatterns": [
@@ -18,12 +20,18 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B0F19"
       },
-      "package": "com.habithacker.app"
+      "package": "com.habithacker.app",
+      "versionCode": 1,
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ]
     },
     "web": {
-      "favicon": "./public/favicon.ico"
+      "favicon": "./assets/favicon.png"
     }
   }
 }

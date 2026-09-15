@@ -8,6 +8,8 @@
     "dev": "vite",
     "expo:start": "npx expo start",
     "expo:tunnel": "npx expo start --tunnel",
+    "eas:build:apk": "eas build --platform android --profile preview",
+    "eas:build:aab": "eas build --platform android --profile production",
     "build": "vite build",
     "preview": "vite preview"
   },
