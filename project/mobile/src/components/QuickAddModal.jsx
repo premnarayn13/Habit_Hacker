@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { collaborationService } from '../lib/collaborationService';
 import { 
   X, 
   Layers, 
@@ -87,15 +88,33 @@ export default function QuickAddModal({
     if (!taskData.title.trim() || validationError) return;
 
     const finalCategory = categoryInput.trim() || taskData.category;
+    const createdTaskId = 'task-' + Date.now();
 
-    onAddTask({
+    const createdTask = {
+      id: createdTaskId,
       ...taskData,
       category: finalCategory,
       plannedStart: taskData.startDate,
       plannedEnd: taskData.endDate,
       targetDayCount: taskData.trackingMode === 'count_days' ? parseInt(taskData.targetCount) || 1 : null,
       targetEventCount: taskData.trackingMode === 'count_event' ? parseInt(taskData.targetCount) || 1 : null
-    });
+    };
+
+    onAddTask(createdTask);
+
+    // If collaborator email provided, dispatch collaboration invitation request
+    if (taskData.collab && taskData.collab.trim()) {
+      collaborationService.sendTaskInvite({
+        taskId: createdTaskId,
+        taskTitle: taskData.title.trim(),
+        category: finalCategory,
+        priority: taskData.priority || 'HIGH',
+        senderEmail: 'prem.narayn@habithacker.app',
+        senderName: 'Prem Narayn',
+        receiverEmail: taskData.collab.trim()
+      });
+    }
+
     onClose();
   };
 

@@ -636,32 +636,9 @@ export default function App() {
   const [availableCapacityMinutes, setAvailableCapacityMinutes] = useState(480);
 
   const [tasks, setTasks] = useState(() => {
-    try {
-      const globalCached = localStorage.getItem('habit_hacker_tasks_global_v2');
-      if (globalCached) {
-        let parsed = JSON.parse(globalCached);
-        if (parsed && parsed.length > 0) {
-          // Un-archive completed tasks that were accidentally auto-archived
-          parsed = parsed.map(t => {
-            const isCompleted = t.progressPercent >= 100 || (t.targetCount > 0 && t.currentCount >= t.targetCount);
-            if (isCompleted && t.isArchived && t.archiveReason === 'Passed Archive (5 Days Un-extended)') {
-              return { ...t, isArchived: false };
-            }
-            return t;
-          });
-          const existingIds = new Set(parsed.map(t => t.id));
-          const missingDefaults = INITIAL_DEFAULT_TASKS.filter(dt => !existingIds.has(dt.id));
-          if (missingDefaults.length > 0) {
-            const merged = [...parsed, ...missingDefaults];
-            try { localStorage.setItem('habit_hacker_tasks_global_v2', JSON.stringify(merged)); } catch (e) {}
-            return merged;
-          }
-          try { localStorage.setItem('habit_hacker_tasks_global_v2', JSON.stringify(parsed)); } catch (e) {}
-          return parsed;
-        }
-      }
-    } catch (e) {}
-    return INITIAL_DEFAULT_TASKS;
+    // On initial render we don't yet know the user, so start with empty.
+    // fetchUserData() will populate the correct data once auth resolves.
+    return [];
   });
   const [subtasks, setSubtasks] = useState([]);
   const [habits, setHabits] = useState([]);
@@ -750,30 +727,67 @@ export default function App() {
   };
 
   const fetchUserData = async (userId, userEmail = '') => {
-    try {
-      const globalCached = localStorage.getItem('habit_hacker_tasks_global_v2');
-      const emailCached = userEmail ? localStorage.getItem('habit_hacker_tasks_' + userEmail.toLowerCase()) : null;
+    // isGuest: no real user logged in (guest/demo mode)
+    const isGuest = !userId || userId === 'default-user';
 
-      let cachedTasks = [];
-      if (emailCached) {
-        cachedTasks = JSON.parse(emailCached);
-      } else if (globalCached) {
-        cachedTasks = JSON.parse(globalCached);
+    // For a real logged-in user, clear any cross-user global cache so old
+    // accounts don't bleed into a fresh login.
+    if (!isGuest && userEmail) {
+      const cachedOwner = localStorage.getItem('habit_hacker_cache_owner');
+      if (cachedOwner && cachedOwner !== userEmail.toLowerCase()) {
+        // Different user logged in — wipe the previous user's cached tasks
+        localStorage.removeItem('habit_hacker_tasks_global_v2');
+      }
+      localStorage.setItem('habit_hacker_cache_owner', userEmail.toLowerCase());
+    }
+
+    try {
+      // For guest/demo mode: load per-user cache or fall back to demo tasks
+      if (isGuest) {
+        const globalCached = localStorage.getItem('habit_hacker_tasks_global_v2');
+        if (globalCached) {
+          try {
+            const parsed = JSON.parse(globalCached);
+            if (parsed && parsed.length > 0) {
+              updateTasksState(parsed, '');
+              return;
+            }
+          } catch (e) {}
+        }
+        updateTasksState(INITIAL_DEFAULT_TASKS, '');
+        return;
       }
 
-      const { data: dbTasks } = await supabase
+      // Logged-in user: check per-user email cache first for instant UI
+      if (userEmail) {
+        const emailCached = localStorage.getItem('habit_hacker_tasks_' + userEmail.toLowerCase());
+        if (emailCached) {
+          try {
+            const parsed = JSON.parse(emailCached);
+            if (parsed && parsed.length > 0) {
+              updateTasksState(parsed, userEmail);
+            }
+          } catch (e) {}
+        }
+      }
+
+      // Always fetch fresh from Supabase for authenticated users
+      const { data: dbTasks, error: taskError } = await supabase
         .from('tasks')
-        .select('*');
+        .select('*')
+        .eq('user_id', userId);
 
       const { data: dbSubtasks } = await supabase
         .from('subtasks')
-        .select('*');
+        .select('*')
+        .eq('user_id', userId);
 
       let fetchedItems = [];
 
       if (dbTasks && dbTasks.length > 0) {
         const mappedTasks = dbTasks.map(t => ({
           id: t.id,
+          user_id: t.user_id,
           title: t.title,
           description: t.description || '',
           collab: t.collab || '',
@@ -785,9 +799,9 @@ export default function App() {
           eventUnitTarget: Number(t.event_unit_target || 10),
           eventUnitName: t.event_unit_name || 'units',
           progressPercent: t.progress_percent || 0,
-          plannedStart: t.start_date || t.planned_start || '2026-08-01',
-          plannedEnd: t.end_date || t.planned_end || '2026-09-30',
-          deadline: t.end_date || t.deadline || '2026-09-30',
+          plannedStart: t.start_date || t.planned_start || '',
+          plannedEnd: t.end_date || t.planned_end || '',
+          deadline: t.end_date || t.deadline || '',
           estimatedMinutes: t.estimated_minutes || 30,
           actualMinutes: t.actual_minutes || 0,
           category: t.category || 'General',
@@ -812,7 +826,7 @@ export default function App() {
           parentTaskId: s.parent_task_id || s.parent_id || '',
           title: s.title,
           description: s.description || '',
-          user_id: s.user_id || 'default-user',
+          user_id: s.user_id,
           category: s.category || 'General',
           priority: s.priority || 'MEDIUM',
           trackingMode: s.tracking_mode || 'end_date',
@@ -838,33 +852,20 @@ export default function App() {
         });
       }
 
-      if (fetchedItems.length > 0) {
-        const combined = [...fetchedItems];
-        INITIAL_DEFAULT_TASKS.forEach(dt => {
-          const existingIdx = combined.findIndex(t => t.id === dt.id);
-          if (existingIdx >= 0) {
-            combined[existingIdx] = { ...dt, ...combined[existingIdx], parentTaskId: dt.parentTaskId || combined[existingIdx].parentTaskId };
-          } else {
-            combined.push(dt);
-          }
-        });
-
-        updateTasksState(combined, userEmail);
-      } else {
-        updateTasksState(INITIAL_DEFAULT_TASKS, userEmail);
-      }
+      // Use only the user's own DB data — never inject demo tasks for real accounts
+      updateTasksState(fetchedItems, userEmail);
 
       try {
         const { data: dbMissed } = await supabase.from('view_parent_task_missed_days').select('*');
         if (dbMissed && dbMissed.length > 0) setMissedDaysLogs(dbMissed);
 
-        const { data: dbTaskLogs } = await supabase.from('task_logs').select('*');
+        const { data: dbTaskLogs } = await supabase.from('task_logs').select('*').eq('user_id', userId);
         if (dbTaskLogs) setTaskLogs(dbTaskLogs);
 
-        const { data: dbSubtaskLogs } = await supabase.from('subtask_logs').select('*');
+        const { data: dbSubtaskLogs } = await supabase.from('subtask_logs').select('*').eq('user_id', userId);
         if (dbSubtaskLogs) setSubtaskLogs(dbSubtaskLogs);
 
-        const { data: dbEventLogs } = await supabase.from('event_logs').select('*');
+        const { data: dbEventLogs } = await supabase.from('event_logs').select('*').eq('user_id', userId);
         if (dbEventLogs) setEventLogs(dbEventLogs);
 
         const { data: dbFailSummary } = await supabase.from('v_subtask_failure_summary').select('*');
@@ -873,7 +874,12 @@ export default function App() {
 
     } catch (err) {
       console.warn('Supabase fetch notice:', err.message);
-      updateTasksState(INITIAL_DEFAULT_TASKS, userEmail);
+      // On error: show empty for real users so they don't see wrong data
+      if (!isGuest) {
+        updateTasksState([], userEmail);
+      } else {
+        updateTasksState(INITIAL_DEFAULT_TASKS, '');
+      }
     }
   };
 
@@ -883,7 +889,8 @@ export default function App() {
         setCurrentUser(session.user);
         fetchUserData(session.user.id, session.user.email);
       } else {
-        fetchUserData('default-user', '');
+        // No session — redirect to auth, don't load demo data
+        setCurrentUser(null);
       }
     });
 
@@ -893,7 +900,13 @@ export default function App() {
         fetchUserData(session.user.id, session.user.email);
       } else {
         setCurrentUser(null);
-        fetchUserData('default-user', '');
+        // Clear tasks when user logs out
+        setTasks([]);
+        setMissedDaysLogs([]);
+        setTaskLogs([]);
+        setSubtaskLogs([]);
+        setEventLogs([]);
+        setSubtaskFailureSummary([]);
       }
     });
 
@@ -1517,6 +1530,7 @@ export default function App() {
                   currentUser={currentUser}
                   onLogout={handleSignOut}
                   onOpenAuth={() => setCurrentUser(null)}
+                  onAcceptCollaborativeTask={(newTask) => handleAddTask(newTask)}
                 />
               )}
             </>

@@ -1,33 +1,21 @@
-// Password Security Utility using Web Crypto API PBKDF2/SHA-256
+// Password Security Utility compatible with React Native / Expo
+function simpleHash(str, salt) {
+  let hash = 0;
+  const combined = str + (salt || '');
+  for (let i = 0; i < combined.length; i++) {
+    const char = combined.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(16).padStart(8, '0');
+}
 
 export async function generatePasswordHash(password, saltHex = null) {
-  const enc = new TextEncoder();
-  const salt = saltHex 
-    ? hexToBytes(saltHex) 
-    : window.crypto.getRandomValues(new Uint8Array(16));
-  
-  const keyMaterial = await window.crypto.subtle.importKey(
-    'raw',
-    enc.encode(password),
-    { name: 'PBKDF2' },
-    false,
-    ['deriveBits']
-  );
-  
-  const derivedBits = await window.crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      salt: salt,
-      iterations: 100000,
-      hash: 'SHA-256'
-    },
-    keyMaterial,
-    256
-  );
-  
+  const salt = saltHex || Math.random().toString(36).substring(2, 10);
+  const hashHex = simpleHash(password, salt);
   return {
-    hashHex: bytesToHex(new Uint8Array(derivedBits)),
-    saltHex: bytesToHex(salt)
+    hashHex,
+    saltHex: salt,
   };
 }
 
@@ -35,16 +23,4 @@ export async function verifyPasswordHash(inputPassword, storedHashHex, storedSal
   if (!storedHashHex || !storedSaltHex) return false;
   const { hashHex } = await generatePasswordHash(inputPassword, storedSaltHex);
   return hashHex === storedHashHex;
-}
-
-function bytesToHex(bytes) {
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function hexToBytes(hex) {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
-  }
-  return bytes;
 }

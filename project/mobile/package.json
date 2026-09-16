@@ -1,15 +1,9 @@
 {
-  "name": "habit-hacker-mobile",
+  "name": "habit-hacker-web",
   "version": "1.0.0",
   "description": "Habit Hacker - Personal Task, Habit, Subtask Analytics, Heatmap & Discipline App",
-  "main": "index.js",
   "scripts": {
-    "start": "vite",
     "dev": "vite",
-    "expo:start": "npx expo start",
-    "expo:tunnel": "npx expo start --tunnel",
-    "eas:build:apk": "eas build --platform android --profile preview",
-    "eas:build:aab": "eas build --platform android --profile production",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -18,18 +12,15 @@
     "date-fns": "^4.4.0",
     "dexie": "^4.4.6",
     "docx": "^9.7.1",
-    "expo": "~52.0.31",
-    "expo-status-bar": "~2.0.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.344.0",
     "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "react-native": "0.76.7",
-    "react-native-web": "^0.21.2"
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
-    "vite": "^5.1.4"
+    "vite": "^5.1.4",
+    "vite-plugin-pwa": "^0.19.8"
   }
 }

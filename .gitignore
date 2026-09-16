@@ -28,3 +28,11 @@ target/
 # Temporary files
 scratch/
 .tempmediaStorage/
+
+# Android/Expo build artifacts
+*.apk
+*.aab
+*.ipa
+android/
+ios/
+.expo/

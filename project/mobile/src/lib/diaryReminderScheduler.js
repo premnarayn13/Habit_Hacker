@@ -1,5 +1,4 @@
-// Local Notification Scheduler for Todo Reminders
-
+// Local Notification Scheduler for Todo Reminders (React Native & Expo compatible)
 export async function scheduleTodoNotification(todo) {
   if (!todo || !todo.reminderDate || !todo.reminderTime) return null;
 
@@ -10,22 +9,9 @@ export async function scheduleTodoNotification(todo) {
 
   if (delayMs <= 0) return null;
 
-  if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-    await Notification.requestPermission();
-  }
-
   const timerId = setTimeout(() => {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('Habit Hacker Reminder 🔔', {
-        body: todo.title,
-        icon: '/icon-192.png',
-        tag: todo.id,
-        requireInteraction: true
-      });
-    } else {
-      console.log('Local Reminder Alert:', todo.title);
-    }
-  }, Math.min(delayMs, 2147483647)); // Cap to max 32-bit int for setTimeout
+    console.log('Habit Hacker Local Reminder:', todo.title);
+  }, Math.min(delayMs, 2147483647));
 
   return timerId;
 }

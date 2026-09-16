@@ -24,10 +24,18 @@ import {
   Moon,
   Volume2,
   FileText,
-  Key
+  Key,
+  Users,
+  UserCheck,
+  UserX,
+  Inbox,
+  Send,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 
 import { getApiBaseUrl } from '../lib/apiConfig';
+import { collaborationService } from '../lib/collaborationService';
 
 export default function SettingsProfileView({ 
   currentUser, 
@@ -36,13 +44,14 @@ export default function SettingsProfileView({
   availableCapacityMinutes = 480,
   onUpdateCapacity,
   themeMode = 'light',
-  onToggleTheme
+  onToggleTheme,
+  onAcceptCollaborativeTask
 }) {
-  // Settings State
+  // Settings State — derive display name and email from actual logged-in user
   const [profileData, setProfileData] = useState({
-    displayName: currentUser?.user_metadata?.display_name || 'Prem Narayn',
-    email: currentUser?.email || 'prem.narayn@habithacker.app',
-    username: 'premnarayn',
+    displayName: currentUser?.user_metadata?.display_name || currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || 'User',
+    email: currentUser?.email || '',
+    username: currentUser?.email?.split('@')[0] || '',
     capacityHours: Math.round((availableCapacityMinutes || 480) / 60),
     weekStartDay: 'Monday',
     dateFormat: 'YYYY-MM-DD',
@@ -65,6 +74,13 @@ export default function SettingsProfileView({
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
+  // Collaboration Invites & Requests State
+  const [receivedInvitations, setReceivedInvitations] = useState([]);
+  const [sentRequests, setSentRequests] = useState([]);
+  const [collabSubTab, setCollabSubTab] = useState('received'); // 'received' | 'sent'
+  const [collabLoading, setCollabLoading] = useState(false);
+  const [collabMessage, setCollabMessage] = useState('');
+
   // Password Change Form State
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -80,35 +96,73 @@ export default function SettingsProfileView({
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    const userId = currentUser?.id;
     const baseUrl = getApiBaseUrl();
-    // Fetch backend settings if available
-    fetch(`${baseUrl}/api/v1/settings?userId=demo-user-123`)
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data) {
-          setProfileData(prev => ({
-            ...prev,
-            displayName: data.displayName || prev.displayName,
-            email: data.email || prev.email,
-            capacityHours: data.capacityHours || prev.capacityHours,
-            weekStartDay: data.weekStartDay || prev.weekStartDay,
-            dateFormat: data.dateFormat || prev.dateFormat,
-            theme: data.theme || prev.theme,
-            pushNotifications: data.pushNotifications ?? prev.pushNotifications,
-            soundAlerts: data.soundAlerts ?? prev.soundAlerts,
-            habitReminders: data.habitReminders ?? prev.habitReminders,
-            todoNotifications: data.todoNotifications ?? prev.todoNotifications,
-            ringtoneName: data.ringtoneName || prev.ringtoneName
-          }));
-        }
-      })
-      .catch(() => {});
+    // Fetch backend settings if available and user is logged in
+    if (userId) {
+      fetch(`${baseUrl}/api/v1/settings?userId=${encodeURIComponent(userId)}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) {
+            setProfileData(prev => ({
+              ...prev,
+              displayName: data.displayName || prev.displayName,
+              email: data.email || prev.email,
+              capacityHours: data.capacityHours || prev.capacityHours,
+              weekStartDay: data.weekStartDay || prev.weekStartDay,
+              dateFormat: data.dateFormat || prev.dateFormat,
+              theme: data.theme || prev.theme,
+              pushNotifications: data.pushNotifications ?? prev.pushNotifications,
+              soundAlerts: data.soundAlerts ?? prev.soundAlerts,
+              habitReminders: data.habitReminders ?? prev.habitReminders,
+              todoNotifications: data.todoNotifications ?? prev.todoNotifications,
+              ringtoneName: data.ringtoneName || prev.ringtoneName
+            }));
+          }
+        })
+        .catch(() => {});
+    }
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [currentUser?.id]);
+
+  // Fetch Collaborations Data
+  const loadCollaborations = async () => {
+    setCollabLoading(true);
+    const email = currentUser?.email || profileData.email;
+    if (!email) {
+      setReceivedInvitations([]);
+      setSentRequests([]);
+      setCollabLoading(false);
+      return;
+    }
+    const received = await collaborationService.getReceivedInvitations(email);
+    const sent = await collaborationService.getSentRequests(email);
+    setReceivedInvitations(received);
+    setSentRequests(sent);
+    setCollabLoading(false);
+  };
+
+  useEffect(() => {
+    if (activeTabSection === 'collaborations') {
+      loadCollaborations();
+    }
+  }, [activeTabSection]);
+
+  const handleRespondInvite = async (invite, action) => {
+    setCollabMessage(action === 'ACCEPT' ? 'Accepting invitation...' : 'Declining invitation...');
+    await collaborationService.respondToInvitation(invite.id, action, invite, (newTask) => {
+      if (onAcceptCollaborativeTask) {
+        onAcceptCollaborativeTask(newTask);
+      }
+    });
+    await loadCollaborations();
+    setCollabMessage(action === 'ACCEPT' ? 'Invitation accepted! Task added to your active task list.' : 'Invitation declined.');
+    setTimeout(() => setCollabMessage(''), 3500);
+  };
 
   // Save Settings Flow
   const handleSaveSettings = async (e) => {
@@ -123,12 +177,15 @@ export default function SettingsProfileView({
 
     // Persist to Spring Boot REST backend
     try {
-      const baseUrl = getApiBaseUrl();
-      await fetch(`${baseUrl}/api/v1/settings?userId=demo-user-123`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profileData)
-      });
+      const userId = currentUser?.id;
+      if (userId) {
+        const baseUrl = getApiBaseUrl();
+        await fetch(`${baseUrl}/api/v1/settings?userId=${encodeURIComponent(userId)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profileData)
+        });
+      }
     } catch (err) {
       console.log('Saved settings locally offline');
     }
@@ -149,8 +206,9 @@ export default function SettingsProfileView({
     }
 
     try {
+      const userId = currentUser?.id;
       const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/v1/settings/change-password?userId=demo-user-123`, {
+      const res = await fetch(`${baseUrl}/api/v1/settings/change-password?userId=${encodeURIComponent(userId || 'unknown')}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(passwordForm)
@@ -257,6 +315,7 @@ export default function SettingsProfileView({
       <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
         {[
           { id: 'profile', label: 'Profile', icon: User },
+          { id: 'collaborations', label: 'Collaborations & Invites', icon: Users, badge: receivedInvitations.filter(i => i.status === 'PENDING').length },
           { id: 'productivity', label: 'Productivity', icon: Sliders },
           { id: 'appearance', label: 'Appearance', icon: Palette },
           { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -288,6 +347,11 @@ export default function SettingsProfileView({
               }}
             >
               <IconComp size={15} /> {tab.label}
+              {!!tab.badge && (
+                <span style={{ background: isActive ? '#FFFFFF' : '#EF4444', color: isActive ? '#DC2626' : '#FFFFFF', borderRadius: '10px', padding: '2px 7px', fontSize: '11px', fontWeight: 900 }}>
+                  {tab.badge}
+                </span>
+              )}
             </button>
           );
         })}
@@ -390,6 +454,219 @@ export default function SettingsProfileView({
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* SECTION: COLLABORATIONS & INVITES */}
+      {activeTabSection === 'collaborations' && (
+        <div className="glass-panel" style={{ padding: '24px', borderRadius: '18px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Users size={20} color="#DC2626" /> Collaborative Habits & Task Notifications
+              </h3>
+              <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 0 0' }}>
+                Manage incoming habit invitations and outgoing collaboration requests.
+              </p>
+            </div>
+            <button 
+              onClick={loadCollaborations}
+              disabled={collabLoading}
+              className="btn-secondary"
+              style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px' }}
+            >
+              <RefreshCw size={14} className={collabLoading ? 'spin-animation' : ''} />
+              {collabLoading ? 'Refreshing...' : 'Refresh Lists'}
+            </button>
+          </div>
+
+          {collabMessage && (
+            <div style={{ background: collabMessage.includes('accepted') ? '#ECFDF5' : '#FEF2F2', border: `1px solid ${collabMessage.includes('accepted') ? '#6EE7B7' : '#FCA5A5'}`, color: collabMessage.includes('accepted') ? '#047857' : '#991B1B', padding: '12px 16px', borderRadius: '12px', fontSize: '13px', fontWeight: 700 }}>
+              {collabMessage}
+            </div>
+          )}
+
+          {/* Sub-toggle: Invitations Received vs Requests Sent */}
+          <div style={{ display: 'flex', gap: '10px', background: '#F1F5F9', padding: '4px', borderRadius: '12px' }}>
+            <button
+              onClick={() => setCollabSubTab('received')}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                borderRadius: '10px',
+                fontSize: '13px',
+                fontWeight: 800,
+                border: 'none',
+                background: collabSubTab === 'received' ? '#FFFFFF' : 'transparent',
+                color: collabSubTab === 'received' ? '#DC2626' : '#64748B',
+                boxShadow: collabSubTab === 'received' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <Inbox size={16} /> Invitations Received ({receivedInvitations.length})
+            </button>
+            <button
+              onClick={() => setCollabSubTab('sent')}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                borderRadius: '10px',
+                fontSize: '13px',
+                fontWeight: 800,
+                border: 'none',
+                background: collabSubTab === 'sent' ? '#FFFFFF' : 'transparent',
+                color: collabSubTab === 'sent' ? '#DC2626' : '#64748B',
+                boxShadow: collabSubTab === 'sent' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <Send size={16} /> Requests Sent ({sentRequests.length})
+            </button>
+          </div>
+
+          {/* LIST 1: INVITATIONS RECEIVED */}
+          {collabSubTab === 'received' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {receivedInvitations.length === 0 ? (
+                <div style={{ padding: '36px 20px', textAlgin: 'center', textAlign: 'center', background: '#F8FAFC', borderRadius: '14px', border: '1px dashed #CBD5E1' }}>
+                  <Inbox size={32} color="#94A3B8" style={{ marginBottom: '8px' }} />
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#64748B' }}>No incoming invitations</p>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94A3B8' }}>
+                    When someone invites your email ({profileData.email}) to collaborate on a habit or task, it will appear here.
+                  </p>
+                </div>
+              ) : (
+                receivedInvitations.map(invite => (
+                  <div 
+                    key={invite.id} 
+                    style={{ 
+                      background: '#F8FAFC', 
+                      border: invite.status === 'PENDING' ? '1px solid #FCA5A5' : '1px solid #E2E8F0', 
+                      padding: '16px 20px', 
+                      borderRadius: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '14px'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 900, color: '#0F172A' }}>{invite.taskTitle}</h4>
+                        <span className="badge" style={{ background: '#F1F5F9', color: '#475569', fontSize: '11px' }}>{invite.taskCategory || 'General'}</span>
+                        <span className="badge badge-high" style={{ fontSize: '11px' }}>{invite.taskPriority || 'HIGH'}</span>
+                      </div>
+                      <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#64748B' }}>
+                        Invited by: <strong>{invite.senderName || 'User'}</strong> ({invite.senderEmail})
+                      </p>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#94A3B8' }}>
+                        Sent: {new Date(invite.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {invite.status === 'PENDING' ? (
+                        <>
+                          <button 
+                            onClick={() => handleRespondInvite(invite, 'ACCEPT')}
+                            className="btn-primary"
+                            style={{ padding: '8px 16px', fontSize: '12px', background: '#059669', borderColor: '#059669' }}
+                          >
+                            <UserCheck size={14} /> Accept Task
+                          </button>
+                          <button 
+                            onClick={() => handleRespondInvite(invite, 'DECLINE')}
+                            className="btn-secondary"
+                            style={{ padding: '8px 16px', fontSize: '12px', color: '#DC2626', borderColor: '#FCA5A5' }}
+                          >
+                            <UserX size={14} /> Decline
+                          </button>
+                        </>
+                      ) : invite.status === 'ACCEPTED' ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#059669', fontWeight: 800, fontSize: '13px', background: '#D1FAE5', padding: '6px 12px', borderRadius: '10px' }}>
+                          <CheckCircle size={14} /> Accepted
+                        </span>
+                      ) : (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#DC2626', fontWeight: 800, fontSize: '13px', background: '#FEE2E2', padding: '6px 12px', borderRadius: '10px' }}>
+                          <XCircle size={14} /> Declined
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* LIST 2: REQUESTS SENT */}
+          {collabSubTab === 'sent' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {sentRequests.length === 0 ? (
+                <div style={{ padding: '36px 20px', textAlign: 'center', background: '#F8FAFC', borderRadius: '14px', border: '1px dashed #CBD5E1' }}>
+                  <Send size={32} color="#94A3B8" style={{ marginBottom: '8px' }} />
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#64748B' }}>No sent requests</p>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94A3B8' }}>
+                    When you create a task and enter a collaborator's email, your invitation requests will track here.
+                  </p>
+                </div>
+              ) : (
+                sentRequests.map(req => (
+                  <div 
+                    key={req.id} 
+                    style={{ 
+                      background: '#F8FAFC', 
+                      border: '1px solid #E2E8F0', 
+                      padding: '16px 20px', 
+                      borderRadius: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '14px'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 900, color: '#0F172A' }}>{req.taskTitle}</h4>
+                        <span className="badge" style={{ background: '#F1F5F9', color: '#475569', fontSize: '11px' }}>{req.taskCategory || 'General'}</span>
+                      </div>
+                      <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#64748B' }}>
+                        Sent to Collaborator: <strong>{req.receiverEmail}</strong>
+                      </p>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#94A3B8' }}>
+                        Dispatched: {new Date(req.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div>
+                      {req.status === 'PENDING' ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#D97706', fontWeight: 800, fontSize: '12px', background: '#FEF3C7', padding: '6px 14px', borderRadius: '10px', border: '1px solid #FCD34D' }}>
+                          <Clock size={14} className="spin-animation" /> Pending Acceptance
+                        </span>
+                      ) : req.status === 'ACCEPTED' ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#059669', fontWeight: 800, fontSize: '12px', background: '#D1FAE5', padding: '6px 14px', borderRadius: '10px', border: '1px solid #6EE7B7' }}>
+                          <CheckCircle size={14} /> Accepted by Collaborator
+                        </span>
+                      ) : (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#DC2626', fontWeight: 800, fontSize: '12px', background: '#FEE2E2', padding: '6px 14px', borderRadius: '10px', border: '1px solid #FCA5A5' }}>
+                          <XCircle size={14} /> Declined by Collaborator
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       )}
 
