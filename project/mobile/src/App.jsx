@@ -24,6 +24,7 @@ import TaskEditModal from './components/TaskEditModal';
 import DateDurationPickerModal from './components/DateDurationPickerModal';
 import AuthLandingPage from './components/AuthLandingPage';
 import { supabase } from './lib/supabaseClient';
+import { collaborationService } from './lib/collaborationService';
 import { 
   isParentTaskWithChildren, 
   canManuallyCompleteTask, 
@@ -1122,6 +1123,8 @@ export default function App() {
           currentEventCount: nextCount,
           progressPercent: nextProg,
           isDoneToday: nextIsDone,
+          completedBy: nextIsDone ? (currentUser?.email || 'Collaborator') : null,
+          completedAt: nextIsDone ? new Date().toISOString() : null,
           lastMeasuredValue: customMeasureValue !== null ? customMeasureValue : t.lastMeasuredValue
         };
         return updatedTask;
@@ -1131,10 +1134,17 @@ export default function App() {
 
     updateTasksState(newTasks);
 
+    if (updatedTask) {
+      collaborationService.syncTaskCompletionStatus(taskId, currentUser?.email || 'User', updatedTask.isDoneToday);
+    }
+
     if (currentUser && updatedTask) {
       await supabase.from('tasks').update({
         current_count: updatedTask.currentCount,
-        progress_percent: updatedTask.progressPercent
+        progress_percent: updatedTask.progressPercent,
+        is_done_today: updatedTask.isDoneToday,
+        completed_by: updatedTask.completedBy,
+        completed_at: updatedTask.completedAt
       }).eq('id', taskId);
 
       if (updatedTask.isDoneToday) {

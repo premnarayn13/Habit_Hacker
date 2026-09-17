@@ -24,65 +24,102 @@ function saveLocalCollabs(list) {
 export const collaborationService = {
   async sendTaskInvite({ taskId, taskTitle, category, priority, senderEmail, senderName, receiverEmail }) {
     if (!receiverEmail || !receiverEmail.trim()) return null;
-    const cleanReceiver = receiverEmail.trim().toLowerCase();
+
+    // Split multiple comma/space/semicolon-separated emails
+    const rawEmails = receiverEmail.split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(Boolean);
+    if (rawEmails.length === 0) return null;
+
     const cleanSender = (senderEmail || '').trim().toLowerCase();
+    const createdInvites = [];
 
-    const inviteData = {
-      id: 'collab-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 6),
-      taskId: taskId || 'task-' + Date.now(),
-      taskTitle: taskTitle || 'Collaborative Task',
-      category: category || 'General',
-      priority: priority || 'HIGH',
-      senderEmail: cleanSender || 'user@habithacker.app',
-      senderName: senderName || cleanSender.split('@')[0] || 'User',
-      receiverEmail: cleanReceiver,
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    for (const cleanReceiver of rawEmails) {
+      const inviteData = {
+        id: 'collab-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 6),
+        taskId: taskId || 'task-' + Date.now(),
+        taskTitle: taskTitle || 'Collaborative Task',
+        category: category || 'General',
+        priority: priority || 'HIGH',
+        senderEmail: cleanSender || 'user@habithacker.app',
+        senderName: senderName || cleanSender.split('@')[0] || 'User',
+        receiverEmail: cleanReceiver,
+        status: 'PENDING',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
 
-    // Save locally first (ensures 100% offline & local reliability)
-    const local = getLocalCollabs();
-    const existingIdx = local.findIndex(c => c.taskId === inviteData.taskId && c.receiverEmail.toLowerCase() === cleanReceiver);
-    if (existingIdx >= 0) {
-      local[existingIdx] = { ...local[existingIdx], status: 'PENDING', updatedAt: new Date().toISOString() };
-    } else {
-      local.unshift(inviteData);
+      // Save locally first (ensures 100% offline & local reliability)
+      const local = getLocalCollabs();
+      const existingIdx = local.findIndex(c => c.taskId === inviteData.taskId && c.receiverEmail.toLowerCase() === cleanReceiver);
+      if (existingIdx >= 0) {
+        local[existingIdx] = { ...local[existingIdx], status: 'PENDING', updatedAt: new Date().toISOString() };
+      } else {
+        local.unshift(inviteData);
+      }
+      saveLocalCollabs(local);
+
+      // Try persisting to Supabase task_collaborations table
+      try {
+        await supabase.from('task_collaborations').insert([{
+          id: inviteData.id,
+          task_id: inviteData.taskId,
+          task_title: inviteData.taskTitle,
+          category: inviteData.category,
+          priority: inviteData.priority,
+          sender_email: inviteData.senderEmail,
+          sender_name: inviteData.senderName,
+          receiver_email: inviteData.receiverEmail,
+          status: 'PENDING',
+          created_at: inviteData.createdAt
+        }]);
+      } catch (e) {}
+
+      // Try posting to Spring Boot REST backend
+      try {
+        const baseUrl = getApiBaseUrl();
+        await fetch(`${baseUrl}/api/v1/collaborations/invite`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(inviteData)
+        });
+      } catch (e) {}
+
+      createdInvites.push(inviteData);
     }
+
+    return createdInvites;
+  },
+
+  async syncTaskCompletionStatus(taskId, completedByEmail, isDoneToday) {
+    if (!taskId) return;
+    const cleanEmail = (completedByEmail || '').trim().toLowerCase();
+    const completedAt = new Date().toISOString();
+
+    // 1. Update local collaborations
+    const local = getLocalCollabs();
+    local.forEach(c => {
+      if (c.taskId === taskId) {
+        c.lastCompletedBy = cleanEmail;
+        c.isCompletedByAny = isDoneToday;
+        c.updatedAt = completedAt;
+      }
+    });
     saveLocalCollabs(local);
 
-    // Try persisting to Supabase task_collaborations table
+    // 2. Sync to Supabase tasks table
     try {
-      await supabase.from('task_collaborations').insert([{
-        id: inviteData.id,
-        task_id: inviteData.taskId,
-        task_title: inviteData.taskTitle,
-        category: inviteData.category,
-        priority: inviteData.priority,
-        sender_email: inviteData.senderEmail,
-        sender_name: inviteData.senderName,
-        receiver_email: inviteData.receiverEmail,
-        status: 'PENDING',
-        created_at: inviteData.createdAt
-      }]);
+      await supabase.from('tasks').update({
+        is_done_today: isDoneToday,
+        completed_by: isDoneToday ? cleanEmail : null,
+        completed_at: isDoneToday ? completedAt : null
+      }).eq('id', taskId);
     } catch (e) {}
 
-    // Try posting to Spring Boot REST backend
+    // 3. Sync to Supabase task_collaborations table
     try {
-      const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/v1/collaborations/invite`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(inviteData)
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (e) {
-      console.log('Saved collaboration invite locally offline.');
-    }
-
-    return inviteData;
+      await supabase.from('task_collaborations').update({
+        status: isDoneToday ? `COMPLETED_BY_${cleanEmail}` : 'ACCEPTED'
+      }).eq('task_id', taskId);
+    } catch (e) {}
   },
 
   async getReceivedInvitations(receiverEmail) {

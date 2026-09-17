@@ -46,9 +46,23 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask }) {
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setFormData(prev => ({ ...prev, attachmentName: file.name }));
-    }
+    if (!file) return;
+
+    const sizeFormatted = file.size > 1024 * 1024 
+      ? (file.size / (1024 * 1024)).toFixed(1) + ' MB' 
+      : (file.size / 1024).toFixed(1) + ' KB';
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setFormData(prev => ({ 
+        ...prev, 
+        attachmentName: file.name,
+        attachmentUrl: event.target.result,
+        attachmentSize: sizeFormatted,
+        attachmentType: file.type
+      }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = (e) => {

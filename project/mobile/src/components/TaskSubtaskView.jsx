@@ -536,6 +536,13 @@ export default function TaskSubtaskView({
                           </span>
                         )}
 
+                        {/* Completed By Collaborator Badge */}
+                        {isTaskDone && (task.completedBy || task.collab) && (
+                          <span style={{ fontSize: '10px', color: '#059669', fontWeight: 800, background: '#D1FAE5', border: '1px solid #A7F3D0', padding: '2px 7px', borderRadius: '6px' }}>
+                            ✅ Completed by {task.completedBy || 'Collaborator'}
+                          </span>
+                        )}
+
                         {/* Parent Reference Badge */}
                         {parentTaskObj && (
                           <span style={{ fontSize: '11px', color: '#D97706', fontWeight: 800, background: '#FEF3C7', border: '1px solid #FDE68A', padding: '2px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>
@@ -543,11 +550,40 @@ export default function TaskSubtaskView({
                           </span>
                         )}
 
-                        {/* Attachment File Pill */}
+                        {/* Interactive Clickable Attachment File Pill */}
                         {(task.attachmentName || task.attachmentUrl) && (
-                          <span style={{ fontSize: '10px', color: '#2563EB', fontWeight: 800, background: '#EFF6FF', border: '1px solid #BFDBFE', padding: '2px 7px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            📎 {task.attachmentName || 'Attachment'}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (task.attachmentUrl) {
+                                const a = document.createElement('a');
+                                a.href = task.attachmentUrl;
+                                a.download = task.attachmentName || 'attachment';
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                              } else {
+                                alert(`Attachment: ${task.attachmentName || 'File'}`);
+                              }
+                            }}
+                            title="Click to download/view attached file"
+                            style={{ 
+                              fontSize: '10px', 
+                              color: '#2563EB', 
+                              fontWeight: 800, 
+                              background: '#EFF6FF', 
+                              border: '1px solid #BFDBFE', 
+                              padding: '2px 7px', 
+                              borderRadius: '6px', 
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              gap: '4px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            📎 {task.attachmentName || 'Attachment'} {task.attachmentSize ? `(${task.attachmentSize})` : ''}
+                          </button>
                         )}
                       </div>
 
