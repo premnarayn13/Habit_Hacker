@@ -5,8 +5,12 @@ export const getApiBaseUrl = () => {
   if (import.meta.env && import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  // No fallback to localhost in production — VITE_API_URL must be set
+  // Local development default fallback
+  if (import.meta.env && import.meta.env.DEV) {
+    return 'http://localhost:8080';
+  }
   return '';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
+

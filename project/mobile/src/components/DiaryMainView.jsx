@@ -151,7 +151,7 @@ export default function DiaryMainView({ user }) {
                 {activeDiary.name}
               </h2>
               <p style={{ fontSize: '12px', color: '#64748B', margin: '4px 0 0 0' }}>
-                {entries.length} Entries • Device-Local Storage
+                {entries.length} Entries • Cloud Synced & Offline Backup
               </p>
             </div>
 

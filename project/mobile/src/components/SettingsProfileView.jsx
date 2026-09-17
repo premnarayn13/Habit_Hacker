@@ -914,7 +914,7 @@ export default function SettingsProfileView({
           <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '20px', borderRadius: '14px' }}>
             <span style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>Active JWT Sessions</span>
             <p style={{ fontSize: '12px', color: '#64748B', margin: '4px 0 14px 0' }}>
-              Current Device: Mobile Web / Expo Client (10.218.223.157)
+              Current Device: Web Browser / PWA Client ({typeof window !== 'undefined' ? window.location.hostname : 'localhost'})
             </p>
             <button className="btn-secondary" onClick={onLogout} style={{ color: '#DC2626', borderColor: '#FCA5A5', fontSize: '13px' }}>
               <LogOut size={14} /> Revoke & Sign Out From All Devices
@@ -927,16 +927,16 @@ export default function SettingsProfileView({
       {activeTabSection === 'privacy' && (
         <div className="glass-panel" style={{ padding: '24px', borderRadius: '18px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Lock size={20} color="#DC2626" /> Privacy Boundaries & Local Data Storage
+            <Lock size={20} color="#DC2626" /> Privacy Boundaries & Cloud Persistence
           </h3>
 
           {/* Dedicated Private Diary Guarantee Banner */}
           <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', padding: '20px', borderRadius: '14px', display: 'flex', gap: '14px' }}>
             <Lock size={28} color="#DC2626" style={{ flexShrink: 0 }} />
             <div>
-              <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 900, color: '#991B1B' }}>Private Device-Only Diary Guarantee</h4>
+              <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 900, color: '#991B1B' }}>Cloud-Synced & Encrypted Diary Vault</h4>
               <p style={{ margin: '6px 0 0 0', fontSize: '13px', color: '#7F1D1D', lineHeight: '1.5' }}>
-                Your private Diary content and entries are stored <strong>strictly 100% on this device</strong> in local Dexie IndexedDB. Diary entries are NEVER uploaded or synchronized to cloud PostgreSQL databases.
+                Your private Diary content and entries are <strong>synchronized to your Supabase PostgreSQL cloud account</strong> and cached locally for offline editing. Your writings are preserved even if browser history or cache is cleared.
               </p>
             </div>
           </div>
