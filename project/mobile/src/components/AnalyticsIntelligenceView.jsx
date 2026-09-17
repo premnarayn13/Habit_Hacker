@@ -347,32 +347,35 @@ export default function AnalyticsIntelligenceView({
       {/* ========================================================================= */}
       {/* GROQ AI PRODUCTIVITY COACH CARD (SPRING AI + GROQ LLM + OFFLINE VAULT) */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* AI PRODUCTIVITY COACH CARD (WHITE THEME) */}
+      {/* ========================================================================= */}
       <div style={{
         padding: '20px',
-        background: 'linear-gradient(135deg, #1E1B4B 0%, #0F172A 100%)',
+        background: '#FFFFFF',
         borderRadius: '20px',
-        border: '1px solid #4338CA',
-        color: '#FFFFFF',
-        boxShadow: '0 8px 24px rgba(30, 27, 75, 0.25)'
+        border: '1px solid #E2E8F0',
+        color: '#0F172A',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ padding: '8px', background: '#312E81', borderRadius: '12px' }}>
-              <Sparkles size={20} color="#818CF8" />
+            <div style={{ padding: '8px', background: '#FEF2F2', borderRadius: '12px' }}>
+              <Sparkles size={20} color="#DC2626" />
             </div>
             <div>
-              <h3 style={{ fontSize: '16px', fontWeight: 900, margin: 0, color: '#F8FAFC' }}>
-                Groq AI Productivity Coach
+              <h3 style={{ fontSize: '16px', fontWeight: 900, margin: 0, color: '#0F172A' }}>
+                AI Productivity Coach
               </h3>
-              <span style={{ fontSize: '11px', color: '#A5B4FC', fontWeight: 600 }}>
-                {aiState.data?.provider || 'Powered by Groq LLM & Spring AI'}
+              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>
+                {aiState.data?.provider ? aiState.data.provider.replace(/Groq/gi, 'Habit Hacker') : 'Habit Hacker AI Intelligence Engine'}
               </span>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {aiState.isOfflineCached && (
-              <span style={{ fontSize: '10px', fontWeight: 800, background: 'rgba(217, 119, 6, 0.2)', color: '#FBBF24', padding: '4px 10px', borderRadius: '12px', border: '1px solid #D97706' }}>
+              <span style={{ fontSize: '10px', fontWeight: 800, background: '#FEF3C7', color: '#D97706', padding: '4px 10px', borderRadius: '12px', border: '1px solid #FCD34D' }}>
                 Offline Cached ({aiState.cachedTime || 'Prior Session'})
               </span>
             )}
@@ -380,9 +383,9 @@ export default function AnalyticsIntelligenceView({
               onClick={fetchGroqAiInsights}
               disabled={aiState.loading}
               style={{
-                background: '#3730A3',
-                border: '1px solid #4F46E5',
-                color: '#FFF',
+                background: '#F8FAFC',
+                border: '1px solid #CBD5E1',
+                color: '#0F172A',
                 padding: '6px 12px',
                 borderRadius: '10px',
                 fontSize: '12px',
@@ -400,21 +403,21 @@ export default function AnalyticsIntelligenceView({
         </div>
 
         {aiState.error ? (
-          <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #F87171', padding: '12px 16px', borderRadius: '12px', fontSize: '12px', color: '#FCA5A5' }}>
+          <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', padding: '12px 16px', borderRadius: '12px', fontSize: '12px', color: '#991B1B' }}>
             <AlertCircle size={14} style={{ display: 'inline', marginRight: '6px' }} />
-            {aiState.error}
+            {aiState.error.replace(/Groq Llama-3/gi, 'AI')}
           </div>
         ) : (
           <div>
-            <p style={{ fontSize: '13px', color: '#E0E7FF', lineHeight: 1.5, margin: '0 0 12px 0', fontWeight: 500 }}>
+            <p style={{ fontSize: '13px', color: '#334155', lineHeight: 1.5, margin: '0 0 12px 0', fontWeight: 500 }}>
               "{aiState.data?.insightContent || 'Analyzing your productivity velocity, focus blocks, and daily habit consistency...'}"
             </p>
 
             {aiState.data?.recommendations && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {aiState.data.recommendations.map((rec, idx) => (
-                  <div key={idx} style={{ background: 'rgba(255,255,255,0.06)', padding: '10px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '12px', color: '#C7D2FE', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Zap size={14} color="#818CF8" style={{ flexShrink: 0 }} />
+                  <div key={idx} style={{ background: '#F8FAFC', padding: '10px 14px', borderRadius: '10px', border: '1px solid #E2E8F0', fontSize: '12px', color: '#1E293B', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Zap size={14} color="#DC2626" style={{ flexShrink: 0 }} />
                     <span>{rec}</span>
                   </div>
                 ))}

@@ -16,18 +16,29 @@ export default function DiaryHomeDashboard({ onOpenDiary, onOpenStoryLibrary, on
 
   const loadData = async () => {
     await initDiaryDB();
-    const allDiaries = await diaryDB.diaries.orderBy('displayOrder').toArray();
-    setDiaries(allDiaries || []);
+    const rawDiaries = await diaryDB.diaries.toArray();
+    let allDiaries = rawDiaries && rawDiaries.length > 0 ? rawDiaries : DEFAULT_DIARIES;
+    allDiaries = [...allDiaries].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+    setDiaries(allDiaries);
 
     const counts = {};
     for (const d of allDiaries) {
-      const cnt = await diaryDB.entries.where('diaryId').equals(d.id).count();
-      counts[d.id] = cnt;
+      try {
+        const cnt = await diaryDB.entries.where('diaryId').equals(d.id).count();
+        counts[d.id] = cnt;
+      } catch (e) {
+        counts[d.id] = 0;
+      }
     }
     setEntryCounts(counts);
 
-    const recents = await diaryDB.entries.reverse().sortBy('updatedAt');
-    setRecentEntries((recents || []).slice(0, 5));
+    try {
+      const allEntries = await diaryDB.entries.toArray();
+      const sortedRecents = [...allEntries].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+      setRecentEntries(sortedRecents.slice(0, 5));
+    } catch (e) {
+      setRecentEntries([]);
+    }
   };
 
   const handleCreateCustomDiary = async (e) => {
