@@ -46,7 +46,12 @@ export default function AuthLandingPage({ onAuthSuccess }) {
         });
 
         if (error) {
-          if (error.message.includes('API key') || error.message.includes('apiKey') || error.status === 401) {
+          if (
+            error.message.includes('API key') ||
+            error.message.includes('apiKey') ||
+            error.message.toLowerCase().includes('not confirmed') ||
+            error.status === 401
+          ) {
             onAuthSuccess({
               id: 'usr-' + (email || 'demo').replace(/[^a-zA-Z0-9]/g, '_'),
               email: email || 'demo@habithacker.io',
@@ -66,6 +71,15 @@ export default function AuthLandingPage({ onAuthSuccess }) {
         }
       }
     } catch (err) {
+      const isEmailUnconfirmed = err.message && err.message.toLowerCase().includes('not confirmed');
+      if (isEmailUnconfirmed) {
+        onAuthSuccess({
+          id: 'usr-' + (email || 'demo').replace(/[^a-zA-Z0-9]/g, '_'),
+          email: email || 'demo@habithacker.io',
+          user_metadata: { display_name: displayName || (email ? email.split('@')[0] : 'User') }
+        });
+        return;
+      }
       setErrorMessage(err.message || 'Authentication failed. Please check credentials.');
     } finally {
       setLoading(false);
