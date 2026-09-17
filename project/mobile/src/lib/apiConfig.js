@@ -1,16 +1,12 @@
-// Centralized API configuration for Web PWA / Render / Local Spring Boot Backend
+// Centralized API configuration for Web PWA
+// In production (Vercel): set VITE_API_URL env var to your Render backend URL
+// In local dev: set VITE_API_URL=http://localhost:8080 in your .env file
 export const getApiBaseUrl = () => {
-  // 1. Check for Vite environment variable (Render production or custom dev env)
   if (import.meta.env && import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  // 2. Fallback to current browser location / LAN IP
-  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-    const host = window.location.hostname;
-    return `http://${host}:8080`;
-  }
-  // 3. Default local development backend
-  return 'http://localhost:8080';
+  // No fallback to localhost in production — VITE_API_URL must be set
+  return '';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
