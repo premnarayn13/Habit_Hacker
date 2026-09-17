@@ -18,24 +18,30 @@ public class UserSettingsController {
     @Autowired
     private UserSettingsRepository userSettingsRepository;
 
-    // GET /api/v1/settings?userId=demo-user-123
+    // GET /api/v1/settings?userId=<supabase-user-id>
     @GetMapping
-    public ResponseEntity<UserSettings> getUserSettings(@RequestParam(defaultValue = "demo-user-123") String userId) {
+    public ResponseEntity<UserSettings> getUserSettings(@RequestParam String userId) {
+        if (userId == null || userId.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
         UserSettings settings = userSettingsRepository.findByUserId(userId)
                 .orElseGet(() -> {
-                    UserSettings defaultSettings = new UserSettings("setting_" + UUID.randomUUID().toString(), userId, "Prem Narayn", "prem.narayn@habithacker.app");
+                    UserSettings defaultSettings = new UserSettings("setting_" + UUID.randomUUID().toString(), userId, "User", "");
                     return userSettingsRepository.save(defaultSettings);
                 });
         return ResponseEntity.ok(settings);
     }
 
-    // PUT /api/v1/settings?userId=demo-user-123
+    // PUT /api/v1/settings?userId=<supabase-user-id>
     @PutMapping
     public ResponseEntity<UserSettings> updateUserSettings(
-            @RequestParam(defaultValue = "demo-user-123") String userId,
+            @RequestParam String userId,
             @RequestBody UserSettings incoming) {
+        if (userId == null || userId.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
         UserSettings existing = userSettingsRepository.findByUserId(userId)
-                .orElseGet(() -> new UserSettings("setting_" + UUID.randomUUID().toString(), userId, "Prem Narayn", "prem.narayn@habithacker.app"));
+                .orElseGet(() -> new UserSettings("setting_" + UUID.randomUUID().toString(), userId, "User", ""));
 
         if (incoming.getDisplayName() != null) existing.setDisplayName(incoming.getDisplayName());
         if (incoming.getEmail() != null) existing.setEmail(incoming.getEmail());
@@ -71,7 +77,7 @@ public class UserSettingsController {
 
     // DELETE /api/v1/settings/account
     @DeleteMapping("/account")
-    public ResponseEntity<Map<String, String>> deleteAccount(@RequestParam(defaultValue = "demo-user-123") String userId) {
+    public ResponseEntity<Map<String, String>> deleteAccount(@RequestParam String userId) {
         userSettingsRepository.findByUserId(userId).ifPresent(userSettingsRepository::delete);
         return ResponseEntity.ok(Map.of("message", "Account deleted successfully from PostgreSQL server database."));
     }

@@ -1,0 +1,65 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# render.yaml — Habit Hacker Backend Deployment on Render
+# Place this file in: project/backend/render.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  - type: web
+    name: habit-hacker-backend
+    runtime: java
+    plan: free
+    region: oregon
+
+    # Build command: Maven package skipping tests
+    buildCommand: cd project/backend && ./mvnw clean package -DskipTests
+
+    # Start command: run the packaged JAR
+    startCommand: java -jar project/backend/target/habit-hacker-backend-1.0.0.jar
+
+    # Health check path (Spring Boot Actuator)
+    healthCheckPath: /actuator/health
+
+    # Environment variables — fill in real values in Render Dashboard
+    envVars:
+      # ── Spring / PostgreSQL ──────────────────────────────────────────────
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://<your-render-db-host>:5432/<your-db-name>
+        # Set this in Render dashboard after creating the PostgreSQL database
+
+      - key: SPRING_DATASOURCE_USERNAME
+        value: <your-db-user>
+
+      - key: SPRING_DATASOURCE_PASSWORD
+        value: <your-db-password>
+
+      - key: SPRING_DATASOURCE_DRIVER
+        value: org.postgresql.Driver
+
+      - key: HIBERNATE_DIALECT
+        value: org.hibernate.dialect.PostgreSQLDialect
+
+      - key: JPA_DDL_AUTO
+        value: update
+
+      - key: FLYWAY_ENABLED
+        value: "false"
+
+      - key: FLYWAY_AUTOCONFIGURE_EXCLUDE
+        value: ""
+
+      # ── Supabase ─────────────────────────────────────────────────────────
+      - key: SUPABASE_URL
+        value: https://phsubtmwjfkspqpzusxm.supabase.co
+
+      - key: SUPABASE_JWT_SECRET
+        value: <your-supabase-jwt-secret>
+        # Find this in Supabase Dashboard → Project Settings → API → JWT Secret
+
+      # ── CORS ─────────────────────────────────────────────────────────────
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://habit-hacker.vercel.app
+        # Replace with your actual Vercel URL after frontend deployment
+
+      # ── Groq AI (optional) ───────────────────────────────────────────────
+      - key: GROQ_API_KEY
+        value: ""
