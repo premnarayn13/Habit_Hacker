@@ -23,7 +23,8 @@ export default function QuickAddModal({
   onClose, 
   onAddTask,
   existingTasks = [],
-  preselectedParentTaskId = ''
+  preselectedParentTaskId = '',
+  currentUser = null
 }) {
   const [taskData, setTaskData] = useState({
     title: '',
@@ -43,6 +44,7 @@ export default function QuickAddModal({
     trackingMode: 'end_date', // 'end_date', 'count_days', 'count_event'
     targetCount: 50,
     repeatRule: 'DAILY',
+    customIntervalDays: 2,
     parentTaskId: preselectedParentTaskId || '',
     attachmentName: '',
     tags: ''
@@ -90,6 +92,9 @@ export default function QuickAddModal({
     const finalCategory = categoryInput.trim() || taskData.category;
     const createdTaskId = 'task-' + Date.now();
 
+    const senderEmail = currentUser?.email || 'user@habithacker.app';
+    const senderName = currentUser?.user_metadata?.display_name || currentUser?.email?.split('@')[0] || 'User';
+
     const createdTask = {
       id: createdTaskId,
       ...taskData,
@@ -109,8 +114,8 @@ export default function QuickAddModal({
         taskTitle: taskData.title.trim(),
         category: finalCategory,
         priority: taskData.priority || 'HIGH',
-        senderEmail: 'prem.narayn@habithacker.app',
-        senderName: 'Prem Narayn',
+        senderEmail,
+        senderName,
         receiverEmail: taskData.collab.trim()
       });
     }
@@ -146,7 +151,7 @@ export default function QuickAddModal({
           <Layers size={22} color="#DC2626" /> Create New Task / Subtask
         </h2>
         <p style={{ fontSize: '12px', color: '#64748B', marginBottom: '20px' }}>
-          Configure task parameters, category, tracking mode, and subtask mapping.
+          Configure task parameters, priority, recurrence schedule, category, tracking mode, and attachments.
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -176,6 +181,84 @@ export default function QuickAddModal({
             />
           </div>
 
+          {/* PRIORITY & RECURRENCE SCHEDULE GRID */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {/* PRIORITY SELECTOR */}
+            <div>
+              <label style={{ fontSize: '12px', color: '#475569', fontWeight: 700, display: 'block', marginBottom: '6px' }}>PRIORITY LEVEL</label>
+              <select 
+                value={taskData.priority}
+                onChange={(e) => setTaskData(prev => ({ ...prev, priority: e.target.value }))}
+                style={{ width: '100%', height: '42px', fontWeight: 800 }}
+              >
+                <option value="URGENT">🔥 Urgent (Critical Priority)</option>
+                <option value="HIGH">🔴 High Priority</option>
+                <option value="MEDIUM">🟡 Medium Priority</option>
+                <option value="LOW">🔵 Low Priority</option>
+              </select>
+            </div>
+
+            {/* RECURRENCE FREQUENCY SELECTOR */}
+            <div>
+              <label style={{ fontSize: '12px', color: '#475569', fontWeight: 700, display: 'block', marginBottom: '6px' }}>RECURRENCE FREQUENCY</label>
+              <select 
+                value={taskData.repeatRule}
+                onChange={(e) => setTaskData(prev => ({ ...prev, repeatRule: e.target.value }))}
+                style={{ width: '100%', height: '42px', fontWeight: 700 }}
+              >
+                <option value="DAILY">📅 Daily (Every Single Day)</option>
+                <option value="EVERY_2_DAYS">⚡ Every 2 Days</option>
+                <option value="EVERY_3_DAYS">⚡ Every 3 Days</option>
+                <option value="INTERVAL">🔢 Custom Days Interval...</option>
+                <option value="WEEKLY">📆 Weekly (Once a week)</option>
+                <option value="MONTHLY">🗓️ Monthly (Once a month)</option>
+                <option value="NONE">❌ One-Time Only (No Recurrence)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* CUSTOM INTERVAL INPUT IF REPEAT RULE IS INTERVAL */}
+          {taskData.repeatRule === 'INTERVAL' && (
+            <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '10px', border: '1px solid #CBD5E1' }}>
+              <label style={{ fontSize: '12px', color: '#0F172A', fontWeight: 800, display: 'block', marginBottom: '4px' }}>
+                REPEAT EVERY N DAYS (e.g. Every 4 days, Every 5 days)
+              </label>
+              <input 
+                type="number"
+                min="1"
+                max="90"
+                value={taskData.customIntervalDays}
+                onChange={(e) => setTaskData(prev => ({ ...prev, customIntervalDays: parseInt(e.target.value) || 1 }))}
+                style={{ width: '100%', height: '40px', fontWeight: 800 }}
+              />
+            </div>
+          )}
+
+          {/* ATTACHMENT FILE UPLOAD FIELD */}
+          <div>
+            <label style={{ fontSize: '12px', color: '#475569', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+              <Paperclip size={14} color="#DC2626" /> FILE ATTACHMENT (OPTIONAL)
+            </label>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <label className="btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', padding: '8px 14px' }}>
+                <Paperclip size={14} /> Choose File...
+                <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} />
+              </label>
+              <span style={{ fontSize: '12px', color: taskData.attachmentName ? '#0F172A' : '#94A3B8', fontWeight: taskData.attachmentName ? 700 : 400 }}>
+                {taskData.attachmentName ? `📎 Attached: ${taskData.attachmentName}` : 'No file attached'}
+              </span>
+              {taskData.attachmentName && (
+                <button 
+                  type="button" 
+                  onClick={() => setTaskData(prev => ({ ...prev, attachmentName: '' }))}
+                  style={{ background: 'transparent', border: 'none', color: '#DC2626', cursor: 'pointer', fontSize: '11px', fontWeight: 800 }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* COLLABORATOR */}
           <div>
             <label style={{ fontSize: '12px', color: '#475569', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
@@ -183,7 +266,7 @@ export default function QuickAddModal({
             </label>
             <input 
               type="text" 
-              placeholder="e.g. prem@example.com, team@habithacker.com"
+              placeholder="Enter teammate email e.g. test@gmail.com, partner@app.com"
               value={taskData.collab}
               onChange={(e) => setTaskData(prev => ({ ...prev, collab: e.target.value }))}
               style={{ width: '100%', height: '42px' }}

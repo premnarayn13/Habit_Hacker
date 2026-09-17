@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from './apiConfig';
+import { supabase } from './supabaseClient';
 
 const LOCAL_COLLAB_KEY = 'hh_task_collaborations';
 
@@ -24,6 +25,7 @@ export const collaborationService = {
   async sendTaskInvite({ taskId, taskTitle, category, priority, senderEmail, senderName, receiverEmail }) {
     if (!receiverEmail || !receiverEmail.trim()) return null;
     const cleanReceiver = receiverEmail.trim().toLowerCase();
+    const cleanSender = (senderEmail || '').trim().toLowerCase();
 
     const inviteData = {
       id: 'collab-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 6),
@@ -31,8 +33,8 @@ export const collaborationService = {
       taskTitle: taskTitle || 'Collaborative Task',
       category: category || 'General',
       priority: priority || 'HIGH',
-      senderEmail: senderEmail || 'prem.narayn@habithacker.app',
-      senderName: senderName || 'Prem Narayn',
+      senderEmail: cleanSender || 'user@habithacker.app',
+      senderName: senderName || cleanSender.split('@')[0] || 'User',
       receiverEmail: cleanReceiver,
       status: 'PENDING',
       createdAt: new Date().toISOString(),
@@ -41,13 +43,29 @@ export const collaborationService = {
 
     // Save locally first (ensures 100% offline & local reliability)
     const local = getLocalCollabs();
-    const existingIdx = local.findIndex(c => c.taskId === inviteData.taskId && c.receiverEmail === cleanReceiver);
+    const existingIdx = local.findIndex(c => c.taskId === inviteData.taskId && c.receiverEmail.toLowerCase() === cleanReceiver);
     if (existingIdx >= 0) {
       local[existingIdx] = { ...local[existingIdx], status: 'PENDING', updatedAt: new Date().toISOString() };
     } else {
       local.unshift(inviteData);
     }
     saveLocalCollabs(local);
+
+    // Try persisting to Supabase task_collaborations table
+    try {
+      await supabase.from('task_collaborations').insert([{
+        id: inviteData.id,
+        task_id: inviteData.taskId,
+        task_title: inviteData.taskTitle,
+        category: inviteData.category,
+        priority: inviteData.priority,
+        sender_email: inviteData.senderEmail,
+        sender_name: inviteData.senderName,
+        receiver_email: inviteData.receiverEmail,
+        status: 'PENDING',
+        created_at: inviteData.createdAt
+      }]);
+    } catch (e) {}
 
     // Try posting to Spring Boot REST backend
     try {
@@ -72,15 +90,40 @@ export const collaborationService = {
     const cleanEmail = receiverEmail.trim().toLowerCase();
     let remoteInvites = [];
 
+    // Try Supabase first
+    try {
+      const { data: supaCollabs } = await supabase
+        .from('task_collaborations')
+        .select('*')
+        .eq('receiver_email', cleanEmail);
+
+      if (supaCollabs && supaCollabs.length > 0) {
+        remoteInvites = supaCollabs.map(c => ({
+          id: c.id,
+          taskId: c.task_id || c.taskId,
+          taskTitle: c.task_title || c.taskTitle,
+          category: c.category,
+          priority: c.priority,
+          senderEmail: c.sender_email || c.senderEmail,
+          senderName: c.sender_name || c.senderName,
+          receiverEmail: c.receiver_email || c.receiverEmail,
+          status: c.status || 'PENDING',
+          createdAt: c.created_at || c.createdAt
+        }));
+      }
+    } catch (e) {}
+
+    // Try Spring Boot REST API
     try {
       const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}/api/v1/collaborations/received?email=${encodeURIComponent(cleanEmail)}`);
       if (res.ok) {
-        remoteInvites = await res.json();
+        const bootInvites = await res.json();
+        remoteInvites.push(...bootInvites);
       }
     } catch (e) {}
 
-    const local = getLocalCollabs().filter(c => c.receiverEmail.toLowerCase() === cleanEmail);
+    const local = getLocalCollabs().filter(c => c.receiverEmail && c.receiverEmail.toLowerCase() === cleanEmail);
     const combinedMap = new Map();
     [...remoteInvites, ...local].forEach(item => {
       combinedMap.set(item.id, item);
@@ -94,15 +137,40 @@ export const collaborationService = {
     const cleanEmail = senderEmail.trim().toLowerCase();
     let remoteSent = [];
 
+    // Try Supabase first
+    try {
+      const { data: supaCollabs } = await supabase
+        .from('task_collaborations')
+        .select('*')
+        .eq('sender_email', cleanEmail);
+
+      if (supaCollabs && supaCollabs.length > 0) {
+        remoteSent = supaCollabs.map(c => ({
+          id: c.id,
+          taskId: c.task_id || c.taskId,
+          taskTitle: c.task_title || c.taskTitle,
+          category: c.category,
+          priority: c.priority,
+          senderEmail: c.sender_email || c.senderEmail,
+          senderName: c.sender_name || c.senderName,
+          receiverEmail: c.receiver_email || c.receiverEmail,
+          status: c.status || 'PENDING',
+          createdAt: c.created_at || c.createdAt
+        }));
+      }
+    } catch (e) {}
+
+    // Try Spring Boot REST API
     try {
       const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}/api/v1/collaborations/sent?email=${encodeURIComponent(cleanEmail)}`);
       if (res.ok) {
-        remoteSent = await res.json();
+        const bootSent = await res.json();
+        remoteSent.push(...bootSent);
       }
     } catch (e) {}
 
-    const local = getLocalCollabs().filter(c => c.senderEmail.toLowerCase() === cleanEmail);
+    const local = getLocalCollabs().filter(c => c.senderEmail && c.senderEmail.toLowerCase() === cleanEmail);
     const combinedMap = new Map();
     [...remoteSent, ...local].forEach(item => {
       combinedMap.set(item.id, item);
@@ -126,6 +194,11 @@ export const collaborationService = {
       saveLocalCollabs(local);
     }
 
+    // Try updating Supabase table
+    try {
+      await supabase.from('task_collaborations').update({ status: newStatus }).eq('id', inviteId);
+    } catch (e) {}
+
     // Attempt updating Spring Boot backend
     try {
       const baseUrl = getApiBaseUrl();
@@ -145,8 +218,8 @@ export const collaborationService = {
       const newTask = {
         id: 'collab-task-' + Date.now(),
         title: itemToUse.taskTitle || 'Accepted Collaborative Habit',
-        category: itemToUse.taskCategory || 'General',
-        priority: itemToUse.taskPriority || 'HIGH',
+        category: itemToUse.category || itemToUse.taskCategory || 'General',
+        priority: itemToUse.priority || itemToUse.taskPriority || 'HIGH',
         collab: itemToUse.senderEmail || '',
         description: `Collaborative task accepted from ${itemToUse.senderName || itemToUse.senderEmail}`,
         estimatedMinutes: 30,
@@ -161,3 +234,4 @@ export const collaborationService = {
     return updatedItem;
   }
 };
+

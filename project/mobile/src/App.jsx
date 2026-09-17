@@ -771,16 +771,34 @@ export default function App() {
         }
       }
 
-      // Always fetch fresh from Supabase for authenticated users
-      const { data: dbTasks, error: taskError } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('user_id', userId);
+      // Fetch fresh tasks from Supabase matching user ID, email, or collaboration
+      let queryFilter = `user_id.eq.${userId}`;
+      if (userEmail) {
+        queryFilter += `,user_id.eq.${userEmail.toLowerCase()},collab.ilike.%${userEmail}%`;
+      }
+      
+      let dbTasks = null;
+      let taskError = null;
 
-      const { data: dbSubtasks } = await supabase
-        .from('subtasks')
-        .select('*')
-        .eq('user_id', userId);
+      try {
+        const res = await supabase
+          .from('tasks')
+          .select('*')
+          .or(queryFilter);
+        dbTasks = res.data;
+        taskError = res.error;
+      } catch (e) {
+        // Fall back to plain user_id query if .or(...) is unsupported
+        const res = await supabase.from('tasks').select('*').eq('user_id', userId);
+        dbTasks = res.data;
+        taskError = res.error;
+      }
+
+      let dbSubtasks = null;
+      try {
+        const subRes = await supabase.from('subtasks').select('*').eq('user_id', userId);
+        dbSubtasks = subRes.data;
+      } catch (e) {}
 
       let fetchedItems = [];
 
@@ -852,8 +870,27 @@ export default function App() {
         });
       }
 
-      // Use only the user's own DB data — never inject demo tasks for real accounts
-      updateTasksState(fetchedItems, userEmail);
+      // Read any locally created tasks stored in localStorage for this user
+      let localUserTasks = [];
+      if (userEmail) {
+        const emailCached = localStorage.getItem('habit_hacker_tasks_' + userEmail.toLowerCase());
+        if (emailCached) {
+          try {
+            localUserTasks = JSON.parse(emailCached) || [];
+          } catch (e) {}
+        }
+      }
+
+      // Merge remote DB tasks with local tasks so nothing created locally is ever wiped
+      const mergedMap = new Map();
+      localUserTasks.forEach(item => mergedMap.set(item.id, item));
+      fetchedItems.forEach(item => mergedMap.set(item.id, item));
+
+      const finalTaskList = Array.from(mergedMap.values());
+
+      if (finalTaskList.length > 0) {
+        updateTasksState(finalTaskList, userEmail);
+      }
 
       try {
         const { data: dbMissed } = await supabase.from('view_parent_task_missed_days').select('*');
@@ -874,10 +911,20 @@ export default function App() {
 
     } catch (err) {
       console.warn('Supabase fetch notice:', err.message);
-      // On error: show empty for real users so they don't see wrong data
-      if (!isGuest) {
-        updateTasksState([], userEmail);
-      } else {
+      // On error: preserve user's local tasks, NEVER wipe to empty array []
+      if (userEmail) {
+        const emailCached = localStorage.getItem('habit_hacker_tasks_' + userEmail.toLowerCase());
+        if (emailCached) {
+          try {
+            const parsed = JSON.parse(emailCached);
+            if (parsed && parsed.length > 0) {
+              setTasks(parsed);
+              return;
+            }
+          } catch (e) {}
+        }
+      }
+      if (isGuest) {
         updateTasksState(INITIAL_DEFAULT_TASKS, '');
       }
     }
@@ -1551,6 +1598,7 @@ export default function App() {
         onAddTask={handleAddTask} 
         existingTasks={tasks}
         preselectedParentTaskId={preselectedParentTaskId}
+        currentUser={currentUser}
       />
 
       <TaskDetailModal 

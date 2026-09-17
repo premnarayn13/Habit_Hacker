@@ -507,6 +507,35 @@ export default function TaskSubtaskView({
                           {task.title}
                         </span>
 
+                        {/* Priority Badge */}
+                        {task.priority && (
+                          <span style={{ 
+                            fontSize: '10px', 
+                            fontWeight: 800, 
+                            padding: '2px 7px', 
+                            borderRadius: '6px',
+                            background: task.priority === 'URGENT' ? '#FEE2E2' : (task.priority === 'HIGH' ? '#FFEDD5' : (task.priority === 'MEDIUM' ? '#FEF3C7' : '#EFF6FF')),
+                            border: '1px solid ' + (task.priority === 'URGENT' ? '#FCA5A5' : (task.priority === 'HIGH' ? '#FED7AA' : (task.priority === 'MEDIUM' ? '#FDE68A' : '#BFDBFE'))),
+                            color: task.priority === 'URGENT' ? '#DC2626' : (task.priority === 'HIGH' ? '#C2410C' : (task.priority === 'MEDIUM' ? '#B45309' : '#1D4ED8'))
+                          }}>
+                            {task.priority === 'URGENT' ? '🔥 Urgent' : (task.priority === 'HIGH' ? '🔴 High' : (task.priority === 'MEDIUM' ? '🟡 Medium' : '🔵 Low'))}
+                          </span>
+                        )}
+
+                        {/* Recurrence Frequency Pill */}
+                        {task.repeatRule && task.repeatRule !== 'NONE' && (
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569', background: '#F1F5F9', border: '1px solid #CBD5E1', padding: '2px 7px', borderRadius: '6px' }}>
+                            {task.repeatRule === 'EVERY_2_DAYS' ? '⚡ Every 2 Days' : (task.repeatRule === 'EVERY_3_DAYS' ? '⚡ Every 3 Days' : (task.repeatRule === 'INTERVAL' ? `🔢 Every ${task.customIntervalDays || 2} Days` : (task.repeatRule === 'WEEKLY' ? '📆 Weekly' : (task.repeatRule === 'MONTHLY' ? '🗓️ Monthly' : '📅 Daily'))))}
+                          </span>
+                        )}
+
+                        {/* Collaborator Pill */}
+                        {task.collab && (
+                          <span style={{ fontSize: '10px', color: '#7C3AED', fontWeight: 800, background: '#F3E8FF', border: '1px solid #DDD6FE', padding: '2px 7px', borderRadius: '6px' }}>
+                            👥 {task.collab}
+                          </span>
+                        )}
+
                         {/* Parent Reference Badge */}
                         {parentTaskObj && (
                           <span style={{ fontSize: '11px', color: '#D97706', fontWeight: 800, background: '#FEF3C7', border: '1px solid #FDE68A', padding: '2px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>
