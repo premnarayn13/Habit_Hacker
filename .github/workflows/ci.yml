@@ -15,8 +15,9 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 20
-      - name: Install dependencies & Build
+      - name: Install dependencies & Build Mobile PWA
         run: |
-          cd mobile
+          cd project/mobile
           npm install
           npm run build
+
