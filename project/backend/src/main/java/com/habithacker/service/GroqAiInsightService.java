@@ -14,13 +14,13 @@ import java.util.*;
 @Service
 public class GroqAiInsightService {
 
-    @Value("${groq.api.key:gsk_demo_key}")
+    @Value("${groq.api.key:${GROQ_API_KEY:${LLM_TOKEN:${OPENAI_API_KEY:${LLM_API_KEY:${GROQ_KEY:${AI_API_KEY:gsk_demo_key}}}}}}}")
     private String apiKey;
 
-    @Value("${groq.model.id:openai/gpt-oss-120b}")
+    @Value("${groq.model.id:${GROQ_MODEL_ID:${LLM_MODEL:llama-3.3-70b-versatile}}}")
     private String modelName;
 
-    @Value("${groq.api.url:https://api.groq.com/openai/v1/chat/completions}")
+    @Value("${groq.api.url:${GROQ_API_URL:${OPENAI_API_URL:${LLM_API_URL:https://api.groq.com/openai/v1/chat/completions}}}}")
     private String groqEndpoint;
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -108,12 +108,23 @@ public class GroqAiInsightService {
                 )
         );
 
-        // If Groq API Key is configured and valid, call Groq LLM endpoint
-        if (apiKey != null && !apiKey.isEmpty() && !apiKey.equals("gsk_demo_key")) {
+        // If LLM API Key is configured and valid, call LLM endpoint
+        if (apiKey != null && !apiKey.trim().isEmpty() && !apiKey.equals("gsk_demo_key")) {
             try {
+                String targetEndpoint = groqEndpoint;
+                String targetModel = modelName;
+
+                // Auto-detect OpenAI API Key format
+                if (apiKey.startsWith("sk-") && groqEndpoint.contains("groq.com")) {
+                    targetEndpoint = "https://api.openai.com/v1/chat/completions";
+                    if (targetModel.contains("llama") || targetModel.contains("gpt-oss")) {
+                        targetModel = "gpt-4o-mini";
+                    }
+                }
+
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.APPLICATION_JSON);
-                headers.setBearerAuth(apiKey);
+                headers.setBearerAuth(apiKey.trim());
 
                 String systemPrompt = "You are Habit Hacker AI, an elite productivity coach. Return a JSON object with keys: " +
                         "insightContent (string summary), disciplineScore (integer 1-100), recommendations (array of 3 strings), " +
@@ -131,7 +142,7 @@ public class GroqAiInsightService {
                         taskMetrics.getOrDefault("plannedMinutes", 380));
 
                 Map<String, Object> requestBody = new HashMap<>();
-                requestBody.put("model", modelName);
+                requestBody.put("model", targetModel);
                 requestBody.put("messages", List.of(
                         Map.of("role", "system", "content", systemPrompt),
                         Map.of("role", "user", "content", userPrompt)
@@ -139,7 +150,7 @@ public class GroqAiInsightService {
                 requestBody.put("temperature", 0.7);
 
                 HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-                ResponseEntity<Map> apiResponse = restTemplate.postForEntity(groqEndpoint, entity, Map.class);
+                ResponseEntity<Map> apiResponse = restTemplate.postForEntity(targetEndpoint, entity, Map.class);
 
                 if (apiResponse.getStatusCode().is2xxSuccessful() && apiResponse.getBody() != null) {
                     List choices = (List) apiResponse.getBody().get("choices");
