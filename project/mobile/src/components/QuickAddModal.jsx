@@ -162,17 +162,17 @@ export default function QuickAddModal({
         </button>
 
         <h2 style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-          <Layers size={22} color="#DC2626" /> Create New Task / Subtask
+          <Layers size={22} color="#DC2626" /> Create New Habit / Subhabit
         </h2>
         <p style={{ fontSize: '12px', color: '#64748B', marginBottom: '20px' }}>
-          Configure task parameters, priority, recurrence schedule, category, tracking mode, and attachments.
+          Configure habit parameters, priority, recurrence schedule, category, tracking mode, and attachments.
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           {/* TITLE INPUT */}
           <div>
-            <label style={{ fontSize: '12px', color: '#475569', fontWeight: 700, display: 'block', marginBottom: '6px' }}>TASK TITLE *</label>
+            <label style={{ fontSize: '12px', color: '#475569', fontWeight: 700, display: 'block', marginBottom: '6px' }}>HABIT TITLE *</label>
             <input 
               type="text" 
               placeholder="e.g. Learning Java, Read 20 pages, Morning Jogging..."
@@ -525,17 +525,17 @@ export default function QuickAddModal({
             </div>
           </div>
 
-          {/* PARENT TASK MAPPING */}
+          {/* PARENT HABIT MAPPING */}
           <div>
             <label style={{ fontSize: '12px', color: '#475569', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-              <Layers size={14} color="#DC2626" /> PARENT TASK MAPPING (OPTIONAL)
+              <Layers size={14} color="#DC2626" /> PARENT HABIT MAPPING (OPTIONAL)
             </label>
             <select 
               value={taskData.parentTaskId}
               onChange={(e) => setTaskData(prev => ({ ...prev, parentTaskId: e.target.value }))}
               style={{ width: '100%', height: '42px' }}
             >
-              <option value="">None (Independent Solo Task)</option>
+              <option value="">None (Independent Solo Habit)</option>
               {existingTasks.filter(t => !t.parentTaskId).map(p => (
                 <option key={p.id} value={p.id}>{p.title}</option>
               ))}
@@ -552,7 +552,7 @@ export default function QuickAddModal({
               className="btn-primary" 
               disabled={!taskData.title.trim() || !!validationError}
             >
-              <Plus size={16} /> Create Task
+              <Plus size={16} /> Create Habit
             </button>
           </div>
 

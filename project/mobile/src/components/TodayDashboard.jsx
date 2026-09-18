@@ -509,7 +509,7 @@ export default function TodayDashboard({
       {/* ========================================================================= */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
         
-        {/* Card 1: Total Tasks */}
+        {/* Card 1: Total Habits */}
         <div style={{
           background: 'linear-gradient(145deg, #FFFFFF 0%, #F8FAFC 100%)',
           padding: '14px 16px',
@@ -519,11 +519,11 @@ export default function TodayDashboard({
           borderLeft: '5px solid #475569',
           boxShadow: '0 8px 16px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.8)'
         }}>
-          <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Total Tasks</span>
+          <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Total Habits</span>
           <span style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A', marginTop: '2px', display: 'block' }}>{stats.totalCount}</span>
         </div>
 
-        {/* Card 2: Completed Tasks */}
+        {/* Card 2: Completed Habits */}
         <div style={{
           background: 'linear-gradient(145deg, #F0FDF4 0%, #DCFCE7 100%)',
           padding: '14px 16px',
@@ -537,7 +537,7 @@ export default function TodayDashboard({
           <span style={{ fontSize: '22px', fontWeight: 900, color: '#15803D', marginTop: '2px', display: 'block' }}>{stats.completedCount}</span>
         </div>
 
-        {/* Card 3: Pending Tasks */}
+        {/* Card 3: Pending Habits */}
         <div style={{
           background: 'linear-gradient(145deg, #FEF3C7 0%, #FDE68A 100%)',
           padding: '14px 16px',

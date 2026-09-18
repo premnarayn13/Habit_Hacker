@@ -5,15 +5,11 @@ import {
   Calendar as CalendarIcon, 
   Flame, 
   BarChart3, 
-  Clock, 
   BookOpen, 
-  Bell, 
   Layers,
   AlertTriangle,
   Grid as GridIcon,
   Plus,
-  Zap,
-  User,
   Archive
 } from 'lucide-react';
 
@@ -108,11 +104,11 @@ export default function Header({
           {/* Top Desktop Navigation Shortcuts */}
           <nav className="desktop-nav" style={{ display: 'flex', gap: '4px', background: '#F8FAFC', padding: '3px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
             <button 
-              className={`btn-secondary ${activeTab === 'widgets' ? 'btn-primary' : ''}`}
+              className={`btn-secondary ${activeTab === 'widgets' || activeTab === 'home' ? 'btn-primary' : ''}`}
               onClick={() => setActiveTab('widgets')}
-              style={{ border: 'none', padding: '6px 12px', fontSize: '12px', background: activeTab === 'widgets' ? 'linear-gradient(135deg, #DC2626, #B91C1C)' : 'transparent', color: activeTab === 'widgets' ? '#FFF' : '#334155' }}
+              style={{ border: 'none', padding: '6px 12px', fontSize: '12px', background: activeTab === 'widgets' || activeTab === 'home' ? 'linear-gradient(135deg, #DC2626, #B91C1C)' : 'transparent', color: activeTab === 'widgets' || activeTab === 'home' ? '#FFF' : '#334155' }}
             >
-              <GridIcon size={14} /> Widgets
+              <GridIcon size={14} /> Home
             </button>
 
             <button 
@@ -166,7 +162,7 @@ export default function Header({
                   gap: '4px',
                   whiteSpace: 'nowrap'
                 }}
-                title="Toggle Archived Task Vault"
+                title="Toggle Archived Habit Vault"
               >
                 <Archive size={13} /> Vault
               </button>
@@ -177,7 +173,7 @@ export default function Header({
               onClick={onOpenQuickAdd} 
               style={{ padding: '5px 10px', height: '32px', minHeight: '32px', fontSize: '11px', fontWeight: 800, whiteSpace: 'nowrap' }}
             >
-              <Plus size={13} /> Add Task
+              <Plus size={13} /> Add Habit
             </button>
           </div>
 
@@ -186,9 +182,9 @@ export default function Header({
 
       {/* Permanent Bottom Navigation Bar */}
       <nav className="app-bottom-nav">
-        <button className={`bottom-nav-item ${activeTab === 'widgets' ? 'active' : ''}`} onClick={() => setActiveTab('widgets')}>
+        <button className={`bottom-nav-item ${activeTab === 'widgets' || activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('widgets')}>
           <GridIcon size={18} />
-          <span>Widgets</span>
+          <span>Home</span>
         </button>
 
         <button className={`bottom-nav-item ${activeTab === 'today' ? 'active' : ''}`} onClick={() => setActiveTab('today')}>
@@ -198,7 +194,7 @@ export default function Header({
 
         <button className={`bottom-nav-item ${activeTab === 'tasks' ? 'active' : ''}`} onClick={() => setActiveTab('tasks')}>
           <Layers size={18} />
-          <span>Tasks</span>
+          <span>Habits</span>
         </button>
 
         <button className={`bottom-nav-item ${activeTab === 'calendar' ? 'active' : ''}`} onClick={() => setActiveTab('calendar')}>
@@ -219,7 +215,3 @@ export default function Header({
     </>
   );
 }
-
-// Push commit iteration 5
-
-// Push commit iteration 17

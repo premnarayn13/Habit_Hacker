@@ -388,7 +388,7 @@ export default function TaskSubtaskView({
           <Search size={14} color="#64748B" style={{ position: 'absolute', left: '10px', top: '9px' }} />
           <input 
             type="text"
-            placeholder="Search tasks by title, category, or tags..."
+            placeholder="Search habits by title, category, or tags..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ width: '100%', paddingLeft: '30px', height: '34px', borderRadius: '8px', fontSize: '11px' }}
@@ -403,12 +403,12 @@ export default function TaskSubtaskView({
           <div className="glass-panel" style={{ padding: '36px', textAlign: 'center', color: '#64748B' }}>
             <Layers size={36} color="#DC2626" style={{ margin: '0 auto 10px auto' }} />
             <div style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A' }}>
-              {filterType === 'COMPLETED' ? 'No Completed Tasks Found' : 'No Active Tasks Scheduled'}
+              {filterType === 'COMPLETED' ? 'No Completed Habits Found' : 'No Active Habits Scheduled'}
             </div>
             <div style={{ fontSize: '12px', marginTop: '4px' }}>
               {filterType === 'COMPLETED'
-                ? 'Tasks marked as completed or past their end date will appear here for review and deadline extension.'
-                : 'Click + Add Task to create a new task.'}
+                ? 'Habits marked as completed or past their end date will appear here for review and deadline extension.'
+                : 'Click + Add Habit to create a new habit.'}
             </div>
           </div>
         ) : (

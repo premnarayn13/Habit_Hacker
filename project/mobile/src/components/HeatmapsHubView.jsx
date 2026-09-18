@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Grid, Flame, ChevronDown, Calendar, Layers, Activity } from 'lucide-react';
+import { Grid, Activity } from 'lucide-react';
 
-export default function HeatmapsHubView({ heatmapData, onSelectDay }) {
+export default function HeatmapsHubView({ heatmapData = {}, onSelectDay }) {
   const [activeTab, setActiveTab] = useState('ALL');
   const [timespan, setTimespan] = useState('3_MONTHS'); // 4_WEEKS, 3_MONTHS, 1_YEAR
   const [selectedDayDetails, setSelectedDayDetails] = useState(null);
@@ -14,13 +14,23 @@ export default function HeatmapsHubView({ heatmapData, onSelectDay }) {
   };
 
   const dayCells = Array.from({ length: getGridColumns() }).map((_, idx) => {
-    const intensity = (idx % 5 === 0) ? 4 : (idx % 3 === 0) ? 3 : (idx % 2 === 0) ? 1 : 0;
+    const d = new Date();
+    d.setDate(d.getDate() - (getGridColumns() - 1 - idx));
+    const dateStr = d.toISOString().split('T')[0];
+
+    const logsOnDay = (heatmapData.taskLogs || []).filter(l => l.logged_at && l.logged_at.startsWith(dateStr));
+    const completedTasksOnDay = (heatmapData.tasks || []).filter(t => (t.isDoneToday || t.progressPercent >= 100) && t.updatedAt && t.updatedAt.startsWith(dateStr));
+    
+    const count = logsOnDay.length + completedTasksOnDay.length;
+    const intensity = count === 0 ? 0 : (count === 1 ? 1 : (count <= 3 ? 2 : (count <= 5 ? 3 : 4)));
+    const score = count === 0 ? 0 : Math.min(100, count * 25);
+
     return {
       dayIndex: idx,
-      date: `2026-08-${(idx % 30) + 1}`,
+      date: dateStr,
       intensity,
-      completedTasksCount: intensity * 2,
-      disciplineScore: Math.min(100, intensity * 25)
+      completedTasksCount: count,
+      disciplineScore: score
     };
   });
 
@@ -31,14 +41,14 @@ export default function HeatmapsHubView({ heatmapData, onSelectDay }) {
       <div className="glass-panel" style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Grid size={22} color="#DC2626" /> Consistency & Activity Heatmap Matrix
+            <Grid size={22} color="#DC2626" /> Consistency & Habit Activity Heatmap Matrix
           </h2>
           <p style={{ fontSize: '13px', color: '#64748B', marginTop: '2px' }}>
             Expandable activity heatmaps across 4-5 weeks, 3 months, or 1 full year. Click any tile for historical day details.
           </p>
         </div>
 
-        {/* Dropdown to Expand Heatmap to 3 Months or 1 Year */}
+        {/* Dropdown to Expand Heatmap */}
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <select 
             value={timespan}
@@ -54,7 +64,7 @@ export default function HeatmapsHubView({ heatmapData, onSelectDay }) {
 
       {/* Category Tabs */}
       <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-        {['ALL', 'MAIN_TASKS', 'SUBTASKS', 'HABITS', 'DISCIPLINE_SCORE'].map(tab => (
+        {['ALL', 'MAIN_HABITS', 'SUBHABITS', 'HABIT_CONSISTENCY', 'DISCIPLINE_SCORE'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -79,7 +89,7 @@ export default function HeatmapsHubView({ heatmapData, onSelectDay }) {
       <div className="glass-panel" style={{ padding: '24px', overflowX: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
-            HEATMAP ACTIVITY MATRIX ({timespan.replace('_', ' ')})
+            HEATMAP HABIT MATRIX ({timespan.replace('_', ' ')})
           </span>
           
           {/* Intensity Legend */}
@@ -104,7 +114,7 @@ export default function HeatmapsHubView({ heatmapData, onSelectDay }) {
               key={cell.dayIndex}
               onClick={() => setSelectedDayDetails(cell)}
               className={`heatmap-cell heatmap-level-${cell.intensity}`}
-              title={`${cell.date}: ${cell.completedTasksCount} activities completed (${cell.disciplineScore}% score)`}
+              title={`${cell.date}: ${cell.completedTasksCount} habits completed (${cell.disciplineScore}% score)`}
             />
           ))}
         </div>
@@ -131,7 +141,7 @@ export default function HeatmapsHubView({ heatmapData, onSelectDay }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginTop: '14px' }}>
             <div style={{ background: '#FFF', padding: '10px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-              <div style={{ fontSize: '11px', color: '#64748B' }}>Activities Done</div>
+              <div style={{ fontSize: '11px', color: '#64748B' }}>Habits Done</div>
               <div style={{ fontSize: '16px', fontWeight: 800, color: '#059669' }}>{selectedDayDetails.completedTasksCount} Completed</div>
             </div>
 

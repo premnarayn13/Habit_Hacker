@@ -148,6 +148,15 @@ class DiaryTable {
     return id;
   }
 
+  // ── Update ───────────────────────────────────────────────────────────────────
+
+  async update(id, changes) {
+    const existing = await this.get(id);
+    const now = new Date().toISOString();
+    const record = { ...(existing || {}), ...changes, id, updatedAt: now };
+    return await this.put(record);
+  }
+
   // ── BulkAdd ──────────────────────────────────────────────────────────────────
 
   async bulkAdd(items) {

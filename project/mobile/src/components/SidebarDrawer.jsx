@@ -10,7 +10,6 @@ import {
   BookOpen, 
   Flame, 
   Target, 
-  Briefcase, 
   Sliders, 
   User,
   Zap,
@@ -21,7 +20,6 @@ import {
   Plus,
   Crown,
   Inbox,
-  Award,
   ShoppingBag,
   Activity,
   Star,
@@ -40,8 +38,9 @@ import {
   PenTool,
   Palette,
   Utensils,
-  Home,
+  Home as HomeIcon,
   Car,
+  Award,
   Shield,
   Sun,
   Moon,
@@ -52,9 +51,8 @@ import {
   Lightbulb
 } from 'lucide-react';
 
-// Map of 40 Lucide Icons available for Category Selection
 const ICON_MAP = {
-  Briefcase,
+  Briefcase: User,
   User,
   GraduationCap,
   Code,
@@ -78,7 +76,7 @@ const ICON_MAP = {
   PenTool,
   Palette,
   Utensils,
-  Home,
+  Home: HomeIcon,
   Car,
   CheckSquare,
   Calendar,
@@ -98,14 +96,13 @@ const ICON_MAP = {
 
 const ICON_NAMES = Object.keys(ICON_MAP);
 
-// Default category-to-icon mapping for standard system categories
 const DEFAULT_CATEGORY_ICONS = {
   'Academics': 'GraduationCap',
   'Coding': 'Code',
   'Fitness': 'Activity',
   'Health': 'Heart',
   'Education': 'BookOpen',
-  'Work': 'Briefcase',
+  'Work': 'User',
   'Personal': 'User',
   'General': 'Bookmark',
   'Shopping': 'ShoppingBag',
@@ -121,7 +118,6 @@ const DEFAULT_CATEGORY_ICONS = {
 export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab, tasks = [], onSelectCategory }) {
   if (!isOpen) return null;
 
-  // Custom User Categories stored in localStorage
   const [customCategories, setCustomCategories] = useState(() => {
     try {
       const saved = localStorage.getItem('hh_sidebar_categories_v1');
@@ -135,16 +131,12 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
   const [newCategoryName, setNewCategoryName] = useState('');
   const [selectedIconName, setSelectedIconName] = useState('Bookmark');
 
-  // Sync custom categories to localStorage
   useEffect(() => {
     try {
       localStorage.setItem('hh_sidebar_categories_v1', JSON.stringify(customCategories));
-    } catch (e) {
-      console.error('Failed to save sidebar categories:', e);
-    }
+    } catch (e) {}
   }, [customCategories]);
 
-  // Extract unique active categories present in the system's tasks + system defaults + custom categories
   const categories = useMemo(() => {
     const defaultList = [
       { id: 'cat-academics', name: 'Academics', iconName: 'GraduationCap' },
@@ -152,7 +144,7 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
       { id: 'cat-fitness', name: 'Fitness', iconName: 'Activity' },
       { id: 'cat-health', name: 'Health', iconName: 'Heart' },
       { id: 'cat-education', name: 'Education', iconName: 'BookOpen' },
-      { id: 'cat-work', name: 'Work', iconName: 'Briefcase' },
+      { id: 'cat-work', name: 'Work', iconName: 'User' },
       { id: 'cat-personal', name: 'Personal', iconName: 'User' },
       { id: 'cat-general', name: 'General', iconName: 'Bookmark' },
       { id: 'cat-shopping', name: 'Shopping', iconName: 'ShoppingBag' },
@@ -160,11 +152,8 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
     ];
 
     const categoryMap = new Map();
-
-    // 1. Load system defaults
     defaultList.forEach(item => categoryMap.set(item.name, item));
 
-    // 2. Discover categories from existing tasks
     (tasks || []).forEach(t => {
       if (t && t.category && !categoryMap.has(t.category)) {
         const iconName = DEFAULT_CATEGORY_ICONS[t.category] || 'Bookmark';
@@ -176,7 +165,6 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
       }
     });
 
-    // 3. Merge user-created custom categories (overrides or additions)
     (customCategories || []).forEach(cc => {
       if (cc && cc.name) {
         categoryMap.set(cc.name, {
@@ -194,7 +182,6 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
     if (!newCategoryName.trim()) return;
     const catName = newCategoryName.trim();
     
-    // Add to custom categories state
     setCustomCategories(prev => [
       ...prev.filter(c => c.name.toLowerCase() !== catName.toLowerCase()),
       { id: `c-${Date.now()}`, name: catName, iconName: selectedIconName }
@@ -206,13 +193,12 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
   };
 
   const menuItems = [
-    { id: 'widgets', label: 'Master Home Dashboard', icon: Grid },
+    { id: 'widgets', label: 'Home', icon: Grid },
     { id: 'today', label: 'Today Dashboard', icon: CheckSquare },
-    { id: 'tasks', label: 'Habits & Subtasks', icon: Layers },
+    { id: 'tasks', label: 'Habits & Subhabits', icon: Layers },
     { id: 'calendar', label: 'Smart Calendar', icon: Calendar },
     { id: 'planner', label: 'Capacity Planner', icon: Clock },
     { id: 'analytics', label: 'Visual Analytics', icon: BarChart3 },
-    { id: 'focus', label: 'Private Diary', icon: BookOpen },
     { id: 'diary', label: 'Private Diary', icon: BookOpen },
     { id: 'goals', label: 'Goals Management', icon: Target },
     { id: 'settings', label: 'Settings & Profile', icon: Sliders }
@@ -304,7 +290,7 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
             }}
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Inbox size={18} color="#475569" /> All Tasks & Subtasks
+              <Inbox size={18} color="#475569" /> All Habits & Subhabits
             </span>
             <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 700 }}>
               {(tasks || []).length}
@@ -337,7 +323,7 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
           </button>
         </div>
 
-        {/* Inline Category Creation Panel with 40-Icon Picker */}
+        {/* Inline Category Creation Panel */}
         {isAddCategoryOpen && (
           <div style={{
             background: '#F8FAFC',
@@ -367,17 +353,15 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
               }}
             />
 
-            {/* Subtitle & Selected Icon Preview */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
               <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B' }}>
-                Select Icon (40 Options):
+                Select Icon:
               </span>
               <span style={{ fontSize: '11px', fontWeight: 800, color: '#DC2626', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <SelectedIconComponent size={14} /> {selectedIconName}
               </span>
             </div>
 
-            {/* 40-Icon Scrollable Grid Picker */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(8, 1fr)',
@@ -391,7 +375,7 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
               marginBottom: '10px'
             }}>
               {ICON_NAMES.map(iconName => {
-                const IconComp = ICON_MAP[iconName];
+                const IconComp = ICON_MAP[iconName] || Bookmark;
                 const isSelected = selectedIconName === iconName;
                 return (
                   <button
@@ -409,8 +393,7 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease'
+                      cursor: 'pointer'
                     }}
                   >
                     <IconComp size={16} />
@@ -419,7 +402,6 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
               })}
             </div>
 
-            {/* Modal Action Buttons */}
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button 
                 onClick={() => setIsAddCategoryOpen(false)} 
@@ -446,8 +428,7 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
                   borderRadius: '8px',
                   fontSize: '12px',
                   fontWeight: 800,
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)'
+                  cursor: 'pointer'
                 }}
               >
                 Save Category
@@ -498,7 +479,6 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
             );
           })}
 
-          {/* Navigation Menu Section */}
           <div style={{ borderTop: '1px solid #E2E8F0', marginTop: '10px', paddingTop: '10px' }}>
             <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', letterSpacing: '0.05em', marginBottom: '8px' }}>
               MAIN NAVIGATION
