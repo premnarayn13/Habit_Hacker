@@ -25,7 +25,6 @@ import DateDurationPickerModal from './components/DateDurationPickerModal';
 import AuthLandingPage from './components/AuthLandingPage';
 import { supabase } from './lib/supabaseClient';
 import { collaborationService } from './lib/collaborationService';
-import { collaborationService } from './lib/collaborationService';
 import { 
   isParentTaskWithChildren, 
   canManuallyCompleteTask, 
