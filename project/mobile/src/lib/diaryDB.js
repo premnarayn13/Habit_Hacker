@@ -30,16 +30,16 @@ async function getCurrentUserId() {
 
 // ─── LocalStorage fallback ─────────────────────────────────────────────────────
 
-function lsGet(key) {
+function lsGet(key, userId = 'guest') {
   try {
-    const raw = window.localStorage.getItem(`hh_table_${key}`);
+    const raw = window.localStorage.getItem(`hh_table_${userId}_${key}`);
     return raw ? JSON.parse(raw) : {};
   } catch { return {}; }
 }
 
-function lsSave(key, map) {
+function lsSave(key, map, userId = 'guest') {
   try {
-    window.localStorage.setItem(`hh_table_${key}`, JSON.stringify(map));
+    window.localStorage.setItem(`hh_table_${userId}_${key}`, JSON.stringify(map));
   } catch {}
 }
 
@@ -70,13 +70,13 @@ class DiaryTable {
           // Hydrate local cache for offline access
           const map = {};
           data.forEach(r => { map[r.id] = this._fromDB(r); });
-          lsSave(this.entryType, map);
+          lsSave(this.entryType, map, userId);
           return Object.values(map);
         }
       } catch {}
     }
     // Offline fallback
-    return Object.values(lsGet(this.entryType));
+    return Object.values(lsGet(this.entryType, userId || 'guest'));
   }
 
   // ── Get single record ────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ class DiaryTable {
         if (!error && data) return this._fromDB(data);
       } catch {}
     }
-    const map = lsGet(this.entryType);
+    const map = lsGet(this.entryType, userId || 'guest');
     return map[id] || null;
   }
 
@@ -119,9 +119,9 @@ class DiaryTable {
       } catch {}
     }
     // Always also write to localStorage for immediate offline access
-    const map = lsGet(this.entryType);
+    const map = lsGet(this.entryType, userId || 'guest');
     map[id] = record;
-    lsSave(this.entryType, map);
+    lsSave(this.entryType, map, userId || 'guest');
     return id;
   }
 
@@ -136,15 +136,15 @@ class DiaryTable {
       try {
         const record = { ...item, id, updatedAt: now };
         await supabase.from(SUPABASE_TABLE).upsert([this._toDB(record, userId)]);
-        const map = lsGet(this.entryType);
+        const map = lsGet(this.entryType, userId);
         map[id] = { ...map[id], ...record };
-        lsSave(this.entryType, map);
+        lsSave(this.entryType, map, userId);
         return id;
       } catch {}
     }
-    const map = lsGet(this.entryType);
+    const map = lsGet(this.entryType, 'guest');
     map[id] = { ...map[id], ...item, id, updatedAt: now };
-    lsSave(this.entryType, map);
+    lsSave(this.entryType, map, 'guest');
     return id;
   }
 
@@ -162,7 +162,7 @@ class DiaryTable {
   async bulkAdd(items) {
     const now = new Date().toISOString();
     const userId = await getCurrentUserId();
-    const map = lsGet(this.entryType);
+    const map = lsGet(this.entryType, userId || 'guest');
 
     const records = items.map(item => {
       const id = item.id || safeUUID();
@@ -175,7 +175,7 @@ class DiaryTable {
       } catch {}
     }
     records.forEach(r => { map[r.id] = r; });
-    lsSave(this.entryType, map);
+    lsSave(this.entryType, map, userId || 'guest');
   }
 
   // ── Delete ───────────────────────────────────────────────────────────────────
@@ -187,9 +187,9 @@ class DiaryTable {
         await supabase.from(SUPABASE_TABLE).delete().eq('id', id).eq('user_id', userId);
       } catch {}
     }
-    const map = lsGet(this.entryType);
+    const map = lsGet(this.entryType, userId || 'guest');
     delete map[id];
-    lsSave(this.entryType, map);
+    lsSave(this.entryType, map, userId || 'guest');
   }
 
   // ── Sorting and Order helpers (Dexie-compatible chaining) ─────────────────

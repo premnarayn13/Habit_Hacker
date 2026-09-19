@@ -718,10 +718,9 @@ export default function App() {
     return updatedTasks;
   };
 
-  // Helper to persist tasks state locally under global & user keys
+  // Helper to persist tasks state locally under user key
   const updateTasksState = (newTasks, userEmail = currentUser?.email) => {
     const processed = processSubtaskLifecycles(newTasks);
-    localStorage.setItem('habit_hacker_tasks_global_v2', JSON.stringify(processed));
     if (userEmail) {
       localStorage.setItem('habit_hacker_tasks_' + userEmail.toLowerCase(), JSON.stringify(processed));
     }
@@ -729,76 +728,56 @@ export default function App() {
   };
 
   const fetchUserData = async (userId, userEmail = '') => {
-    // isGuest: no real user logged in (guest/demo mode)
     const isGuest = !userId || userId === 'default-user';
 
-    // For a real logged-in user, clear any cross-user global cache so old
-    // accounts don't bleed into a fresh login.
     if (!isGuest && userEmail) {
       const cachedOwner = localStorage.getItem('habit_hacker_cache_owner');
       if (cachedOwner && cachedOwner !== userEmail.toLowerCase()) {
-        // Different user logged in — wipe the previous user's cached tasks
         localStorage.removeItem('habit_hacker_tasks_global_v2');
       }
       localStorage.setItem('habit_hacker_cache_owner', userEmail.toLowerCase());
     }
 
     try {
-      // For guest/demo mode: load per-user cache or fall back to demo tasks
       if (isGuest) {
-        const globalCached = localStorage.getItem('habit_hacker_tasks_global_v2');
-        if (globalCached) {
-          try {
-            const parsed = JSON.parse(globalCached);
-            if (parsed && parsed.length > 0) {
-              updateTasksState(parsed, '');
-              return;
-            }
-          } catch (e) {}
-        }
         updateTasksState(INITIAL_DEFAULT_TASKS, '');
         return;
       }
 
-      // Logged-in user: check per-user email cache first for instant UI
+      // Check per-user email cache first for immediate smooth rendering while DB fetches
       if (userEmail) {
         const emailCached = localStorage.getItem('habit_hacker_tasks_' + userEmail.toLowerCase());
         if (emailCached) {
           try {
             const parsed = JSON.parse(emailCached);
-            if (parsed && parsed.length > 0) {
-              updateTasksState(parsed, userEmail);
+            if (parsed && Array.isArray(parsed)) {
+              setTasks(processSubtaskLifecycles(parsed));
             }
           } catch (e) {}
         }
       }
 
-      // Fetch fresh tasks from Spring Boot REST backend
+      // Fetch fresh tasks from Spring Boot REST backend if available
       let bootItems = [];
       try {
         const baseUrl = getApiBaseUrl();
-        const res1 = await fetch(`${baseUrl}/api/tasks?userId=${encodeURIComponent(userId)}`);
-        if (res1.ok) {
-          const list1 = await res1.json();
-          if (Array.isArray(list1)) bootItems.push(...list1);
-        }
-        if (userEmail && userEmail !== userId) {
-          const res2 = await fetch(`${baseUrl}/api/tasks?userId=${encodeURIComponent(userEmail)}`);
-          if (res2.ok) {
-            const list2 = await res2.json();
-            if (Array.isArray(list2)) bootItems.push(...list2);
+        if (baseUrl) {
+          const res1 = await fetch(`${baseUrl}/api/tasks?userId=${encodeURIComponent(userId)}`);
+          if (res1.ok) {
+            const list1 = await res1.json();
+            if (Array.isArray(list1)) bootItems.push(...list1);
           }
         }
       } catch (e) {}
 
-      // Fetch fresh tasks from Supabase matching user ID or email or collaboration
+      // Fetch fresh tasks from Supabase matching authenticated user ID or collaboration
       let dbTasks = null;
       let taskError = null;
 
       try {
         let filter = `user_id.eq.${userId}`;
         if (userEmail) {
-          filter += `,user_id.eq.${userEmail.toLowerCase()},collab.ilike.%${userEmail}%`;
+          filter += `,collab.ilike.%${userEmail}%`;
         }
         const res = await supabase.from('tasks').select('*').or(filter);
         dbTasks = res.data;
@@ -822,7 +801,6 @@ export default function App() {
 
       let fetchedItems = [];
 
-      // Map Spring Boot REST tasks
       if (bootItems && bootItems.length > 0) {
         const mappedBoot = bootItems.map(t => ({
           id: t.id,
@@ -860,7 +838,6 @@ export default function App() {
         fetchedItems.push(...mappedBoot);
       }
 
-      // Map Supabase tasks
       if (dbTasks && dbTasks.length > 0) {
         const mappedTasks = dbTasks.map(t => ({
           id: t.id,
@@ -876,9 +853,9 @@ export default function App() {
           eventUnitTarget: Number(t.event_unit_target || 10),
           eventUnitName: t.event_unit_name || 'units',
           progressPercent: t.progress_percent || 0,
-          plannedStart: t.start_date || t.planned_start || '',
-          plannedEnd: t.end_date || t.planned_end || '',
-          deadline: t.end_date || t.deadline || '',
+          plannedStart: t.planned_start || t.start_date || '',
+          plannedEnd: t.planned_end || t.end_date || '',
+          deadline: t.deadline || t.planned_end || '',
           estimatedMinutes: t.estimated_minutes || 30,
           actualMinutes: t.actual_minutes || 0,
           category: t.category || 'General',
@@ -938,55 +915,36 @@ export default function App() {
         });
       }
 
-      // Read any locally created tasks stored in localStorage for this user
-      let localUserTasks = [];
-      if (userEmail) {
-        const emailCached = localStorage.getItem('habit_hacker_tasks_' + userEmail.toLowerCase());
-        if (emailCached) {
-          try {
-            localUserTasks = JSON.parse(emailCached) || [];
-          } catch (e) {}
-        }
-      }
-
-      // Merge remote DB tasks with local tasks so nothing created locally is ever wiped
-      const mergedMap = new Map();
-      localUserTasks.forEach(item => mergedMap.set(item.id, item));
-      fetchedItems.forEach(item => mergedMap.set(item.id, item));
-
-      const finalTaskList = Array.from(mergedMap.values());
-
-      if (finalTaskList.length > 0) {
-        updateTasksState(finalTaskList, userEmail);
-      }
+      // Database is the SINGLE SOURCE OF TRUTH for logged-in users.
+      // Update state directly with the fetched records from the database.
+      updateTasksState(fetchedItems, userEmail);
 
       try {
         const { data: dbMissed } = await supabase.from('view_parent_task_missed_days').select('*');
         if (dbMissed && dbMissed.length > 0) setMissedDaysLogs(dbMissed);
 
         const { data: dbTaskLogs } = await supabase.from('task_logs').select('*').eq('user_id', userId);
-        if (dbTaskLogs) setTaskLogs(dbTaskLogs);
+        if (dbTaskLogs) setTaskLogs(dbTaskLogs || []);
 
         const { data: dbSubtaskLogs } = await supabase.from('subtask_logs').select('*').eq('user_id', userId);
-        if (dbSubtaskLogs) setSubtaskLogs(dbSubtaskLogs);
+        if (dbSubtaskLogs) setSubtaskLogs(dbSubtaskLogs || []);
 
         const { data: dbEventLogs } = await supabase.from('event_logs').select('*').eq('user_id', userId);
-        if (dbEventLogs) setEventLogs(dbEventLogs);
+        if (dbEventLogs) setEventLogs(dbEventLogs || []);
 
         const { data: dbFailSummary } = await supabase.from('v_subtask_failure_summary').select('*');
-        if (dbFailSummary) setSubtaskFailureSummary(dbFailSummary);
+        if (dbFailSummary) setSubtaskFailureSummary(dbFailSummary || []);
       } catch (e) {}
 
     } catch (err) {
       console.warn('Supabase fetch notice:', err.message);
-      // On error: preserve user's local tasks, NEVER wipe to empty array []
       if (userEmail) {
         const emailCached = localStorage.getItem('habit_hacker_tasks_' + userEmail.toLowerCase());
         if (emailCached) {
           try {
             const parsed = JSON.parse(emailCached);
-            if (parsed && parsed.length > 0) {
-              setTasks(parsed);
+            if (parsed && Array.isArray(parsed)) {
+              setTasks(processSubtaskLifecycles(parsed));
               return;
             }
           } catch (e) {}
@@ -1081,7 +1039,7 @@ export default function App() {
       await supabase.from('tasks').update({
         is_archived: updatedTask.isArchived,
         archived_at: updatedTask.archivedAt,
-        end_date: updatedTask.plannedEnd,
+        planned_end: updatedTask.plannedEnd,
         deadline: updatedTask.deadline
       }).eq('id', taskId);
     }
@@ -1371,12 +1329,12 @@ export default function App() {
         has_measure_tracking: newTask.hasMeasureTracking,
         measure_unit: newTask.measureUnit,
         measure_target: newTask.measureTarget,
-        start_date: newTask.plannedStart,
-        end_date: newTask.plannedEnd,
         planned_start: newTask.plannedStart,
         planned_end: newTask.plannedEnd,
         deadline: newTask.deadline,
         estimated_minutes: newTask.estimatedMinutes,
+        category: newTask.category,
+        section: newTask.section,
         tracking_mode: newTask.trackingMode,
         target_count: newTask.targetCount,
         current_count: 0,
@@ -1390,42 +1348,46 @@ export default function App() {
       // Persist to Spring Boot REST API (PostgreSQL database)
       try {
         const baseUrl = getApiBaseUrl();
-        await fetch(`${baseUrl}/api/tasks`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: parentId,
-            userId: currentUser.id,
-            title: newTask.title,
-            description: newTask.description,
-            collab: newTask.collab,
-            priority: newTask.priority,
-            isOptional: newTask.isOptional,
-            hasMeasureTracking: newTask.hasMeasureTracking,
-            measureUnit: newTask.measureUnit,
-            measureTarget: newTask.measureTarget,
-            startDate: newTask.plannedStart,
-            endDate: newTask.plannedEnd,
-            deadline: newTask.deadline,
-            estimatedMinutes: newTask.estimatedMinutes,
-            category: newTask.category,
-            section: newTask.section,
-            trackingMode: newTask.trackingMode,
-            targetCount: newTask.targetCount,
-            repeatRule: newTask.repeatRule,
-            customIntervalDays: newTask.customIntervalDays,
-            parentTaskId: newTask.parentTaskId,
-            attachmentName: newTask.attachmentName
-          })
-        });
+        if (baseUrl) {
+          await fetch(`${baseUrl}/api/tasks`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: parentId,
+              userId: currentUser.id,
+              title: newTask.title,
+              description: newTask.description,
+              collab: newTask.collab,
+              priority: newTask.priority,
+              isOptional: newTask.isOptional,
+              hasMeasureTracking: newTask.hasMeasureTracking,
+              measureUnit: newTask.measureUnit,
+              measureTarget: newTask.measureTarget,
+              startDate: newTask.plannedStart,
+              endDate: newTask.plannedEnd,
+              deadline: newTask.deadline,
+              estimatedMinutes: newTask.estimatedMinutes,
+              category: newTask.category,
+              section: newTask.section,
+              trackingMode: newTask.trackingMode,
+              targetCount: newTask.targetCount,
+              repeatRule: newTask.repeatRule,
+              customIntervalDays: newTask.customIntervalDays,
+              parentTaskId: newTask.parentTaskId,
+              attachmentName: newTask.attachmentName
+            })
+          });
+        }
       } catch (e) {}
 
       // Persist to Supabase PostgreSQL database
       const { error: insertErr } = await supabase.from('tasks').insert([{ id: parentId, ...taskPayload }]);
       if (insertErr) {
         console.warn('Task insert with explicit ID notice:', insertErr.message);
-        const { data: retryData } = await supabase.from('tasks').insert([taskPayload]).select();
-        if (retryData && retryData[0]) {
+        const { data: retryData, error: retryErr } = await supabase.from('tasks').insert([taskPayload]).select();
+        if (retryErr) {
+          console.error('Supabase task creation error:', retryErr.message);
+        } else if (retryData && retryData[0]) {
           const dbId = retryData[0].id;
           updateTasksState(newTasks.map(t => t.id === parentId ? { ...t, id: dbId } : t));
         }
@@ -1452,8 +1414,8 @@ export default function App() {
         measure_unit: updatedData.measureUnit,
         measure_target: updatedData.measureTarget,
         estimated_minutes: updatedData.estimatedMinutes,
-        start_date: updatedData.plannedStart,
-        end_date: updatedData.plannedEnd,
+        planned_start: updatedData.plannedStart,
+        planned_end: updatedData.plannedEnd,
         deadline: updatedData.deadline,
         attachment_name: updatedData.attachmentName
       }).eq('id', taskId);
@@ -1478,7 +1440,6 @@ export default function App() {
 
     if (currentUser) {
       await supabase.from('tasks').update({
-        end_date: newEndDate,
         planned_end: newEndDate,
         deadline: newEndDate,
         is_archived: false

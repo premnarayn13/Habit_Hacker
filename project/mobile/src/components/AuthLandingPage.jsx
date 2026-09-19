@@ -29,16 +29,19 @@ export default function AuthLandingPage({ onAuthSuccess }) {
         });
 
         if (error) {
-          if (error.message.includes('API key') || error.message.includes('apiKey') || error.status === 401) {
-            setSuccessMessage('Account registered locally! You can now sign in.');
-            setAuthMode('LOGIN');
-            return;
-          }
           throw error;
         }
 
-        setSuccessMessage('Registration successful! Please sign in with your credentials.');
-        setAuthMode('LOGIN');
+        if (data.session) {
+          localStorage.setItem('sb-access-token', data.session.access_token);
+        }
+
+        if (data.user && data.session) {
+          onAuthSuccess(data.user);
+        } else {
+          setSuccessMessage('Registration successful! If required, please confirm your email or sign in with your credentials.');
+          setAuthMode('LOGIN');
+        }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
@@ -46,19 +49,6 @@ export default function AuthLandingPage({ onAuthSuccess }) {
         });
 
         if (error) {
-          if (
-            error.message.includes('API key') ||
-            error.message.includes('apiKey') ||
-            error.message.toLowerCase().includes('not confirmed') ||
-            error.status === 401
-          ) {
-            onAuthSuccess({
-              id: 'usr-' + (email || 'demo').replace(/[^a-zA-Z0-9]/g, '_'),
-              email: email || 'demo@habithacker.io',
-              user_metadata: { display_name: displayName || (email ? email.split('@')[0] : 'User') }
-            });
-            return;
-          }
           throw error;
         }
 
@@ -71,15 +61,6 @@ export default function AuthLandingPage({ onAuthSuccess }) {
         }
       }
     } catch (err) {
-      const isEmailUnconfirmed = err.message && err.message.toLowerCase().includes('not confirmed');
-      if (isEmailUnconfirmed) {
-        onAuthSuccess({
-          id: 'usr-' + (email || 'demo').replace(/[^a-zA-Z0-9]/g, '_'),
-          email: email || 'demo@habithacker.io',
-          user_metadata: { display_name: displayName || (email ? email.split('@')[0] : 'User') }
-        });
-        return;
-      }
       setErrorMessage(err.message || 'Authentication failed. Please check credentials.');
     } finally {
       setLoading(false);
