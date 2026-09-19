@@ -275,12 +275,12 @@ export default function TaskSubtaskView({
       {/* FILTER & CONTROL TOOLBAR */}
       <div className="glass-panel" style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         
-        {/* SEGMENTED DIRECT FILTER TABS (ALL, PARENTS, SUBTASKS, COMPLETED) */}
+        {/* SEGMENTED DIRECT FILTER TABS (ALL, PARENTS, SUBHABITS, COMPLETED) */}
         <div style={{ display: 'flex', gap: '4px', background: '#F1F5F9', padding: '4px', borderRadius: '10px', width: '100%' }}>
           {[
             { id: 'ALL', label: `All (${totalActiveCount})` },
             { id: 'PARENTS_ONLY', label: `Parents (${activeParentsCount})` },
-            { id: 'SUBTASKS_ONLY', label: `Subtasks (${activeSubtasksCount})` },
+            { id: 'SUBTASKS_ONLY', label: `Subhabits (${activeSubtasksCount})` },
             { id: 'COMPLETED', label: `Completed (${completedTasksList.length})` }
           ].map(tab => (
             <button
@@ -329,7 +329,7 @@ export default function TaskSubtaskView({
               whiteSpace: 'nowrap'
             }}
           >
-            <span>Type: {filterType === 'ALL' ? 'All Tasks' : (filterType === 'PARENTS_ONLY' ? 'Parents Only' : (filterType === 'SUBTASKS_ONLY' ? 'Subtasks Only' : 'Completed Tasks'))}</span>
+            <span>Type: {filterType === 'ALL' ? 'All Habits' : (filterType === 'PARENTS_ONLY' ? 'Parents Only' : (filterType === 'SUBTASKS_ONLY' ? 'Subhabits Only' : 'Completed Habits'))}</span>
             <ChevronDown size={12} color="#DC2626" />
           </button>
 

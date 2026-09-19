@@ -1543,7 +1543,7 @@ export default function App() {
 
               {activeTab === 'heatmaps' && (
                 <HeatmapsHubView 
-                  heatmapData={{ tasks: activeTasks, subtasks, habits }}
+                  heatmapData={{ tasks: activeTasks, subtasks, habits, taskLogs, subtaskLogs, eventLogs }}
                   onSelectDay={(day) => console.log('Heatmap day clicked:', day)}
                 />
               )}

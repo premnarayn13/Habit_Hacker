@@ -816,7 +816,7 @@ export default function HomeDashboardView({
         </div>
       </div>
 
-      {/* 3. LAYER A & B: TASK HIERARCHY HEALTH & REPRESENTATIVE TREE VISUALIZER (PHASE 3) */}
+      {/* 3. LAYER A & B: HABIT HIERARCHY HEALTH & REPRESENTATIVE TREE VISUALIZER (PHASE 3) */}
       <div style={{
         background: '#FFFFFF',
         border: '1px solid #E2E8F0',
@@ -826,10 +826,10 @@ export default function HomeDashboardView({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <div>
             <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Layers size={18} color="#DC2626" /> Task Hierarchy Health & Dependency Status
+              <Layers size={18} color="#DC2626" /> Habit Hierarchy Health & Dependency Status
             </h3>
             <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
-              Parent task completion rules (Optional subtasks do not block parent completion).
+              Parent habit completion rules (Optional subhabits do not block parent completion).
             </p>
           </div>
           <button 
@@ -845,33 +845,33 @@ export default function HomeDashboardView({
           
           <div style={{ padding: '12px', background: '#F0FDF4', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: '#15803D', marginBottom: '4px' }}>
-              <span>Completed Parent Tasks</span>
+              <span>Completed Parent Habits</span>
               <span>{stats.completedParents} / {stats.totalParents}</span>
             </div>
             <div style={{ height: '8px', borderRadius: '4px', background: '#DCFCE7', overflow: 'hidden' }}>
               <div style={{ width: `${Math.round((stats.completedParents / Math.max(stats.totalParents, 1)) * 100)}%`, height: '100%', background: '#16A34A', borderRadius: '4px' }} />
             </div>
             <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, marginTop: '4px', display: 'block' }}>
-              All mandatory subtasks checked
+              All mandatory subhabits checked
             </span>
           </div>
 
           <div style={{ padding: '12px', background: '#FEF2F2', borderRadius: '12px', border: '1px solid #FCA5A5' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: '#991B1B', marginBottom: '4px' }}>
-              <span>Blocked Parent Tasks</span>
+              <span>Blocked Parent Habits</span>
               <span>{stats.blockedParents} Blocked</span>
             </div>
             <div style={{ height: '8px', borderRadius: '4px', background: '#FEE2E2', overflow: 'hidden' }}>
               <div style={{ width: `${Math.round((stats.blockedParents / Math.max(stats.totalParents, 1)) * 100)}%`, height: '100%', background: '#DC2626', borderRadius: '4px' }} />
             </div>
             <span style={{ fontSize: '10px', color: '#EF4444', fontWeight: 700, marginTop: '4px', display: 'block' }}>
-              Waiting on mandatory subtasks
+              Waiting on mandatory subhabits
             </span>
           </div>
 
           <div style={{ padding: '12px', background: '#EFF6FF', borderRadius: '12px', border: '1px solid #BFDBFE' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: '#1E40AF', marginBottom: '4px' }}>
-              <span>Mandatory Subtask Completion</span>
+              <span>Mandatory Subhabit Completion</span>
               <span>{stats.mandatorySubtaskRate}%</span>
             </div>
             <div style={{ height: '8px', borderRadius: '4px', background: '#DBEAFE', overflow: 'hidden' }}>
@@ -884,7 +884,7 @@ export default function HomeDashboardView({
 
           <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 800, color: '#475569', marginBottom: '4px' }}>
-              <span>Optional Subtask Completion</span>
+              <span>Optional Subhabit Completion</span>
               <span>{stats.optionalSubtaskRate}%</span>
             </div>
             <div style={{ height: '8px', borderRadius: '4px', background: '#E2E8F0', overflow: 'hidden' }}>
@@ -899,7 +899,7 @@ export default function HomeDashboardView({
 
         {/* Representative Hierarchy Tree Card List */}
         <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', marginBottom: '8px', letterSpacing: '0.05em' }}>
-          HIGH-LEVEL PARENT TASK HIERARCHY STATUS (TAP TO INSPECT TASK INFO)
+          HIGH-LEVEL PARENT HABIT HIERARCHY STATUS (TAP TO INSPECT HABIT INFO)
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

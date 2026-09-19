@@ -192,6 +192,38 @@ class DiaryTable {
     lsSave(this.entryType, map);
   }
 
+  // ── Sorting and Order helpers (Dexie-compatible chaining) ─────────────────
+
+  reverse() {
+    const self = this;
+    return {
+      sortBy: async (sortKey) => {
+        const all = await self.toArray();
+        return all.sort((a, b) => (b[sortKey] || '').toString().localeCompare((a[sortKey] || '').toString()));
+      }
+    };
+  }
+
+  orderBy(key) {
+    const self = this;
+    return {
+      reverse: () => ({
+        sortBy: async (sortKey) => {
+          const all = await self.toArray();
+          return all.sort((a, b) => (b[sortKey] || '').toString().localeCompare((a[sortKey] || '').toString()));
+        },
+        toArray: async () => {
+          const all = await self.toArray();
+          return all.sort((a, b) => (b[key] || '').toString().localeCompare((a[key] || '').toString()));
+        }
+      }),
+      toArray: async () => {
+        const all = await self.toArray();
+        return all.sort((a, b) => (a[key] || '').toString().localeCompare((b[key] || '').toString()));
+      }
+    };
+  }
+
   // ── Where (filter helper, mirrors old Dexie-like API) ────────────────────────
 
   where(key) {

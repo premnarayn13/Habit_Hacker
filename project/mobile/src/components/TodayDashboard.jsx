@@ -811,7 +811,7 @@ export default function TodayDashboard({
           <h2 style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Activity size={17} color="#EA580C" /> 2. Pending Habits
           </h2>
-          <span style={{ fontSize: '10px', fontWeight: 800, color="#EA580C", background: '#FFF7ED', padding: '3px 8px', borderRadius: '8px', border: '1px solid #FFEDD5' }}>
+          <span style={{ fontSize: '10px', fontWeight: 800, color: '#EA580C', background: '#FFF7ED', padding: '3px 8px', borderRadius: '8px', border: '1px solid #FFEDD5' }}>
             {pendingParentTasks.length} Pending
           </span>
         </div>
@@ -889,9 +889,8 @@ export default function TodayDashboard({
           )}
         </div>
       </div>
-
-      {/* ========================================================================= */}
-      {/* 3. CATEGORY-WISE TASKS & SUBTASKS LIST (3D ENHANCED CONTAINER) */}
+           {/* ========================================================================= */}
+      {/* 3. CATEGORY-WISE HABITS & SUBHABITS LIST (3D ENHANCED CONTAINER) */}
       {/* ========================================================================= */}
       <div style={{
         padding: '18px 22px',
@@ -903,7 +902,7 @@ export default function TodayDashboard({
         boxShadow: '0 12px 24px -4px rgba(126, 34, 206, 0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
       }}>
         <h2 style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Layers size={17} color="#7E22CE" /> 3. Tasks & Subtasks by Category
+          <Layers size={17} color="#7E22CE" /> 3. Habits & Subhabits by Category
         </h2>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -918,7 +917,7 @@ export default function TodayDashboard({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '13px', fontWeight: 900, color: '#0F172A' }}>{cat}</span>
                     <span style={{ fontSize: '9px', fontWeight: 800, color: '#7E22CE', background: '#FAF5FF', padding: '1px 6px', borderRadius: '4px', border: '1px solid #F3E8FF' }}>
-                      {catTasks.length} Tasks
+                      {catTasks.length} Habits
                     </span>
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 900, color: catPct === 100 ? '#16A34A' : '#2563EB' }}>
@@ -940,7 +939,7 @@ export default function TodayDashboard({
                           e.stopPropagation();
                           if (onNavigateToTaskDedicated) onNavigateToTaskDedicated(task);
                         }}
-                        title="Double-click to open task info page"
+                        title="Double-click to open habit info page"
                         style={{ background: '#FFF', border: '1px solid #CBD5E1', borderBottom: '2px solid #E2E8F0', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer' }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -962,7 +961,7 @@ export default function TodayDashboard({
                                   e.stopPropagation();
                                   if (onNavigateToTaskDedicated) onNavigateToTaskDedicated(st);
                                 }}
-                                title="Double-click to open subtask info page"
+                                title="Double-click to open subhabit info page"
                                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: '#475569', cursor: 'pointer' }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -991,7 +990,7 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. COMPLETED TASKS TODAY SECTION (3D ENHANCED CONTAINER) */}
+      {/* 4. COMPLETED HABITS TODAY SECTION (3D ENHANCED CONTAINER) */}
       {/* ========================================================================= */}
       <div style={{
         padding: '18px 22px',
@@ -1003,7 +1002,7 @@ export default function TodayDashboard({
         boxShadow: '0 12px 24px -4px rgba(22, 163, 74, 0.08), inset 0 1px 0 rgba(255,255,255,0.8)'
       }}>
         <h3 style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <CheckCircle2 size={17} color="#16A34A" /> 4. Completed Today
+          <CheckCircle2 size={17} color="#16A34A" /> 4. Completed Habits Today
         </h3>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1021,7 +1020,7 @@ export default function TodayDashboard({
                     e.stopPropagation();
                     if (onNavigateToTaskDedicated) onNavigateToTaskDedicated(parent);
                   }}
-                  title="Double-click to open task info page"
+                  title="Double-click to open habit info page"
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '10px 12px', borderRadius: '12px', cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1031,7 +1030,7 @@ export default function TodayDashboard({
                     <div>
                       <span style={{ fontSize: '12px', fontWeight: 900, color: '#15803D', textDecoration: 'none' }}>{parent.title}</span>
                       <div style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700 }}>
-                        Completed • {parent.hasMeasureTracking ? `Logged: ${parent.loggedMeasureVal || parent.measureTarget || 0} ${parent.measureUnit || ''}` : 'Standard Task'}
+                        Completed • {parent.hasMeasureTracking ? `Logged: ${parent.loggedMeasureVal || parent.measureTarget || 0} ${parent.measureUnit || ''}` : 'Standard Habit'}
                       </div>
                     </div>
                   </div>
@@ -1096,8 +1095,8 @@ export default function TodayDashboard({
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '11px', fontWeight: 800, color: '#475569' }}>
-            <span>{stats.completedCount} Tasks Done</span>
-            <span>{stats.pendingCount} Tasks Pending</span>
+            <span>{stats.completedCount} Habits Done</span>
+            <span>{stats.pendingCount} Habits Pending</span>
             {stats.totalMeasuresVal > 0 && (
               <span style={{ color: '#EC4899', fontWeight: 900 }}>
                 <Ruler size={12} style={{ display: 'inline', marginRight: '2px' }} /> {stats.totalMeasuresVal} Units Logged
