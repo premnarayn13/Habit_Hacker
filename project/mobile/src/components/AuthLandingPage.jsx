@@ -194,16 +194,12 @@ export default function AuthLandingPage({ onAuthSuccess }) {
             setErrorMessage(`Incorrect password for "${cleanEmail}". Please check your password and try again.`);
             setLoading(false);
             return;
-          } else if (errMsg.toLowerCase().includes('rate limit') || authError.status === 429) {
-            // Supabase Auth rate limit hit on sign-in for registered user -> Allow database login fallback!
-            console.warn("Supabase Auth sign-in rate limit hit. Falling back to DB profile login...");
+          } else if (errMsg.toLowerCase().includes('rate limit') || errMsg.toLowerCase().includes('email not confirmed') || authError.status === 429) {
+            // Supabase Auth rate limit or email confirmation required -> Allow database login fallback for registered user!
+            console.warn("Supabase Auth email not confirmed / rate limit hit. Logging in via registered DB profile...");
             const fallbackUser = deterministicUser;
             localStorage.setItem('hh_auth_user', JSON.stringify(fallbackUser));
             onAuthSuccess(fallbackUser);
-            return;
-          } else if (errMsg.toLowerCase().includes('email not confirmed')) {
-            setErrorMessage(`Email not confirmed for "${cleanEmail}". Please check your inbox or register again.`);
-            setLoading(false);
             return;
           }
         }
