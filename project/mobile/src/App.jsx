@@ -927,9 +927,6 @@ export default function App() {
       }
 
       try {
-        const { data: dbMissed } = await supabase.from('view_parent_task_missed_days').select('*');
-        if (dbMissed && dbMissed.length > 0) setMissedDaysLogs(dbMissed);
-
         const { data: dbTaskLogs } = await supabase.from('task_logs').select('*').eq('user_id', userId);
         if (dbTaskLogs) setTaskLogs(dbTaskLogs || []);
 
@@ -938,9 +935,6 @@ export default function App() {
 
         const { data: dbEventLogs } = await supabase.from('event_logs').select('*').eq('user_id', userId);
         if (dbEventLogs) setEventLogs(dbEventLogs || []);
-
-        const { data: dbFailSummary } = await supabase.from('v_subtask_failure_summary').select('*');
-        if (dbFailSummary) setSubtaskFailureSummary(dbFailSummary || []);
       } catch (e) {}
 
     } catch (err) {

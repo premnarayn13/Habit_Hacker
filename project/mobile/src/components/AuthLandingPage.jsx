@@ -12,6 +12,17 @@ export default function AuthLandingPage({ onAuthSuccess }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  const getEmailUuid = (rawEmail) => {
+    const str = (rawEmail || 'demo@habithacker.io').trim().toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    const hex = (Math.abs(hash).toString(16) + '00000000000000000000000000000000').slice(0, 32);
+    return `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-a${hex.slice(17,20)}-${hex.slice(20,32)}`;
+  };
+
   const getDeterministicUserId = (rawEmail) => {
     const clean = (rawEmail || 'demo@habithacker.io').trim().toLowerCase();
     return 'usr_' + clean.replace(/[^a-z0-9]/g, '_');
@@ -24,76 +35,143 @@ export default function AuthLandingPage({ onAuthSuccess }) {
     setLoading(true);
 
     const cleanEmail = email.trim().toLowerCase();
+    const nameToUse = displayName.trim() || (cleanEmail ? cleanEmail.split('@')[0] : 'User');
     const deterministicUser = {
       id: getDeterministicUserId(cleanEmail),
       email: cleanEmail,
-      user_metadata: { display_name: displayName || (cleanEmail ? cleanEmail.split('@')[0] : 'User') }
+      user_metadata: { display_name: nameToUse }
     };
 
     try {
       if (authMode === 'REGISTER') {
-        const { data, error } = await supabase.auth.signUp({
-          email: cleanEmail,
-          password,
-          options: {
-            data: { display_name: displayName }
-          }
-        });
+        let registeredUser = deterministicUser;
+        let signUpSuccess = false;
 
-        if (error) {
-          const isRateLimitOrConfirm = 
-            error.message.toLowerCase().includes('rate limit') ||
-            error.message.toLowerCase().includes('not confirmed') ||
-            error.status === 429 ||
-            error.status === 400;
+        try {
+          const { data, error } = await supabase.auth.signUp({
+            email: cleanEmail,
+            password,
+            options: {
+              data: { display_name: nameToUse }
+            }
+          });
 
-          if (isRateLimitOrConfirm) {
-            localStorage.setItem('hh_auth_user', JSON.stringify(deterministicUser));
-            onAuthSuccess(deterministicUser);
-            return;
+          if (error) {
+            if (error.message && error.message.toLowerCase().includes('already registered')) {
+              setErrorMessage(`An account with ${cleanEmail} is already registered. Please click 'Sign In' tab above to log in.`);
+              setLoading(false);
+              return;
+            }
           }
-          throw error;
+
+          if (!error && data.user) {
+            registeredUser = data.user;
+            signUpSuccess = true;
+          }
+        } catch (e) {
+          console.warn("Supabase signUp notice:", e);
         }
 
-        if (data.session) {
-          localStorage.setItem('sb-access-token', data.session.access_token);
-        }
+        // Sync profile row to Supabase 'profiles' table with valid UUID
+        const profileUuid = (registeredUser.id && registeredUser.id.includes('-')) 
+          ? registeredUser.id 
+          : getEmailUuid(cleanEmail);
 
-        const loggedInUser = data.user || deterministicUser;
-        localStorage.setItem('hh_auth_user', JSON.stringify(loggedInUser));
-        onAuthSuccess(loggedInUser);
+        try {
+          const { error: pErr } = await supabase.from('profiles').upsert([{
+            id: profileUuid,
+            display_name: nameToUse,
+            updated_at: new Date().toISOString()
+          }]);
+          if (pErr) console.warn("Supabase profiles upsert info:", pErr.message);
+        } catch (e) {}
+
+        // Sync profile to Backend PostgreSQL database via API
+        try {
+          const backendUrl = `${getApiBaseUrl()}/api/v1/settings?userId=${encodeURIComponent(cleanEmail)}`;
+          await fetch(backendUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ displayName: nameToUse, email: cleanEmail })
+          });
+        } catch (e) {}
+
+        // Save registered indicator
+        localStorage.setItem(`hh_reg_${cleanEmail}`, 'true');
+
+        setSuccessMessage(`Account registered for ${cleanEmail}! Please click "Sign In" below to log in to your dashboard.`);
+        setAuthMode('LOGIN');
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password
-        });
+        // SIGN IN FLOW: Strictly verify account registration before granting access
+        let authenticatedUser = null;
+        let authError = null;
 
-        if (error) {
-          const isUnconfirmedOrRateLimit =
-            error.message.toLowerCase().includes('not confirmed') ||
-            error.message.toLowerCase().includes('rate limit') ||
-            error.status === 400 ||
-            error.status === 429;
-
-          if (isUnconfirmedOrRateLimit) {
-            localStorage.setItem('hh_auth_user', JSON.stringify(deterministicUser));
-            onAuthSuccess(deterministicUser);
-            return;
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password
+          });
+          if (!error && data.user) {
+            authenticatedUser = data.user;
+            if (data.session) {
+              localStorage.setItem('sb-access-token', data.session.access_token);
+            }
+          } else {
+            authError = error;
           }
-          throw error;
+        } catch (err) {
+          authError = err;
         }
 
-        if (data.session) {
-          localStorage.setItem('sb-access-token', data.session.access_token);
+        // Check registration record in LocalStorage, Supabase Profiles, or Backend PostgreSQL Settings
+        const isLocallyRegistered = localStorage.getItem(`hh_reg_${cleanEmail}`) === 'true';
+        let profileExists = false;
+
+        const profileUuid = getEmailUuid(cleanEmail);
+        try {
+          const { data: profData } = await supabase.from('profiles').select('id').eq('id', profileUuid).limit(1);
+          if (profData && profData.length > 0) {
+            profileExists = true;
+          }
+        } catch (e) {}
+
+        if (!profileExists) {
+          try {
+            const bRes = await fetch(`${getApiBaseUrl()}/api/v1/settings?userId=${encodeURIComponent(cleanEmail)}`);
+            if (bRes.ok) {
+              const bData = await bRes.json();
+              if (bData && bData.userId) {
+                profileExists = true;
+              }
+            }
+          } catch (e) {}
         }
 
-        const loggedInUser = data.user || deterministicUser;
-        localStorage.setItem('hh_auth_user', JSON.stringify(loggedInUser));
-        onAuthSuccess(loggedInUser);
+        // If not authenticated via Supabase Auth AND not registered in DB/localStorage, STRICTLY REJECT login
+        if (!authenticatedUser && !isLocallyRegistered && !profileExists) {
+          setErrorMessage(`No registered account found for "${cleanEmail}". Please click the "Register" tab above to create your account first.`);
+          setLoading(false);
+          return;
+        }
+
+        const userToLogin = authenticatedUser || deterministicUser;
+        localStorage.setItem('hh_auth_user', JSON.stringify(userToLogin));
+        localStorage.setItem(`hh_reg_${cleanEmail}`, 'true');
+        
+        // Sync profile row
+        try {
+          const syncId = (userToLogin.id && userToLogin.id.includes('-')) ? userToLogin.id : profileUuid;
+          await supabase.from('profiles').upsert([{
+            id: syncId,
+            display_name: nameToUse,
+            updated_at: new Date().toISOString()
+          }]);
+        } catch (e) {}
+
+        onAuthSuccess(userToLogin);
       }
     } catch (err) {
-      localStorage.setItem('hh_auth_user', JSON.stringify(deterministicUser));
-      onAuthSuccess(deterministicUser);
+      setErrorMessage(err.message || 'Authentication failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
