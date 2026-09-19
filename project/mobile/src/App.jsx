@@ -770,14 +770,16 @@ export default function App() {
         }
       } catch (e) {}
 
-      // Fetch fresh tasks from Supabase matching authenticated user ID or collaboration
+      // Fetch fresh tasks from Supabase matching authenticated user ID, email, or canonical ID
       let dbTasks = null;
       let taskError = null;
 
       try {
         let filter = `user_id.eq.${userId}`;
         if (userEmail) {
-          filter += `,collab.ilike.%${userEmail}%`;
+          const cleanEmail = userEmail.toLowerCase().trim();
+          const canonicalId = 'usr_' + cleanEmail.replace(/[^a-z0-9]/g, '_');
+          filter += `,user_id.eq.${cleanEmail},user_id.eq.${canonicalId},collab.ilike.%${cleanEmail}%`;
         }
         const res = await supabase.from('tasks').select('*').or(filter);
         dbTasks = res.data;
@@ -917,7 +919,12 @@ export default function App() {
 
       // Database is the SINGLE SOURCE OF TRUTH for logged-in users.
       // Update state directly with the fetched records from the database.
-      updateTasksState(fetchedItems, userEmail);
+      if (dbTasks !== null && !taskError) {
+        updateTasksState(fetchedItems, userEmail);
+        if (fetchedItems.length === 0 && userEmail) {
+          localStorage.removeItem('habit_hacker_tasks_' + userEmail.toLowerCase());
+        }
+      }
 
       try {
         const { data: dbMissed } = await supabase.from('view_parent_task_missed_days').select('*');
@@ -957,12 +964,18 @@ export default function App() {
   };
 
   useEffect(() => {
+    const savedUserRaw = localStorage.getItem('hh_auth_user');
+    let savedUser = null;
+    try { if (savedUserRaw) savedUser = JSON.parse(savedUserRaw); } catch (e) {}
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setCurrentUser(session.user);
         fetchUserData(session.user.id, session.user.email);
+      } else if (savedUser) {
+        setCurrentUser(savedUser);
+        fetchUserData(savedUser.id, savedUser.email);
       } else {
-        // No session — redirect to auth, don't load demo data
         setCurrentUser(null);
       }
     });
@@ -972,8 +985,16 @@ export default function App() {
         setCurrentUser(session.user);
         fetchUserData(session.user.id, session.user.email);
       } else {
+        const raw = localStorage.getItem('hh_auth_user');
+        if (raw) {
+          try {
+            const u = JSON.parse(raw);
+            setCurrentUser(u);
+            fetchUserData(u.id, u.email);
+            return;
+          } catch (e) {}
+        }
         setCurrentUser(null);
-        // Clear tasks when user logs out
         setTasks([]);
         setMissedDaysLogs([]);
         setTaskLogs([]);
@@ -986,6 +1007,26 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Live real-time database subscription & 5-second polling interval for multi-browser sync
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const pollInterval = setInterval(() => {
+      fetchUserData(currentUser.id, currentUser.email);
+    }, 5000);
+
+    const channel = supabase.channel('tasks-realtime-channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+        fetchUserData(currentUser.id, currentUser.email);
+      })
+      .subscribe();
+
+    return () => {
+      clearInterval(pollInterval);
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser]);
+
   const handleTabSwitch = (newTab) => {
     if (newTab === activeTab) return;
     setIsLoadingView(true);
@@ -997,7 +1038,14 @@ export default function App() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem('sb-access-token');
+    localStorage.removeItem('hh_auth_user');
+    if (currentUser?.email) {
+      localStorage.removeItem('habit_hacker_tasks_' + currentUser.email.toLowerCase());
+    }
+    localStorage.removeItem('habit_hacker_tasks_global_v2');
+    localStorage.removeItem('habit_hacker_cache_owner');
     setCurrentUser(null);
+    setTasks([]);
   };
 
   const handleArchiveTask = async (taskId) => {

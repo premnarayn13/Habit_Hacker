@@ -241,9 +241,14 @@ export default function SettingsProfileView({
 
   // Clear Server Cache Handler
   const handleClearServerCache = () => {
-    localStorage.removeItem('habit_hacker_cached_server_data');
+    const savedUser = localStorage.getItem('hh_auth_user');
+    localStorage.clear();
+    if (savedUser) {
+      localStorage.setItem('hh_auth_user', savedUser);
+    }
     setShowClearCacheModal(false);
-    alert('Server data cache cleared successfully from device storage. Your private Diary entries remain 100% safe.');
+    alert('All local device cache memory cleared successfully. Re-syncing with database...');
+    window.location.reload();
   };
 
   // Data Export Handler
