@@ -772,27 +772,27 @@ export default function App() {
         }
       }
 
-      // Fetch fresh tasks from Supabase matching user ID, email, or collaboration
-      let queryFilter = `user_id.eq.${userId}`;
-      if (userEmail) {
-        queryFilter += `,user_id.eq.${userEmail.toLowerCase()},collab.ilike.%${userEmail}%`;
-      }
-      
+      // Fetch fresh tasks from Supabase matching user ID or collaboration
       let dbTasks = null;
       let taskError = null;
 
       try {
-        const res = await supabase
-          .from('tasks')
-          .select('*')
-          .or(queryFilter);
+        let filter = `user_id.eq.${userId}`;
+        if (userEmail) {
+          filter += `,collab.ilike.%${userEmail}%`;
+        }
+        const res = await supabase.from('tasks').select('*').or(filter);
         dbTasks = res.data;
         taskError = res.error;
       } catch (e) {
-        // Fall back to plain user_id query if .or(...) is unsupported
         const res = await supabase.from('tasks').select('*').eq('user_id', userId);
         dbTasks = res.data;
         taskError = res.error;
+      }
+
+      if (!dbTasks || taskError) {
+        const res = await supabase.from('tasks').select('*').eq('user_id', userId);
+        if (res.data) dbTasks = res.data;
       }
 
       let dbSubtasks = null;
@@ -1251,7 +1251,7 @@ export default function App() {
   };
 
   const handleAddTask = async (newTaskData) => {
-    const parentId = `t-${Date.now()}`;
+    const parentId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `t-${Date.now()}`;
 
     const newTask = {
       id: parentId,
@@ -1265,7 +1265,7 @@ export default function App() {
       measureUnit: newTaskData.measureUnit || 'units',
       measureTarget: newTaskData.measureTarget || 0,
       progressPercent: 0,
-      plannedStart: newTaskData.startDate || '2026-08-22',
+      plannedStart: newTaskData.startDate || new Date().toISOString().split('T')[0],
       plannedEnd: newTaskData.endDate || '2026-10-10',
       deadline: newTaskData.endDate || '2026-10-10',
       estimatedMinutes: newTaskData.estimatedMinutes || 30,
@@ -1281,6 +1281,7 @@ export default function App() {
       currentDayCount: 0,
       currentEventCount: 0,
       repeatRule: newTaskData.repeatRule || 'DAILY',
+      customIntervalDays: newTaskData.customIntervalDays || 2,
       parentTaskId: newTaskData.parentTaskId || '',
       attachmentName: newTaskData.attachmentName || '',
       isArchived: false,
@@ -1293,8 +1294,7 @@ export default function App() {
     updateTasksState(newTasks);
 
     if (currentUser) {
-      await supabase.from('tasks').insert([{
-        id: parentId,
+      const taskPayload = {
         user_id: currentUser.id,
         title: newTask.title,
         description: newTask.description,
@@ -1313,10 +1313,22 @@ export default function App() {
         tracking_mode: newTask.trackingMode,
         target_count: newTask.targetCount,
         current_count: 0,
+        repeat_rule: newTask.repeatRule,
+        custom_interval_days: newTask.customIntervalDays || 2,
         parent_id: newTask.parentTaskId || null,
         parent_task_id: newTask.parentTaskId || null,
         attachment_name: newTask.attachmentName
-      }]);
+      };
+
+      const { error: insertErr } = await supabase.from('tasks').insert([{ id: parentId, ...taskPayload }]);
+      if (insertErr) {
+        console.warn('Task insert with explicit ID notice:', insertErr.message);
+        const { data: retryData } = await supabase.from('tasks').insert([taskPayload]).select();
+        if (retryData && retryData[0]) {
+          const dbId = retryData[0].id;
+          updateTasksState(newTasks.map(t => t.id === parentId ? { ...t, id: dbId } : t));
+        }
+      }
     }
   };
 

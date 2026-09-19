@@ -106,7 +106,7 @@ export default function QuickAddModal({
     if (!taskData.title.trim() || validationError) return;
 
     const finalCategory = categoryInput.trim() || taskData.category;
-    const createdTaskId = 'task-' + Date.now();
+    const createdTaskId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'task-' + Date.now();
 
     const senderEmail = currentUser?.email || 'user@habithacker.app';
     const senderName = currentUser?.user_metadata?.display_name || currentUser?.email?.split('@')[0] || 'User';
