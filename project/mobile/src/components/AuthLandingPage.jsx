@@ -44,39 +44,40 @@ export default function AuthLandingPage({ onAuthSuccess }) {
 
     try {
       if (authMode === 'REGISTER') {
-        let registeredUser = deterministicUser;
-        let signUpSuccess = false;
+        let registeredUser = null;
 
-        try {
-          const { data, error } = await supabase.auth.signUp({
-            email: cleanEmail,
-            password,
-            options: {
-              data: { display_name: nameToUse }
-            }
-          });
-
-          if (error) {
-            if (error.message && error.message.toLowerCase().includes('already registered')) {
-              setErrorMessage(`An account with ${cleanEmail} is already registered. Please click 'Sign In' tab above to log in.`);
-              setLoading(false);
-              return;
-            }
+        // 1. Call Supabase Auth signUp
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password,
+          options: {
+            data: { display_name: nameToUse }
           }
+        });
 
-          if (!error && data.user) {
-            registeredUser = data.user;
-            signUpSuccess = true;
+        // 2. CRITICAL: If signUp returns an error, STOP IMMEDIATELY and show error
+        if (signUpError) {
+          const msg = signUpError.message || '';
+          if (msg.toLowerCase().includes('already registered')) {
+            setErrorMessage(`An account with ${cleanEmail} is already registered. Please click 'Sign In' tab above to log in.`);
+          } else if (msg.toLowerCase().includes('rate limit') || signUpError.status === 429) {
+            setErrorMessage(`Registration rate limit reached by Supabase Auth (${msg}). Please wait 5 minutes before trying again or try another email.`);
+          } else {
+            setErrorMessage(`Registration failed: ${msg}`);
           }
-        } catch (e) {
-          console.warn("Supabase signUp notice:", e);
+          setLoading(false);
+          return; // STOP! Do NOT mark registered or show success!
         }
 
-        // Sync profile row to Supabase 'profiles' table with valid UUID
-        const profileUuid = (registeredUser.id && registeredUser.id.includes('-')) 
+        if (signUpData && signUpData.user) {
+          registeredUser = signUpData.user;
+        }
+
+        const profileUuid = (registeredUser && registeredUser.id && registeredUser.id.includes('-')) 
           ? registeredUser.id 
           : getEmailUuid(cleanEmail);
 
+        // 3. Sync profile row to Supabase 'profiles' table
         try {
           const { error: pErr } = await supabase.from('profiles').upsert([{
             id: profileUuid,
@@ -86,7 +87,7 @@ export default function AuthLandingPage({ onAuthSuccess }) {
           if (pErr) console.warn("Supabase profiles upsert info:", pErr.message);
         } catch (e) {}
 
-        // Sync profile to Backend PostgreSQL database via API
+        // 4. Sync profile to Backend PostgreSQL database via API
         try {
           const backendUrl = `${getApiBaseUrl()}/api/v1/settings?userId=${encodeURIComponent(cleanEmail)}`;
           await fetch(backendUrl, {
@@ -96,13 +97,13 @@ export default function AuthLandingPage({ onAuthSuccess }) {
           });
         } catch (e) {}
 
-        // Save registered indicator
+        // 5. Save local registered indicator ONLY after verified success
         localStorage.setItem(`hh_reg_${cleanEmail}`, 'true');
 
         setSuccessMessage(`Account registered for ${cleanEmail}! Please click "Sign In" below to log in to your dashboard.`);
         setAuthMode('LOGIN');
       } else {
-        // SIGN IN FLOW: Strictly verify account registration before granting access
+        // SIGN IN FLOW: Strictly verify account registration and credentials before granting access
         let authenticatedUser = null;
         let authError = null;
 
@@ -123,7 +124,29 @@ export default function AuthLandingPage({ onAuthSuccess }) {
           authError = err;
         }
 
-        // Check registration record in LocalStorage, Supabase Profiles, or Backend PostgreSQL Settings
+        // If Supabase Auth successfully signed in:
+        if (authenticatedUser) {
+          localStorage.setItem('hh_auth_user', JSON.stringify(authenticatedUser));
+          localStorage.setItem(`hh_reg_${cleanEmail}`, 'true');
+          
+          const profileUuid = (authenticatedUser.id && authenticatedUser.id.includes('-')) 
+            ? authenticatedUser.id 
+            : getEmailUuid(cleanEmail);
+
+          try {
+            await supabase.from('profiles').upsert([{
+              id: profileUuid,
+              display_name: nameToUse,
+              updated_at: new Date().toISOString()
+            }]);
+          } catch (e) {}
+
+          onAuthSuccess(authenticatedUser);
+          return;
+        }
+
+        // If Supabase Auth returned an error (e.g. invalid credentials, user not found, unconfirmed email):
+        // Check if user account exists in DB/profiles/backend
         const isLocallyRegistered = localStorage.getItem(`hh_reg_${cleanEmail}`) === 'true';
         let profileExists = false;
 
@@ -147,28 +170,31 @@ export default function AuthLandingPage({ onAuthSuccess }) {
           } catch (e) {}
         }
 
-        // If not authenticated via Supabase Auth AND not registered in DB/localStorage, STRICTLY REJECT login
-        if (!authenticatedUser && !isLocallyRegistered && !profileExists) {
+        // Case 1: Account NEVER registered -> Strictly reject login
+        if (!isLocallyRegistered && !profileExists) {
           setErrorMessage(`No registered account found for "${cleanEmail}". Please click the "Register" tab above to create your account first.`);
           setLoading(false);
           return;
         }
 
-        const userToLogin = authenticatedUser || deterministicUser;
-        localStorage.setItem('hh_auth_user', JSON.stringify(userToLogin));
-        localStorage.setItem(`hh_reg_${cleanEmail}`, 'true');
-        
-        // Sync profile row
-        try {
-          const syncId = (userToLogin.id && userToLogin.id.includes('-')) ? userToLogin.id : profileUuid;
-          await supabase.from('profiles').upsert([{
-            id: syncId,
-            display_name: nameToUse,
-            updated_at: new Date().toISOString()
-          }]);
-        } catch (e) {}
+        // Case 2: Account IS registered, but credentials failed or Auth error occurred
+        if (authError) {
+          const errMsg = authError.message || '';
+          if (errMsg.toLowerCase().includes('invalid login credentials')) {
+            setErrorMessage(`Incorrect password for "${cleanEmail}". Please check your password and try again.`);
+          } else if (errMsg.toLowerCase().includes('email not confirmed')) {
+            setErrorMessage(`Email not confirmed for "${cleanEmail}". Please check your inbox or register again.`);
+          } else {
+            setErrorMessage(`Sign in failed: ${errMsg}`);
+          }
+          setLoading(false);
+          return;
+        }
 
-        onAuthSuccess(userToLogin);
+        // Default fallback rejection
+        setErrorMessage(`Authentication failed for "${cleanEmail}". Please check your credentials or register.`);
+        setLoading(false);
+        return;
       }
     } catch (err) {
       setErrorMessage(err.message || 'Authentication failed. Please check your credentials.');
