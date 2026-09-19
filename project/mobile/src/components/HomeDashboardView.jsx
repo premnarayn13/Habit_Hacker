@@ -700,63 +700,63 @@ export default function HomeDashboardView({
             onClick={() => onNavigateToTab?.('tasks')}
             style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#DC2626', borderRadius: '8px', padding: '6px 12px', fontSize: '11px', fontWeight: 800, cursor: 'pointer' }}
           >
-            Explore Tasks Repository →
+            Explore Habits Repository →
           </button>
         </div>
 
         {/* 5-Row x 2-Column KPI Card Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '16px' }}>
           
-          {/* ROW 1: Completed Tasks vs Active Tasks */}
+          {/* ROW 1: Completed Habits vs Active Habits */}
           <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#F0FDF4', borderRadius: '14px', border: '1px solid #BBF7D0', borderLeft: '4px solid #16A34A', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#15803D', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>COMPLETED TASKS</span>
+            <span style={{ fontSize: '10px', color: '#15803D', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>COMPLETED HABITS</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#16A34A', marginTop: '2px' }}>{stats.completedTasksCount}</div>
-            <span style={{ fontSize: '11px', color: '#166534', fontWeight: 600 }}>Tasks that have reached planned end date / finished</span>
+            <span style={{ fontSize: '11px', color: '#166534', fontWeight: 600 }}>Habits that have reached planned end date / finished</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#EFF6FF', borderRadius: '14px', border: '1px solid #BFDBFE', borderLeft: '4px solid #2563EB', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#1E40AF', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ACTIVE TASKS</span>
+            <span style={{ fontSize: '10px', color: '#1E40AF', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ACTIVE HABITS</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#2563EB', marginTop: '2px' }}>{stats.activeTasksCount}</div>
-            <span style={{ fontSize: '11px', color: '#1D4ED8', fontWeight: 600 }}>Tasks yet to reach planned end date</span>
+            <span style={{ fontSize: '11px', color: '#1D4ED8', fontWeight: 600 }}>Habits yet to reach planned end date</span>
           </div>
 
-          {/* ROW 2: Total Tasks History vs Pending Today */}
+          {/* ROW 2: Total Habits History vs Pending Today */}
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #CBD5E1', borderLeft: '4px solid #0F172A', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#475569', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>TOTAL TASKS (HISTORY)</span>
+            <span style={{ fontSize: '10px', color: '#475569', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>TOTAL HABITS (HISTORY)</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', marginTop: '2px' }}>{stats.totalAllTasks}</div>
-            <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>All historical tasks (incl. active & archive)</span>
+            <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>All historical habits (incl. active & archive)</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#FFFBEB', borderRadius: '14px', border: '1px solid #FDE68A', borderLeft: '4px solid #D97706', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#B45309', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>PENDING TODAY</span>
+            <span style={{ fontSize: '10px', color: '#B45309', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>PENDING HABITS TODAY</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#D97706', marginTop: '2px' }}>{stats.pendingTasksCount}</div>
-            <span style={{ fontSize: '11px', color: '#92400E', fontWeight: 600 }}>Tasks scheduled for today pending completion</span>
+            <span style={{ fontSize: '11px', color: '#92400E', fontWeight: 600 }}>Habits scheduled for today pending completion</span>
           </div>
 
-          {/* ROW 3: Active Standalone Tasks vs Optional Subtasks */}
+          {/* ROW 3: Active Standalone Habits vs Optional Subhabits */}
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F5F3FF', borderRadius: '14px', border: '1px solid #DDD6FE', borderLeft: '4px solid #8B5CF6', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#6D28D9', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ACTIVE STANDALONE TASKS</span>
+            <span style={{ fontSize: '10px', color: '#6D28D9', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ACTIVE STANDALONE HABITS</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#7C3AED', marginTop: '2px' }}>{stats.standaloneTasksCount}</div>
-            <span style={{ fontSize: '11px', color: '#5B21B6', fontWeight: 600 }}>Active tasks with no end date reached & no subtasks</span>
+            <span style={{ fontSize: '11px', color: '#5B21B6', fontWeight: 600 }}>Active habits with no end date reached & no subhabits</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #E2E8F0', borderLeft: '4px solid #64748B', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#475569', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>OPTIONAL SUBTASKS COUNT</span>
+            <span style={{ fontSize: '10px', color: '#475569', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>OPTIONAL SUBHABITS COUNT</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#475569', marginTop: '2px' }}>{stats.totalOptionalSubtasks}</div>
-            <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>Total optional subtasks across active tasks</span>
+            <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>Total optional subhabits across active habits</span>
           </div>
 
-          {/* ROW 4: Archived Tasks (In Pause) vs Mandatory Subtasks */}
+          {/* ROW 4: Archived Habits (In Pause) vs Mandatory Subhabits */}
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#FEF2F2', borderRadius: '14px', border: '1px solid #FECACA', borderLeft: '4px solid #DC2626', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ARCHIVED TASKS (IN PAUSE)</span>
+            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ARCHIVED HABITS (IN PAUSE)</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>{stats.blockedParents}</div>
-            <span style={{ fontSize: '11px', color: '#991B1B', fontWeight: 600 }}>Tasks currently in archive / pause state</span>
+            <span style={{ fontSize: '11px', color: '#991B1B', fontWeight: 600 }}>Habits currently in archive / pause state</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#FEF2F2', borderRadius: '14px', border: '1px solid #FCA5A5', borderLeft: '4px solid #B91C1C', cursor: 'pointer' }}>
-            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>MANDATORY SUBTASKS COUNT</span>
+            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>MANDATORY SUBHABITS COUNT</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#B91C1C', marginTop: '2px' }}>{stats.totalMandatorySubtasks}</div>
-            <span style={{ fontSize: '11px', color: '#7F1D1D', fontWeight: 600 }}>Mandatory required subtasks across tasks</span>
+            <span style={{ fontSize: '11px', color: '#7F1D1D', fontWeight: 600 }}>Mandatory required subhabits across habits</span>
           </div>
 
           {/* ROW 5: Active Parent Tasks vs Today Completion Pace */}

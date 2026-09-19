@@ -6,7 +6,6 @@ import {
   Calendar, 
   Grid, 
   BarChart3, 
-  Clock, 
   BookOpen, 
   Flame, 
   Target, 
@@ -14,18 +13,12 @@ import {
   User,
   Zap,
   Bookmark,
-  Search,
-  Bell,
-  Settings,
   Plus,
   Crown,
   Inbox,
   ShoppingBag,
   Activity,
   Star,
-  GraduationCap,
-  Code,
-  Heart,
   Smile,
   Coffee,
   Music,
@@ -48,16 +41,14 @@ import {
   Folder,
   Sparkles,
   PhoneCall,
-  Lightbulb
+  Lightbulb,
+  LogOut
 } from 'lucide-react';
 
 const ICON_MAP = {
   Briefcase: User,
   User,
-  GraduationCap,
-  Code,
   Activity,
-  Heart,
   BookOpen,
   ShoppingBag,
   Star,
@@ -80,7 +71,6 @@ const ICON_MAP = {
   Car,
   CheckSquare,
   Calendar,
-  Clock,
   Award,
   Shield,
   Sun,
@@ -97,16 +87,12 @@ const ICON_MAP = {
 const ICON_NAMES = Object.keys(ICON_MAP);
 
 const DEFAULT_CATEGORY_ICONS = {
-  'Academics': 'GraduationCap',
-  'Coding': 'Code',
   'Fitness': 'Activity',
-  'Health': 'Heart',
-  'Education': 'BookOpen',
-  'Work': 'User',
   'Personal': 'User',
   'General': 'Bookmark',
   'Shopping': 'ShoppingBag',
-  'Learning': 'Lightbulb',
+  'Mindfulness': 'Smile',
+  'Productivity': 'Zap',
   'Goals': 'Target',
   'Finance': 'DollarSign',
   'Hobbies': 'Camera',
@@ -115,7 +101,7 @@ const DEFAULT_CATEGORY_ICONS = {
   'Entertainment': 'Music'
 };
 
-export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab, tasks = [], onSelectCategory }) {
+export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab, tasks = [], onSelectCategory, onLogout, currentUser }) {
   if (!isOpen) return null;
 
   const [customCategories, setCustomCategories] = useState(() => {
@@ -139,16 +125,12 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
 
   const categories = useMemo(() => {
     const defaultList = [
-      { id: 'cat-academics', name: 'Academics', iconName: 'GraduationCap' },
-      { id: 'cat-coding', name: 'Coding', iconName: 'Code' },
       { id: 'cat-fitness', name: 'Fitness', iconName: 'Activity' },
-      { id: 'cat-health', name: 'Health', iconName: 'Heart' },
-      { id: 'cat-education', name: 'Education', iconName: 'BookOpen' },
-      { id: 'cat-work', name: 'Work', iconName: 'User' },
       { id: 'cat-personal', name: 'Personal', iconName: 'User' },
       { id: 'cat-general', name: 'General', iconName: 'Bookmark' },
       { id: 'cat-shopping', name: 'Shopping', iconName: 'ShoppingBag' },
-      { id: 'cat-learning', name: 'Learning', iconName: 'Lightbulb' }
+      { id: 'cat-mindfulness', name: 'Mindfulness', iconName: 'Smile' },
+      { id: 'cat-productivity', name: 'Productivity', iconName: 'Zap' }
     ];
 
     const categoryMap = new Map();
@@ -197,7 +179,6 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
     { id: 'today', label: 'Today Dashboard', icon: CheckSquare },
     { id: 'tasks', label: 'Habits & Subhabits', icon: Layers },
     { id: 'calendar', label: 'Smart Calendar', icon: Calendar },
-    { id: 'planner', label: 'Capacity Planner', icon: Clock },
     { id: 'analytics', label: 'Visual Analytics', icon: BarChart3 },
     { id: 'diary', label: 'Private Diary', icon: BookOpen },
     { id: 'goals', label: 'Goals Management', icon: Target },
@@ -205,6 +186,9 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
   ];
 
   const SelectedIconComponent = ICON_MAP[selectedIconName] || Bookmark;
+
+  const displayName = currentUser?.user_metadata?.display_name || currentUser?.email?.split('@')[0] || 'User';
+  const initial = displayName.charAt(0).toUpperCase();
 
   return (
     <div className="sidebar-overlay" onClick={onClose}>
@@ -226,25 +210,20 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
               fontSize: '16px',
               position: 'relative'
             }}>
-              PN
+              {initial}
               <span style={{ position: 'absolute', bottom: '-2px', right: '-2px', background: '#D97706', borderRadius: '50%', padding: '2px' }}>
                 <Crown size={12} color="#FFF" />
               </span>
             </div>
             <div>
-              <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A' }}>Prem Narayn</h3>
-              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>Pro Member</span>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A', margin: 0 }}>{displayName}</h3>
+              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>{currentUser?.email || 'Pro Member'}</span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', color: '#64748B' }}>
-            <Search size={18} style={{ cursor: 'pointer' }} />
-            <Bell size={18} style={{ cursor: 'pointer' }} />
-            <Settings size={18} style={{ cursor: 'pointer' }} />
-            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer' }}>
-              <X size={20} />
-            </button>
-          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer', padding: '4px' }}>
+            <X size={22} />
+          </button>
         </div>
 
         {/* Quick Navigation Lists */}
@@ -510,6 +489,33 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
                 </button>
               );
             })}
+
+            {/* Direct LogOut Button */}
+            <button
+              onClick={() => {
+                if (onLogout) onLogout();
+                onClose();
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                border: '1.5px solid #FCA5A5',
+                background: '#FEF2F2',
+                color: '#DC2626',
+                fontSize: '13px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                width: '100%',
+                marginTop: '14px',
+                textAlign: 'left'
+              }}
+            >
+              <LogOut size={16} />
+              <span>Log Out</span>
+            </button>
           </div>
         </div>
 

@@ -374,9 +374,9 @@ export default function TodayDashboard({
   // Options for Custom Dropdowns
   const statusOptions = [
     { value: 'ALL', label: 'All Statuses' },
-    { value: 'PENDING', label: 'Pending Tasks' },
+    { value: 'PENDING', label: 'Pending Habits' },
     { value: 'PARTIAL', label: 'Partially Done' },
-    { value: 'COMPLETED', label: 'Completed Tasks' }
+    { value: 'COMPLETED', label: 'Completed Habits' }
   ];
 
   const priorityOptions = [
@@ -392,7 +392,7 @@ export default function TodayDashboard({
   ], [categoriesList]);
 
   const taskTypeOptions = [
-    { value: 'ALL', label: 'All Task Types' },
+    { value: 'ALL', label: 'All Habit Types' },
     { value: 'end_date', label: 'Start-End Date' },
     { value: 'count_days', label: 'Day Count' },
     { value: 'count_event', label: 'Event Count' }
@@ -588,7 +588,7 @@ export default function TodayDashboard({
           <Search size={16} color="#64748B" style={{ marginRight: '8px' }} />
           <input 
             type="text" 
-            placeholder="Search tasks by name..." 
+            placeholder="Search habits by name..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ border: 'none', background: 'transparent', fontSize: '13px', color: '#0F172A', outline: 'none', width: '100%', fontWeight: 600 }}
@@ -623,7 +623,7 @@ export default function TodayDashboard({
           />
 
           <CustomDropdown 
-            label="Task Type"
+            label="Habit Type"
             value={taskTypeFilter}
             options={taskTypeOptions}
             onChange={setTaskTypeFilter}
@@ -635,7 +635,7 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* 1. ALL SCHEDULED TASKS FOR TODAY (3D ENHANCED CONTAINER) */}
+      {/* 1. ALL SCHEDULED HABITS FOR TODAY (3D ENHANCED CONTAINER) */}
       {/* ========================================================================= */}
       <div style={{
         padding: '18px 22px',
@@ -648,17 +648,17 @@ export default function TodayDashboard({
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <h2 style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <CalendarDays size={17} color="#2563EB" /> 1. All Tasks Scheduled for Today
+            <CalendarDays size={17} color="#2563EB" /> 1. All Habits Scheduled for Today
           </h2>
           <span style={{ fontSize: '10px', fontWeight: 800, color: '#2563EB', background: '#EFF6FF', padding: '3px 8px', borderRadius: '8px', border: '1px solid #BFDBFE' }}>
-            {filteredParentTasks.length} Tasks
+            {filteredParentTasks.length} Habits
           </span>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {filteredParentTasks.length === 0 ? (
             <div style={{ padding: '16px', textAlign: 'center', background: '#F8FAFC', borderRadius: '12px', color: '#64748B', fontSize: '12px', fontWeight: 600 }}>
-              No tasks found matching current filters.
+              No habits found matching current filters.
             </div>
           ) : (
             filteredParentTasks.map(task => {
@@ -804,14 +804,14 @@ export default function TodayDashboard({
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. PENDING TASKS LIST (SIMPLIFIED & DIRECT ACTION WITH MEASURE MODAL) */}
+      {/* 2. PENDING HABITS LIST (SIMPLIFIED & DIRECT ACTION WITH MEASURE MODAL) */}
       {/* ========================================================================= */}
       <div style={{ padding: '16px 20px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <h2 style={{ fontSize: '15px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Activity size={17} color="#EA580C" /> 2. Pending Tasks
+            <Activity size={17} color="#EA580C" /> 2. Pending Habits
           </h2>
-          <span style={{ fontSize: '10px', fontWeight: 800, color: '#EA580C', background: '#FFF7ED', padding: '3px 8px', borderRadius: '8px', border: '1px solid #FFEDD5' }}>
+          <span style={{ fontSize: '10px', fontWeight: 800, color="#EA580C", background: '#FFF7ED', padding: '3px 8px', borderRadius: '8px', border: '1px solid #FFEDD5' }}>
             {pendingParentTasks.length} Pending
           </span>
         </div>
@@ -819,7 +819,7 @@ export default function TodayDashboard({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {pendingParentTasks.length === 0 ? (
             <div style={{ padding: '16px', textAlign: 'center', background: '#F0FDF4', borderRadius: '12px', border: '1px solid #BBF7D0', color: '#16A34A', fontSize: '12px', fontWeight: 800 }}>
-              🎉 All tasks are completed for today!
+              🎉 All habits are completed for today!
             </div>
           ) : (
             pendingParentTasks.map(task => {
@@ -1009,7 +1009,7 @@ export default function TodayDashboard({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {completedParentTasks.length === 0 ? (
             <div style={{ padding: '14px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', color: '#64748B', fontSize: '11px', fontWeight: 700, fontStyle: 'italic' }}>
-              No tasks completed yet today.
+              No habits completed yet today.
             </div>
           ) : (
             completedParentTasks.map(parent => {

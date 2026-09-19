@@ -54,7 +54,9 @@ export default function QuickAddModal({
 
   if (!isOpen) return null;
 
-  const userCreatedCategories = Array.from(new Set(existingTasks.map(t => t.category).filter(Boolean)));
+  const defaultCategoriesList = ['General', 'Personal', 'Fitness', 'Mindfulness', 'Productivity', 'Shopping', 'Hobbies'];
+  const userCreatedCategories = Array.from(new Set([...defaultCategoriesList, ...existingTasks.map(t => t.category).filter(Boolean)]))
+    .filter(cat => !['Coding', 'Health', 'Work', 'Learning', 'Academics'].includes(cat));
 
   const calculateSpanDays = (start, end) => {
     if (!start || !end) return 50;
