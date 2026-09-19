@@ -273,6 +273,9 @@ class DiaryTable {
         type: record.type,
         name: record.name,
         tags: record.tags,
+        color: record.color,
+        isPinned: record.isPinned,
+        isArchived: record.isArchived,
         extra: record.extra
       }),
       created_at: record.createdAt || new Date().toISOString(),

@@ -25,6 +25,7 @@ import DateDurationPickerModal from './components/DateDurationPickerModal';
 import AuthLandingPage from './components/AuthLandingPage';
 import { supabase } from './lib/supabaseClient';
 import { collaborationService } from './lib/collaborationService';
+import { getApiBaseUrl } from './lib/apiConfig';
 import { 
   isParentTaskWithChildren, 
   canManuallyCompleteTask, 
@@ -772,14 +773,32 @@ export default function App() {
         }
       }
 
-      // Fetch fresh tasks from Supabase matching user ID or collaboration
+      // Fetch fresh tasks from Spring Boot REST backend
+      let bootItems = [];
+      try {
+        const baseUrl = getApiBaseUrl();
+        const res1 = await fetch(`${baseUrl}/api/tasks?userId=${encodeURIComponent(userId)}`);
+        if (res1.ok) {
+          const list1 = await res1.json();
+          if (Array.isArray(list1)) bootItems.push(...list1);
+        }
+        if (userEmail && userEmail !== userId) {
+          const res2 = await fetch(`${baseUrl}/api/tasks?userId=${encodeURIComponent(userEmail)}`);
+          if (res2.ok) {
+            const list2 = await res2.json();
+            if (Array.isArray(list2)) bootItems.push(...list2);
+          }
+        }
+      } catch (e) {}
+
+      // Fetch fresh tasks from Supabase matching user ID or email or collaboration
       let dbTasks = null;
       let taskError = null;
 
       try {
         let filter = `user_id.eq.${userId}`;
         if (userEmail) {
-          filter += `,collab.ilike.%${userEmail}%`;
+          filter += `,user_id.eq.${userEmail.toLowerCase()},collab.ilike.%${userEmail}%`;
         }
         const res = await supabase.from('tasks').select('*').or(filter);
         dbTasks = res.data;
@@ -803,6 +822,45 @@ export default function App() {
 
       let fetchedItems = [];
 
+      // Map Spring Boot REST tasks
+      if (bootItems && bootItems.length > 0) {
+        const mappedBoot = bootItems.map(t => ({
+          id: t.id,
+          user_id: t.userId || userId,
+          title: t.title,
+          description: t.description || '',
+          collab: t.collab || '',
+          priority: t.priority || 'MEDIUM',
+          isOptional: t.isOptional || false,
+          hasMeasureTracking: t.hasMeasureTracking || false,
+          measureUnit: t.measureUnit || 'units',
+          measureTarget: Number(t.measureTarget || 0),
+          eventUnitTarget: Number(t.eventUnitTarget || 10),
+          eventUnitName: t.eventUnitName || 'units',
+          progressPercent: t.progressPercent || 0,
+          plannedStart: t.startDate || t.plannedStart || '',
+          plannedEnd: t.endDate || t.plannedEnd || '',
+          deadline: t.deadline || t.endDate || '',
+          estimatedMinutes: t.estimatedMinutes || 30,
+          actualMinutes: t.actualMinutes || 0,
+          category: t.category || 'General',
+          section: t.section || 'General',
+          trackingMode: t.trackingMode || 'end_date',
+          targetCount: t.targetCount || 50,
+          currentCount: t.currentCount || 0,
+          repeatRule: t.repeatRule || 'DAILY',
+          customIntervalDays: t.customIntervalDays || 2,
+          parentTaskId: t.parentTaskId || '',
+          attachmentName: t.attachmentName || '',
+          isArchived: t.isArchived || false,
+          archivedAt: t.archivedAt || null,
+          isDoneToday: t.isDoneToday || false,
+          skipReason: ''
+        }));
+        fetchedItems.push(...mappedBoot);
+      }
+
+      // Map Supabase tasks
       if (dbTasks && dbTasks.length > 0) {
         const mappedTasks = dbTasks.map(t => ({
           id: t.id,
@@ -829,6 +887,7 @@ export default function App() {
           targetCount: t.target_count || t.target_day_count || 50,
           currentCount: t.current_count || t.current_day_count || 0,
           repeatRule: t.repeat_rule || 'DAILY',
+          customIntervalDays: t.custom_interval_days || 2,
           parentTaskId: t.parent_task_id || t.parent_id || '',
           attachmentName: t.attachment_name || '',
           isArchived: t.is_archived || false,
@@ -836,7 +895,15 @@ export default function App() {
           isDoneToday: t.is_done_today || false,
           skipReason: ''
         }));
-        fetchedItems.push(...mappedTasks);
+
+        mappedTasks.forEach(st => {
+          const existingIdx = fetchedItems.findIndex(t => t.id === st.id);
+          if (existingIdx >= 0) {
+            fetchedItems[existingIdx] = { ...fetchedItems[existingIdx], ...st };
+          } else {
+            fetchedItems.push(st);
+          }
+        });
       }
 
       if (dbSubtasks && dbSubtasks.length > 0) {
@@ -1320,6 +1387,40 @@ export default function App() {
         attachment_name: newTask.attachmentName
       };
 
+      // Persist to Spring Boot REST API (PostgreSQL database)
+      try {
+        const baseUrl = getApiBaseUrl();
+        await fetch(`${baseUrl}/api/tasks`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: parentId,
+            userId: currentUser.id,
+            title: newTask.title,
+            description: newTask.description,
+            collab: newTask.collab,
+            priority: newTask.priority,
+            isOptional: newTask.isOptional,
+            hasMeasureTracking: newTask.hasMeasureTracking,
+            measureUnit: newTask.measureUnit,
+            measureTarget: newTask.measureTarget,
+            startDate: newTask.plannedStart,
+            endDate: newTask.plannedEnd,
+            deadline: newTask.deadline,
+            estimatedMinutes: newTask.estimatedMinutes,
+            category: newTask.category,
+            section: newTask.section,
+            trackingMode: newTask.trackingMode,
+            targetCount: newTask.targetCount,
+            repeatRule: newTask.repeatRule,
+            customIntervalDays: newTask.customIntervalDays,
+            parentTaskId: newTask.parentTaskId,
+            attachmentName: newTask.attachmentName
+          })
+        });
+      } catch (e) {}
+
+      // Persist to Supabase PostgreSQL database
       const { error: insertErr } = await supabase.from('tasks').insert([{ id: parentId, ...taskPayload }]);
       if (insertErr) {
         console.warn('Task insert with explicit ID notice:', insertErr.message);
