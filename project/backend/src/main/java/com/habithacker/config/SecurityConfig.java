@@ -66,18 +66,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Parse comma-separated origins from env var; also always allow localhost variants
-        List<String> origins = Arrays.stream(corsAllowedOriginsRaw.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toList());
-
-        // Always add localhost variants for local development
-        if (!origins.contains("http://localhost:3000")) origins.add("http://localhost:3000");
-        if (!origins.contains("http://localhost:5173")) origins.add("http://localhost:5173");
-        if (!origins.contains("http://localhost:4173")) origins.add("http://localhost:4173");
-
-        configuration.setAllowedOrigins(origins);
+        // Allow all origin patterns (Vercel, Netlify, localhost, mobile PWAs)
+        configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization", "Content-Type"));
