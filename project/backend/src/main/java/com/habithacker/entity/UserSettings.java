@@ -50,6 +50,9 @@ public class UserSettings {
     @Column(name = "ringtone_name", length = 128)
     private String ringtoneName = "Default Bell";
 
+    @Column(name = "password_hash", length = 255)
+    private String passwordHash;
+
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 
@@ -119,6 +122,9 @@ public class UserSettings {
 
     public String getRingtoneName() { return ringtoneName; }
     public void setRingtoneName(String ringtoneName) { this.ringtoneName = ringtoneName; }
+
+    public String getPasswordHash() { return passwordHash; }
+    public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
