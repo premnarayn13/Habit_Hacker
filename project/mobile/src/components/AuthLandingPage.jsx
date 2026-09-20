@@ -1,9 +1,19 @@
 import React, { useState } from 'react';
-import { Flame, Eye, EyeOff, CheckCircle2, AlertCircle, Mail, Lock, User } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
+import { Flame, Eye, EyeOff, CheckCircle2, Mail, Lock, User } from 'lucide-react';
+import { getApiBaseUrl } from '../lib/apiConfig';
 
+/**
+ * AuthLandingPage — Clean authentication component.
+ *
+ * Architecture:
+ *  - ALL auth calls go to Spring Boot backend (/api/v1/auth/register and /api/v1/auth/login)
+ *  - Backend verifies credentials against Supabase app_users table
+ *  - On success, user object = { id: email, email, displayName } is stored in localStorage
+ *  - user_id used for all habits/tasks/diary = the user's email address
+ *  - Zero Supabase Auth usage — no email confirmations, no rate limits
+ */
 export default function AuthLandingPage({ onAuthSuccess }) {
-  const [authMode, setAuthMode] = useState('LOGIN'); // 'LOGIN' or 'REGISTER'
+  const [authMode, setAuthMode] = useState('LOGIN');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -12,22 +22,6 @@ export default function AuthLandingPage({ onAuthSuccess }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  const getEmailUuid = (rawEmail) => {
-    const str = (rawEmail || 'demo@habithacker.io').trim().toLowerCase();
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash) + str.charCodeAt(i);
-      hash |= 0;
-    }
-    const hex = (Math.abs(hash).toString(16) + '00000000000000000000000000000000').slice(0, 32);
-    return `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-a${hex.slice(17,20)}-${hex.slice(20,32)}`;
-  };
-
-  const getDeterministicUserId = (rawEmail) => {
-    const clean = (rawEmail || 'demo@habithacker.io').trim().toLowerCase();
-    return 'usr_' + clean.replace(/[^a-z0-9]/g, '_');
-  };
-
   const handleAuth = async (e) => {
     e.preventDefault();
     setErrorMessage('');
@@ -35,147 +29,94 @@ export default function AuthLandingPage({ onAuthSuccess }) {
     setLoading(true);
 
     const cleanEmail = email.trim().toLowerCase();
-    const nameToUse = displayName.trim() || (cleanEmail ? cleanEmail.split('@')[0] : 'User');
-    const deterministicUser = {
-      id: getDeterministicUserId(cleanEmail),
-      email: cleanEmail,
-      user_metadata: { display_name: nameToUse }
-    };
-    const profileUuid = getEmailUuid(cleanEmail);
+    const nameToUse = displayName.trim() || cleanEmail.split('@')[0];
+    const apiBase = getApiBaseUrl();
 
     try {
       if (authMode === 'REGISTER') {
-        // 1. Direct Backend PostgreSQL Registration API
+        // ── REGISTER ────────────────────────────────────────────────────────
+        let res;
         try {
-          const res = await fetch(`${getApiBaseUrl()}/api/v1/auth/register`, {
+          res = await fetch(`${apiBase}/api/v1/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: cleanEmail,
-              password,
-              displayName: nameToUse
-            })
+            body: JSON.stringify({ email: cleanEmail, password, displayName: nameToUse })
           });
-
-          if (res.status === 409) {
-            setErrorMessage(`An account with ${cleanEmail} is already registered. Please click the 'Sign In' tab above to log in.`);
-            setLoading(false);
-            return;
-          }
-        } catch (err) {
-          console.warn("Backend Auth register notice:", err);
-        }
-
-        // 2. Direct Supabase PostgreSQL 'profiles' table insertion
-        try {
-          const { error: pErr } = await supabase.from('profiles').upsert([{
-            id: profileUuid,
-            display_name: nameToUse,
-            updated_at: new Date().toISOString()
-          }]);
-          if (pErr) console.warn("Supabase profiles upsert info:", pErr.message);
-        } catch (e) {}
-
-        // 3. Fallback sync to user_settings
-        try {
-          await fetch(`${getApiBaseUrl()}/api/v1/settings?userId=${encodeURIComponent(cleanEmail)}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ displayName: nameToUse, email: cleanEmail })
-          });
-        } catch (e) {}
-
-        // 4. Mark registration verified
-        localStorage.setItem(`hh_reg_${cleanEmail}`, 'true');
-
-        setSuccessMessage(`Account registered for ${cleanEmail}! Please click "Sign In" below to access your dashboard.`);
-        setAuthMode('LOGIN');
-      } else {
-        // SIGN IN FLOW: Authenticate credentials against Database Auth Endpoint
-        let isRegistered = false;
-        let userDisplayName = nameToUse;
-        let loginSuccess = false;
-
-        // 1. Primary Authentication: Call Backend Database Login API
-        try {
-          const loginRes = await fetch(`${getApiBaseUrl()}/api/v1/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: cleanEmail, password })
-          });
-
-          if (loginRes.status === 404) {
-            setErrorMessage(`No registered account found for "${cleanEmail}". Please click the "Register" tab above to create your account first.`);
-            setLoading(false);
-            return;
-          } else if (loginRes.status === 401) {
-            setErrorMessage(`Incorrect password for "${cleanEmail}". Please check your password and try again.`);
-            setLoading(false);
-            return;
-          } else if (loginRes.ok) {
-            const loginData = await loginRes.json();
-            loginSuccess = true;
-            if (loginData.user && loginData.user.displayName) {
-              userDisplayName = loginData.user.displayName;
-            }
-          }
-        } catch (e) {
-          console.warn("Backend Auth login API notice:", e);
-        }
-
-        // 2. Secondary check: If backend is offline, check Supabase Profiles & local registration
-        if (!loginSuccess) {
-          try {
-            const { data: profData } = await supabase.from('profiles').select('id, display_name').eq('id', profileUuid).limit(1);
-            if (profData && profData.length > 0) {
-              loginSuccess = true;
-              if (profData[0].display_name) userDisplayName = profData[0].display_name;
-            }
-          } catch (e) {}
-        }
-
-        if (!loginSuccess && localStorage.getItem(`hh_reg_${cleanEmail}`) === 'true') {
-          loginSuccess = true;
-        }
-
-        // STRICT REJECTION: If account is NOT registered or failed authentication
-        if (!loginSuccess) {
-          setErrorMessage(`No registered account found for "${cleanEmail}". Please click the "Register" tab above to create your account first.`);
+        } catch (netErr) {
+          setErrorMessage('Cannot connect to server. Make sure the backend is running on ' + apiBase);
           setLoading(false);
           return;
         }
 
-        // Try Supabase Auth in background if active
-        try {
-          const { data } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-          if (data && data.session) {
-            localStorage.setItem('sb-access-token', data.session.access_token);
-          }
-        } catch (e) {}
+        const data = await res.json();
 
-        // Grant access for verified registered user
+        if (res.status === 409) {
+          setErrorMessage(data.error || `An account for ${cleanEmail} already exists. Please sign in.`);
+          setLoading(false);
+          return;
+        }
+
+        if (!res.ok) {
+          setErrorMessage(data.error || 'Registration failed. Please try again.');
+          setLoading(false);
+          return;
+        }
+
+        setSuccessMessage(`Account created for ${cleanEmail}! Please click "Sign In" to access your dashboard.`);
+        setAuthMode('LOGIN');
+        setPassword('');
+        setDisplayName('');
+
+      } else {
+        // ── LOGIN ────────────────────────────────────────────────────────────
+        let res;
+        try {
+          res = await fetch(`${apiBase}/api/v1/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: cleanEmail, password })
+          });
+        } catch (netErr) {
+          setErrorMessage('Cannot connect to server. Make sure the backend is running on ' + apiBase);
+          setLoading(false);
+          return;
+        }
+
+        const data = await res.json();
+
+        if (res.status === 404) {
+          setErrorMessage(data.error || `No account found for "${cleanEmail}". Please register first.`);
+          setLoading(false);
+          return;
+        }
+
+        if (res.status === 401) {
+          setErrorMessage(data.error || `Incorrect password for "${cleanEmail}". Please try again.`);
+          setLoading(false);
+          return;
+        }
+
+        if (!res.ok) {
+          setErrorMessage(data.error || 'Login failed. Please try again.');
+          setLoading(false);
+          return;
+        }
+
+        // Build user object — id = email (used as user_id in all tables)
         const loggedInUser = {
-          id: getDeterministicUserId(cleanEmail),
+          id: cleanEmail,          // user_id = email — consistent across all devices
           email: cleanEmail,
-          user_metadata: { display_name: userDisplayName }
+          user_metadata: { display_name: data.user?.displayName || nameToUse }
         };
 
+        // Persist session to localStorage
         localStorage.setItem('hh_auth_user', JSON.stringify(loggedInUser));
-        localStorage.setItem(`hh_reg_${cleanEmail}`, 'true');
 
-        // Sync profile row
-        try {
-          await supabase.from('profiles').upsert([{
-            id: profileUuid,
-            display_name: userDisplayName,
-            updated_at: new Date().toISOString()
-          }]);
-        } catch (e) {}
-
+        // Notify App.jsx
         onAuthSuccess(loggedInUser);
       }
     } catch (err) {
-      setErrorMessage(err.message || 'Authentication failed. Please check your credentials.');
+      setErrorMessage(err.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -277,7 +218,7 @@ export default function AuthLandingPage({ onAuthSuccess }) {
           </div>
         )}
 
-        {/* Sleek Input Form with Perfectly Aligned Modern Lucide Icons */}
+        {/* Form */}
         <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           
           {authMode === 'REGISTER' && (
@@ -290,7 +231,7 @@ export default function AuthLandingPage({ onAuthSuccess }) {
                   placeholder="Enter your full name"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  style={{ width: '100%', height: '44px', paddingLeft: '42px', borderRadius: '12px', border: '1px solid #CBD5E1', background: '#F8FAFC', fontSize: '14px', color: '#0F172A', outline: 'none' }}
+                  style={{ width: '100%', height: '44px', paddingLeft: '42px', borderRadius: '12px', border: '1px solid #CBD5E1', background: '#F8FAFC', fontSize: '14px', color: '#0F172A', outline: 'none', boxSizing: 'border-box' }}
                   required
                 />
               </div>
@@ -306,7 +247,7 @@ export default function AuthLandingPage({ onAuthSuccess }) {
                 placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                style={{ width: '100%', height: '44px', paddingLeft: '42px', borderRadius: '12px', border: '1px solid #CBD5E1', background: '#F8FAFC', fontSize: '14px', color: '#0F172A', outline: 'none' }}
+                style={{ width: '100%', height: '44px', paddingLeft: '42px', borderRadius: '12px', border: '1px solid #CBD5E1', background: '#F8FAFC', fontSize: '14px', color: '#0F172A', outline: 'none', boxSizing: 'border-box' }}
                 required
               />
             </div>
@@ -321,7 +262,7 @@ export default function AuthLandingPage({ onAuthSuccess }) {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={{ width: '100%', height: '44px', paddingLeft: '42px', paddingRight: '42px', borderRadius: '12px', border: '1px solid #CBD5E1', background: '#F8FAFC', fontSize: '14px', color: '#0F172A', outline: 'none' }}
+                style={{ width: '100%', height: '44px', paddingLeft: '42px', paddingRight: '42px', borderRadius: '12px', border: '1px solid #CBD5E1', background: '#F8FAFC', fontSize: '14px', color: '#0F172A', outline: 'none', boxSizing: 'border-box' }}
                 required
               />
               <button 
@@ -340,7 +281,7 @@ export default function AuthLandingPage({ onAuthSuccess }) {
             disabled={loading}
             style={{ width: '100%', height: '46px', fontSize: '15px', marginTop: '8px', borderRadius: '12px', fontWeight: 800 }}
           >
-            {loading ? 'Authenticating...' : authMode === 'LOGIN' ? 'Sign In to Dashboard' : 'Register Account'}
+            {loading ? 'Please wait...' : authMode === 'LOGIN' ? 'Sign In to Dashboard' : 'Create Account'}
           </button>
         </form>
 

@@ -728,6 +728,8 @@ export default function App() {
   };
 
   const fetchUserData = async (userId, userEmail = '') => {
+    // user_id = email for all logged-in users
+    // userId and userEmail are both the user's email address
     const isGuest = !userId || userId === 'default-user';
 
     if (!isGuest && userEmail) {
@@ -770,30 +772,14 @@ export default function App() {
         }
       } catch (e) {}
 
-      // Fetch fresh tasks from Supabase matching authenticated user ID, email, or canonical ID
+      // Fetch fresh tasks from Supabase — user_id column = user's email address
       let dbTasks = null;
       let taskError = null;
 
-      try {
-        let filter = `user_id.eq.${userId}`;
-        if (userEmail) {
-          const cleanEmail = userEmail.toLowerCase().trim();
-          const canonicalId = 'usr_' + cleanEmail.replace(/[^a-z0-9]/g, '_');
-          filter += `,user_id.eq.${cleanEmail},user_id.eq.${canonicalId},collab.ilike.%${cleanEmail}%`;
-        }
-        const res = await supabase.from('tasks').select('*').or(filter);
-        dbTasks = res.data;
-        taskError = res.error;
-      } catch (e) {
-        const res = await supabase.from('tasks').select('*').eq('user_id', userId);
-        dbTasks = res.data;
-        taskError = res.error;
-      }
-
-      if (!dbTasks || taskError) {
-        const res = await supabase.from('tasks').select('*').eq('user_id', userId);
-        if (res.data) dbTasks = res.data;
-      }
+      const queryEmail = (userEmail || userId || '').toLowerCase().trim();
+      const res = await supabase.from('tasks').select('*').eq('user_id', queryEmail);
+      dbTasks = res.data;
+      taskError = res.error;
 
       let dbSubtasks = null;
       try {
@@ -927,13 +913,13 @@ export default function App() {
       }
 
       try {
-        const { data: dbTaskLogs } = await supabase.from('task_logs').select('*').eq('user_id', userId);
+        const { data: dbTaskLogs } = await supabase.from('task_logs').select('*').eq('user_id', queryEmail);
         if (dbTaskLogs) setTaskLogs(dbTaskLogs || []);
 
-        const { data: dbSubtaskLogs } = await supabase.from('subtask_logs').select('*').eq('user_id', userId);
+        const { data: dbSubtaskLogs } = await supabase.from('subtask_logs').select('*').eq('user_id', queryEmail);
         if (dbSubtaskLogs) setSubtaskLogs(dbSubtaskLogs || []);
 
-        const { data: dbEventLogs } = await supabase.from('event_logs').select('*').eq('user_id', userId);
+        const { data: dbEventLogs } = await supabase.from('event_logs').select('*').eq('user_id', queryEmail);
         if (dbEventLogs) setEventLogs(dbEventLogs || []);
       } catch (e) {}
 
@@ -958,47 +944,18 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Auth is entirely custom — we don't use Supabase Auth at all.
+    // Session is stored in localStorage as hh_auth_user.
     const savedUserRaw = localStorage.getItem('hh_auth_user');
     let savedUser = null;
     try { if (savedUserRaw) savedUser = JSON.parse(savedUserRaw); } catch (e) {}
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setCurrentUser(session.user);
-        fetchUserData(session.user.id, session.user.email);
-      } else if (savedUser) {
-        setCurrentUser(savedUser);
-        fetchUserData(savedUser.id, savedUser.email);
-      } else {
-        setCurrentUser(null);
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setCurrentUser(session.user);
-        fetchUserData(session.user.id, session.user.email);
-      } else {
-        const raw = localStorage.getItem('hh_auth_user');
-        if (raw) {
-          try {
-            const u = JSON.parse(raw);
-            setCurrentUser(u);
-            fetchUserData(u.id, u.email);
-            return;
-          } catch (e) {}
-        }
-        setCurrentUser(null);
-        setTasks([]);
-        setMissedDaysLogs([]);
-        setTaskLogs([]);
-        setSubtaskLogs([]);
-        setEventLogs([]);
-        setSubtaskFailureSummary([]);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    if (savedUser && savedUser.email) {
+      setCurrentUser(savedUser);
+      fetchUserData(savedUser.email, savedUser.email);
+    } else {
+      setCurrentUser(null);
+    }
   }, []);
 
   // Live real-time database subscription & 5-second polling interval for multi-browser sync
@@ -1029,9 +986,7 @@ export default function App() {
     setTimeout(() => setIsLoadingView(false), 200);
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem('sb-access-token');
+  const handleSignOut = () => {
     localStorage.removeItem('hh_auth_user');
     if (currentUser?.email) {
       localStorage.removeItem('habit_hacker_tasks_' + currentUser.email.toLowerCase());
@@ -1040,6 +995,10 @@ export default function App() {
     localStorage.removeItem('habit_hacker_cache_owner');
     setCurrentUser(null);
     setTasks([]);
+    setMissedDaysLogs([]);
+    setTaskLogs([]);
+    setSubtaskLogs([]);
+    setEventLogs([]);
   };
 
   const handleArchiveTask = async (taskId) => {
@@ -1217,7 +1176,7 @@ export default function App() {
       if (updatedTask.isDoneToday) {
         await supabase.from('task_logs').insert([{
           task_id: taskId,
-          user_id: currentUser.id,
+          user_id: currentUser.email || currentUser.id,
           logged_at: new Date().toISOString(),
           increment_value: 1,
           measured_value: customMeasureValue !== null ? customMeasureValue : 0
@@ -1319,10 +1278,12 @@ export default function App() {
 
   const handleAddTask = async (newTaskData) => {
     const parentId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `t-${Date.now()}`;
+    // user_id = email address (consistent cross-device identity)
+    const currentUserId = currentUser?.email || currentUser?.id || 'demo-user-123';
 
     const newTask = {
       id: parentId,
-      user_id: currentUser?.id || 'demo-user-123',
+      user_id: currentUserId,
       title: newTaskData.title,
       description: newTaskData.description || '',
       collab: newTaskData.collab || '',
@@ -1362,7 +1323,7 @@ export default function App() {
 
     if (currentUser) {
       const taskPayload = {
-        user_id: currentUser.id,
+        user_id: currentUser.email || currentUser.id,
         title: newTask.title,
         description: newTask.description,
         collab: newTask.collab,
@@ -1396,7 +1357,7 @@ export default function App() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               id: parentId,
-              userId: currentUser.id,
+              userId: currentUser.email || currentUser.id,
               title: newTask.title,
               description: newTask.description,
               collab: newTask.collab,
@@ -1507,7 +1468,7 @@ export default function App() {
   };
 
   if (!currentUser) {
-    return <AuthLandingPage onAuthSuccess={(user) => { setCurrentUser(user); fetchUserData(user.id, user.email); }} />;
+    return <AuthLandingPage onAuthSuccess={(user) => { setCurrentUser(user); fetchUserData(user.email, user.email); }} />;
   }
 
   return (
