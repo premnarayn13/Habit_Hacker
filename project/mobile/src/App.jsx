@@ -783,7 +783,7 @@ export default function App() {
 
       let dbSubtasks = null;
       try {
-        const subRes = await supabase.from('subtasks').select('*').eq('user_id', userId);
+        const subRes = await supabase.from('subtasks').select('*').eq('user_id', queryEmail);
         dbSubtasks = subRes.data;
       } catch (e) {}
 
@@ -1277,9 +1277,12 @@ export default function App() {
   };
 
   const handleAddTask = async (newTaskData) => {
-    const parentId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `t-${Date.now()}`;
+    const parentId = (typeof crypto !== 'undefined' && crypto.randomUUID) 
+      ? crypto.randomUUID() 
+      : '00000000-0000-4000-a000-' + String(Date.now()).padStart(12, '0');
+    
     // user_id = email address (consistent cross-device identity)
-    const currentUserId = currentUser?.email || currentUser?.id || 'demo-user-123';
+    const currentUserId = (currentUser?.email || currentUser?.id || 'demo-user-123').toLowerCase().trim();
 
     const newTask = {
       id: parentId,
@@ -1323,7 +1326,7 @@ export default function App() {
 
     if (currentUser) {
       const taskPayload = {
-        user_id: currentUser.email || currentUser.id,
+        user_id: currentUserId,
         title: newTask.title,
         description: newTask.description,
         collab: newTask.collab,
@@ -1357,7 +1360,7 @@ export default function App() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               id: parentId,
-              userId: currentUser.email || currentUser.id,
+              userId: currentUserId,
               title: newTask.title,
               description: newTask.description,
               collab: newTask.collab,
