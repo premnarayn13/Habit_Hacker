@@ -1631,6 +1631,7 @@ export default function App() {
               {activeTab === 'analytics' && (
                 <AnalyticsErrorBoundary>
                   <AnalyticsIntelligenceView 
+                    currentUser={currentUser}
                     tasks={activeTasks}
                     subtasks={subtasks}
                     taskLogs={taskLogs}

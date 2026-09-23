@@ -162,23 +162,22 @@ export default function TaskDedicatedPageView({
   // Archive History Logs Data
   const archiveCount = currentTask.archiveCount || (currentTask.isArchived ? 1 : 0);
   const pausedDays = currentTask.pausedDays || 0;
-  const activeOperationalDays = Math.max(0, elapsedDays - pausedDays);
-
-  const archivePeriodsLog = [
-    { periodId: 1, from: '2026-08-02', to: '2026-08-05', duration: 4, status: 'Completed Pause' },
-    { periodId: 2, from: '2026-08-12', to: '2026-08-14', duration: 3, status: 'Completed Pause' }
-  ].slice(0, archiveCount);
+  const archivePeriodsLog = (currentTask.taskArchiveLogs || []).map((log, i) => ({
+    periodId: i + 1,
+    from: log.archivedAt ? new Date(log.archivedAt).toISOString().split('T')[0] : 'N/A',
+    to: log.unarchivedAt ? new Date(log.unarchivedAt).toISOString().split('T')[0] : 'Active',
+    duration: log.pausedDays || 0,
+    status: log.unarchivedAt ? 'Completed Pause' : 'Currently Paused'
+  }));
 
   // Feasibility Check Engine (Type 2: count_days)
   const isFeasible = trackingMode === 'count_days' ? (remainingDays >= remainingTargetCount) : true;
   const graceDaysRemaining = Math.max(0, remainingDays - remainingTargetCount);
 
-  // Completion Percentage Formula based on Task Type
-  const completionPercent = trackingMode === 'count_event'
-    ? Math.min(100, Math.round((currentCount / Math.max(1, targetCount)) * 100))
-    : trackingMode === 'count_days'
-      ? Math.min(100, Math.round((currentCount / Math.max(1, targetCount)) * 100))
-      : Math.min(100, Math.round((elapsedDays / Math.max(1, totalWindowDays)) * 100));
+  // Completion Percentage Formula based on Actual Completions vs Target
+  const completionPercent = targetCount > 0
+    ? Math.min(100, Math.round((currentCount / targetCount) * 100))
+    : 0;
 
   const missedDaysCount = Math.max(0, elapsedDays - currentCount);
   const missRatePercent = elapsedDays > 0 ? Math.round((missedDaysCount / elapsedDays) * 100) : 0;
@@ -425,46 +424,53 @@ export default function TaskDedicatedPageView({
       // 52 weeks = 364 days. Current week is wIdx = 51.
       const daysAgo = (51 - wIdx) * 7 + (6 - dIdx);
       
-      // Check if day falls within elapsed operational timeline (daysAgo <= elapsedDays && daysAgo >= 0)
+      // Check if day falls within elapsed operational timeline (0 <= daysAgo <= elapsedDays)
       const isWithinElapsedTimeline = daysAgo >= 0 && daysAgo <= elapsedDays;
       if (!isWithinElapsedTimeline) {
-        return { intensity: 0, measureVal: 0, status: daysAgo < 0 ? 'Future Day' : 'Before Start Date' };
+        return { intensity: 0, measureVal: 0, daysAgo, status: daysAgo < 0 ? 'Future Day (Yet to Come)' : 'Before Task Creation Date' };
       }
 
-      const isMissed = missedDaysMap.has(daysAgo);
-      let dayMeasureOutput = 0;
-      let intensity = 0;
+      // Determine if task was completed on this active day
+      const isDayCompleted = daysAgo === 0 
+        ? Boolean(currentTask.isDoneToday || currentTask.progressPercent >= 100 || currentCount > 0)
+        : (currentCount >= (elapsedDays - daysAgo));
 
-      if (!isMissed) {
-        // Varied realistic daily measure output around target
-        const varianceMultiplier = 0.8 + ((daysAgo * 3 + dIdx * 7) % 5) * 0.1; // 0.8 to 1.2
-        dayMeasureOutput = Math.round(dailyTargetMeasure * varianceMultiplier * 10) / 10;
-        
-        const targetRatio = dailyTargetMeasure > 0 ? (dayMeasureOutput / dailyTargetMeasure) : 1;
-        if (targetRatio < 0.5) intensity = 1;
-        else if (targetRatio < 0.9) intensity = 2;
-        else if (targetRatio <= 1.25) intensity = 3;
-        else intensity = 4;
-      } else {
-        dayMeasureOutput = 0;
-        intensity = 0; // Missed day -> Gray / 0 Measure
+      if (!isDayCompleted) {
+        // Active day NOT done / missed -> RED COLOR (intensity = -1)
+        return { intensity: -1, measureVal: 0, daysAgo, status: 'Not Done (Missed Active Day)' };
       }
+
+      // Task WAS completed on this day
+      if (!currentTask.hasMeasureTracking) {
+        // Non-measure based task (standard check-off) -> Solid Medium Green
+        return { intensity: 3, measureVal: 1, daysAgo, status: 'Completed (Standard Check-off)' };
+      }
+
+      // Measure-based task -> Green intensity driven by logged daily measure vs target
+      const dayMeasureVal = Number(currentTask.measureTarget || 10);
+      const targetRatio = dailyTargetMeasure > 0 ? (dayMeasureVal / dailyTargetMeasure) : 1;
+      let intensity = 3;
+      if (targetRatio < 0.5) intensity = 1;
+      else if (targetRatio < 0.9) intensity = 2;
+      else if (targetRatio <= 1.25) intensity = 3;
+      else intensity = 4;
 
       return {
         intensity,
-        measureVal: dayMeasureOutput,
+        measureVal: dayMeasureVal,
         daysAgo,
-        status: dayMeasureOutput > 0 ? `${dayMeasureOutput} ${measureUnit} Logged` : 'Not Done (0 Measure)'
+        status: `${dayMeasureVal} ${measureUnit} Logged (Completed)`
       };
     });
   });
 
   const getHeatmapColor = (intensity) => {
-    if (intensity === 0) return '#E2E8F0'; // Not Done / 0 Measure
-    if (intensity === 1) return '#86EFAC'; // Low Measure (<50% target)
-    if (intensity === 2) return '#4ADE80'; // Medium Measure (50%-90% target)
-    if (intensity === 3) return '#22C55E'; // Target Measure (90%-125% target)
-    return '#15803D'; // High Measure (>125% target)
+    if (intensity === -1) return '#EF4444'; // Missed / Incomplete Active Day -> RED
+    if (intensity === 0) return '#E2E8F0';  // Before Creation / Future Day -> EMPTY GREY
+    if (intensity === 1) return '#86EFAC';  // Low Measure (<50% target) -> Light Green
+    if (intensity === 2) return '#4ADE80';  // Medium Measure (50%-90% target) -> Medium-Light Green
+    if (intensity === 3) return '#22C55E';  // Target Measure / Standard Check-off -> Solid Green
+    return '#15803D';                        // High Measure (>125% target) -> Deep Dark Green
   };
 
   const handleSubtaskClick = (subtaskItem) => {
@@ -1233,14 +1239,16 @@ export default function TaskDedicatedPageView({
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', fontWeight: 800, color: '#64748B' }}>
-            <span>Not Done</span>
-            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#E2E8F0' }} title="Not Done / 0 Measure" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', fontWeight: 800, color: '#64748B', flexWrap: 'wrap' }}>
+            <span>Empty</span>
+            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#E2E8F0' }} title="Before Creation / Future Day" />
+            <span>Missed</span>
+            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#EF4444' }} title="Missed Active Day (Not Done)" />
             <span>Low</span>
             <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#86EFAC' }} title="Low Measure (<50% target)" />
-            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#4ADE80' }} title="Medium Measure (50%-90% target)" />
-            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#22C55E' }} title="Target Measure (90%-125% target)" />
-            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#15803D' }} title="High Measure (>125% target)" />
+            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#4ADE80' }} title="Medium Measure / Standard Check" />
+            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#22C55E' }} title="Target Achieved" />
+            <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#15803D' }} title="High Target Exceeded" />
             <span>High Target</span>
           </div>
         </div>

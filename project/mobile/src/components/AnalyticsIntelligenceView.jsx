@@ -91,7 +91,8 @@ export default function AnalyticsIntelligenceView({
     setAiState(prev => ({ ...prev, loading: true, error: null }));
     const baseUrl = getApiBaseUrl();
     try {
-      const url = `${baseUrl}/api/v1/analytics/ai-insights?userId=demo-user-123&totalTasks=${tasks.length}&completedTasks=${intel.completedTasksCount || 8}&missedTasks=${intel.missedTasksCount || 2}&completionRate=${intel.overallCompletionRate || 80}&maxStreak=${intel.maxActiveStreak || 5}&plannedMinutes=${intel.totalPlannedWorkloadMinutes || 380}`;
+      const currentUserId = (currentUser?.email || currentUser?.id || 'user').toLowerCase();
+      const url = `${baseUrl}/api/v1/analytics/ai-insights?userId=${encodeURIComponent(currentUserId)}&totalTasks=${tasks.length}&completedTasks=${intel.completedTasksCount ?? 0}&missedTasks=${intel.missedTasksCount ?? 0}&completionRate=${intel.overallCompletionRate ?? 0}&maxStreak=${intel.maxActiveStreak ?? 0}&plannedMinutes=${intel.totalPlannedWorkloadMinutes ?? 0}`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();

@@ -95,13 +95,12 @@ export default function HomeDashboardView({
     return set;
   }, [tasks, taskLogs, subtaskLogs]);
 
-  // Safe scalar discipline score extraction (disciplineScore prop may be passed as object or number)
+  // Dynamic discipline score calculation from real tasks completion
   const numericDisciplineScore = useMemo(() => {
-    if (typeof disciplineScore === 'object' && disciplineScore !== null) {
-      return Number(disciplineScore.disciplineScore) || 84;
-    }
-    return Number(disciplineScore) || 84;
-  }, [disciplineScore]);
+    if (!tasks || tasks.length === 0) return 0;
+    const completedTasksCount = tasks.filter(t => t && (t.isDoneToday || t.progressPercent >= 100 || (t.targetCount > 0 && t.currentCount >= t.targetCount))).length;
+    return Math.round((completedTasksCount / tasks.length) * 100);
+  }, [tasks, disciplineScore]);
 
   // Dynamic user display name from logged in authentication profile
   const userDisplayName = useMemo(() => {
@@ -110,7 +109,7 @@ export default function HomeDashboardView({
       const prefix = currentUser.email.split('@')[0];
       return prefix.charAt(0).toUpperCase() + prefix.slice(1);
     }
-    return 'Prem Narayn';
+    return 'User';
   }, [currentUser]);
   // ---------------------------------------------------------------------------
   // PHASE 1: FOUNDATION, MULTI-LAYER DATA PIPELINE & DYNAMIC HEADER
