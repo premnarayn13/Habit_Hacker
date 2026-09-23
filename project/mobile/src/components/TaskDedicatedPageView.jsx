@@ -1226,13 +1226,13 @@ export default function TaskDedicatedPageView({
 
 
       {/* ========================================================================= */}
-      {/* 11. LEETCODE 365-DAY HEATMAP (7 x 4 x 12 MATRIX) */}
+      {/* 11. 365-DAY HEATMAP */}
       {/* ========================================================================= */}
       <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Flame size={18} color="#DC2626" /> LeetCode 365-Day Measure Heatmap (7 × 4 × 12 Grid)
+              <Flame size={18} color="#DC2626" /> 365-Day Measure Heatmap
             </h3>
             <p style={{ fontSize: '11px', color: '#64748B', margin: '2px 0 0 0' }}>
               Green intensity is driven directly by logged daily measure output ({measureUnit}) vs Daily Target ({dailyTargetMeasure} {measureUnit}/day).

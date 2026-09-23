@@ -355,7 +355,7 @@ export function computeAnalyticsIntelligenceData({
   const goalAlignmentList = (goals && goals.length > 0 ? goals : [
     { title: 'Master Software Architecture & System Design', category: 'Coding', target_date: '2026-10-30', progress_percent: 65 },
     { title: 'Complete 30 Running Cardio Days', category: 'Health', target_date: '2026-09-30', progress_percent: 60 },
-    { title: 'LeetCode 110 Algorithm Problems', category: 'Education', target_date: '2026-09-20', progress_percent: 72 }
+    { title: '110 Algorithm Problems', category: 'Education', target_date: '2026-09-20', progress_percent: 72 }
   ]).map(g => {
     const catStats = categoryStatsMap[g.category] || { effortSharePercent: 20, completionRate: 50 };
     return {
