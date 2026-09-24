@@ -204,10 +204,19 @@ export default function TaskSubtaskView({
     }
     const isDone = task.isDoneToday || task.progressPercent >= 100;
     
-    if (!isDone && task.hasMeasureTracking) {
+    // Check if task or habit is measure-based
+    const hasMeasure = Boolean(
+      task.hasMeasureTracking || 
+      (task.measureTarget && Number(task.measureTarget) > 0) || 
+      task.trackingMode === 'measure' ||
+      (task.measureUnit && task.measureUnit !== 'units') ||
+      (task.eventUnitTarget && Number(task.eventUnitTarget) > 0)
+    );
+
+    if (!isDone && hasMeasure) {
       // Prompt for daily performance measure input
       setMeasureModalTask(task);
-      setMeasureInputValue(task.measureTarget || '');
+      setMeasureInputValue(task.measureTarget || task.eventUnitTarget || '');
     } else {
       onToggleTask(task.id);
     }
@@ -215,7 +224,7 @@ export default function TaskSubtaskView({
 
   const handleSaveMeasureAndComplete = () => {
     if (measureModalTask) {
-      const val = parseFloat(measureInputValue) || 0;
+      const val = parseFloat(measureInputValue) || Number(measureModalTask.measureTarget) || Number(measureModalTask.eventUnitTarget) || 0;
       onToggleTask(measureModalTask.id, val);
       setMeasureModalTask(null);
       setMeasureInputValue('');

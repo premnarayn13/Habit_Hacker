@@ -199,6 +199,18 @@ export default function HomeDashboardView({
 
   // Master Productivity Metrics Computation (100% REAL-TIME DYNAMIC FROM DATABASE DATA)
   const stats = useMemo(() => {
+    const todayObj = new Date();
+    const todayStr = todayObj.toISOString().split('T')[0];
+
+    // Helper: is a habit truly finished (reached planned end date or 100% full progress)?
+    const isHabitFinished = (t) => {
+      if (!t) return false;
+      if (t.progressPercent >= 100) return true;
+      if (t.targetCount > 0 && t.currentCount >= t.targetCount) return true;
+      if (t.plannedEnd && todayStr >= t.plannedEnd) return true;
+      return false;
+    };
+
     const totalParents = parentTasks.length;
     const totalAllTasks = periodFilteredTasks.length;
     const totalSubtasksCount = periodFilteredTasks.filter(t => t && t.parentTaskId).length;
@@ -214,11 +226,11 @@ export default function HomeDashboardView({
     parentTasks.forEach(p => {
       const children = subtasksMap[p.id] || [];
       if (children.length === 0) {
-        standaloneTasksCount++;
-        if (p.isDoneToday || p.progressPercent >= 100) completedParents++;
+        if (!isHabitFinished(p)) standaloneTasksCount++;
+        if (isHabitFinished(p)) completedParents++;
       } else {
         const status = calculateParentCompletionStatus(p, children);
-        if (status.isCompleted) completedParents++;
+        if (status.isCompleted && isHabitFinished(p)) completedParents++;
         else blockedParents++;
       }
     });
@@ -227,24 +239,23 @@ export default function HomeDashboardView({
       if (t.parentTaskId) {
         if (t.isOptional) {
           totalOptionalSubtasks++;
-          if (t.isDoneToday || t.progressPercent >= 100) completedOptionalSubtasks++;
+          if (t.isDoneToday || isHabitFinished(t)) completedOptionalSubtasks++;
         } else {
           totalMandatorySubtasks++;
-          if (t.isDoneToday || t.progressPercent >= 100) completedMandatorySubtasks++;
+          if (t.isDoneToday || isHabitFinished(t)) completedMandatorySubtasks++;
         }
       }
     });
 
-    const activeTasksCount = periodFilteredTasks.filter(t => !t.isDoneToday && t.progressPercent < 100).length;
-    const completedTasksCount = periodFilteredTasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
-    const pendingTasksCount = activeTasksCount;
-    const completionRate = totalAllTasks > 0 ? Math.round((completedTasksCount / totalAllTasks) * 100) : 0;
+    const finishedHabitsCount = periodFilteredTasks.filter(t => isHabitFinished(t)).length;
+    const activeTasksCount = periodFilteredTasks.filter(t => !isHabitFinished(t)).length;
+    const completedTasksCount = finishedHabitsCount;
+    const pendingTasksCount = periodFilteredTasks.filter(t => !isHabitFinished(t) && !t.isDoneToday).length;
+    const completionRate = totalAllTasks > 0 ? Math.round((finishedHabitsCount / totalAllTasks) * 100) : 0;
     const mandatorySubtaskRate = totalMandatorySubtasks > 0 ? Math.round((completedMandatorySubtasks / totalMandatorySubtasks) * 100) : 0;
     const optionalSubtaskRate = totalOptionalSubtasks > 0 ? Math.round((completedOptionalSubtasks / totalOptionalSubtasks) * 100) : 0;
 
     // Real-Time Dynamic Streaks & Momentum Calculations
-    const todayObj = new Date();
-    const todayStr = todayObj.toISOString().split('T')[0];
     let currentConsecutive = 0;
     let checkDate = new Date(todayObj);
 
@@ -317,7 +328,7 @@ export default function HomeDashboardView({
 
     const categoryStats = categoryList.map(cat => {
       const catTasks = periodFilteredTasks.filter(t => t && t.category === cat);
-      const catDone = catTasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
+      const catDone = catTasks.filter(t => isHabitFinished(t)).length;
       const catPending = catTasks.length - catDone;
       const catRate = catTasks.length > 0 ? Math.round((catDone / catTasks.length) * 100) : 0;
       return {

@@ -1175,26 +1175,40 @@ export default function App() {
     }
 
     if (currentUser && updatedTask) {
-      // Sync to tasks table
+      // Sync to tasks table (only existing columns in schema)
       try {
-        await supabase.from('tasks').update({
+        const taskPayload = {
           current_count: updatedTask.currentCount,
           progress_percent: updatedTask.progressPercent,
           is_done_today: updatedTask.isDoneToday,
-          completed_by: updatedTask.completedBy,
-          completed_at: updatedTask.completedAt,
-          logged_measure_val: updatedTask.loggedMeasureVal
-        }).eq('id', taskId);
-      } catch (e) {}
+          status: updatedTask.isDoneToday ? 'COMPLETED' : 'INBOX'
+        };
+        if (updatedTask.completedAt) {
+          taskPayload.completed_at = updatedTask.completedAt;
+        }
+        const { error: taskErr } = await supabase.from('tasks').update(taskPayload).eq('id', taskId);
+        if (taskErr) {
+          console.warn('Supabase tasks update warning:', taskErr.message);
+        }
+      } catch (e) {
+        console.warn('Supabase tasks update catch:', e);
+      }
 
       // Also sync to subtasks table if it is a subtask
       try {
-        await supabase.from('subtasks').update({
+        const subPayload = {
           current_count: updatedTask.currentCount,
           progress_percent: updatedTask.progressPercent,
           is_done_today: updatedTask.isDoneToday,
-          logged_measure_val: updatedTask.loggedMeasureVal
-        }).eq('id', taskId);
+          status: updatedTask.isDoneToday ? 'COMPLETED' : 'PLANNED'
+        };
+        if (updatedTask.completedAt) {
+          subPayload.completed_at = updatedTask.completedAt;
+        }
+        if (updatedTask.loggedMeasureVal !== undefined) {
+          subPayload.logged_measure_val = updatedTask.loggedMeasureVal;
+        }
+        await supabase.from('subtasks').update(subPayload).eq('id', taskId);
       } catch (e) {}
 
       if (updatedTask.isDoneToday) {
@@ -1240,7 +1254,8 @@ export default function App() {
         await supabase.from('tasks').update({
           current_count: updatedTask.currentCount,
           progress_percent: updatedTask.progressPercent,
-          is_done_today: false
+          is_done_today: false,
+          status: 'INBOX'
         }).eq('id', taskId);
       } catch (e) {}
 
@@ -1248,7 +1263,8 @@ export default function App() {
         await supabase.from('subtasks').update({
           current_count: updatedTask.currentCount,
           progress_percent: updatedTask.progressPercent,
-          is_done_today: false
+          is_done_today: false,
+          status: 'PLANNED'
         }).eq('id', taskId);
       } catch (e) {}
 
