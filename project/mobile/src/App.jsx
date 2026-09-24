@@ -1126,8 +1126,8 @@ export default function App() {
 
     const newTasks = tasks.map(t => {
       if (t.id === taskId) {
-        const target = t.targetCount || t.targetDayCount || t.targetEventCount || 50;
-        const isDoneCurrently = t.isDoneToday || t.progressPercent >= 100;
+        const target = (t.targetCount && t.targetCount > 0) ? t.targetCount : (t.targetDayCount || t.targetEventCount || 1);
+        const isDoneCurrently = Boolean(t.isDoneToday);
         
         let nextCount = t.currentCount || 0;
         let nextIsDone = false;
@@ -1136,11 +1136,20 @@ export default function App() {
           nextCount = Math.max(0, nextCount - 1);
           nextIsDone = false;
         } else {
-          nextCount = Math.min(target, nextCount + 1);
+          nextCount = nextCount + 1;
           nextIsDone = true;
         }
 
-        const nextProg = Math.round((nextCount / target) * 100);
+        let nextProg = 0;
+        if (t.trackingMode === 'end_date' && (!t.targetCount || t.targetCount <= 1)) {
+          nextProg = nextIsDone ? 100 : 0;
+        } else {
+          nextProg = Math.min(100, Math.round((nextCount / Math.max(1, target)) * 100));
+        }
+
+        const measuredVal = customMeasureValue !== null 
+          ? Number(customMeasureValue) 
+          : (t.lastMeasuredValue || t.loggedMeasureVal || t.measureTarget || 0);
 
         updatedTask = {
           ...t,
@@ -1151,7 +1160,8 @@ export default function App() {
           isDoneToday: nextIsDone,
           completedBy: nextIsDone ? (currentUser?.email || 'Collaborator') : null,
           completedAt: nextIsDone ? new Date().toISOString() : null,
-          lastMeasuredValue: customMeasureValue !== null ? customMeasureValue : t.lastMeasuredValue
+          lastMeasuredValue: measuredVal,
+          loggedMeasureVal: measuredVal
         };
         return updatedTask;
       }
@@ -1165,22 +1175,38 @@ export default function App() {
     }
 
     if (currentUser && updatedTask) {
-      await supabase.from('tasks').update({
-        current_count: updatedTask.currentCount,
-        progress_percent: updatedTask.progressPercent,
-        is_done_today: updatedTask.isDoneToday,
-        completed_by: updatedTask.completedBy,
-        completed_at: updatedTask.completedAt
-      }).eq('id', taskId);
+      // Sync to tasks table
+      try {
+        await supabase.from('tasks').update({
+          current_count: updatedTask.currentCount,
+          progress_percent: updatedTask.progressPercent,
+          is_done_today: updatedTask.isDoneToday,
+          completed_by: updatedTask.completedBy,
+          completed_at: updatedTask.completedAt,
+          logged_measure_val: updatedTask.loggedMeasureVal
+        }).eq('id', taskId);
+      } catch (e) {}
+
+      // Also sync to subtasks table if it is a subtask
+      try {
+        await supabase.from('subtasks').update({
+          current_count: updatedTask.currentCount,
+          progress_percent: updatedTask.progressPercent,
+          is_done_today: updatedTask.isDoneToday,
+          logged_measure_val: updatedTask.loggedMeasureVal
+        }).eq('id', taskId);
+      } catch (e) {}
 
       if (updatedTask.isDoneToday) {
-        await supabase.from('task_logs').insert([{
-          task_id: taskId,
-          user_id: currentUser.email || currentUser.id,
-          logged_at: new Date().toISOString(),
-          increment_value: 1,
-          measured_value: customMeasureValue !== null ? customMeasureValue : 0
-        }]);
+        try {
+          await supabase.from('task_logs').insert([{
+            task_id: taskId,
+            user_id: currentUser.email || currentUser.id,
+            logged_at: new Date().toISOString(),
+            increment_value: 1,
+            measured_value: updatedTask.loggedMeasureVal || 0
+          }]);
+        } catch (e) {}
       }
     }
   };
@@ -1191,8 +1217,8 @@ export default function App() {
     const newTasks = tasks.map(t => {
       if (t.id === taskId) {
         let prevCount = Math.max(0, (t.currentCount || 1) - 1);
-        const target = t.targetCount || 50;
-        const prevProg = Math.round((prevCount / target) * 100);
+        const target = t.targetCount || 1;
+        const prevProg = Math.round((prevCount / Math.max(1, target)) * 100);
 
         updatedTask = {
           ...t,
@@ -1210,12 +1236,25 @@ export default function App() {
     updateTasksState(newTasks);
 
     if (currentUser && updatedTask) {
-      await supabase.from('tasks').update({
-        current_count: updatedTask.currentCount,
-        progress_percent: updatedTask.progressPercent
-      }).eq('id', taskId);
+      try {
+        await supabase.from('tasks').update({
+          current_count: updatedTask.currentCount,
+          progress_percent: updatedTask.progressPercent,
+          is_done_today: false
+        }).eq('id', taskId);
+      } catch (e) {}
 
-      await supabase.from('task_logs').delete().eq('task_id', taskId).order('logged_at', { ascending: false }).limit(1);
+      try {
+        await supabase.from('subtasks').update({
+          current_count: updatedTask.currentCount,
+          progress_percent: updatedTask.progressPercent,
+          is_done_today: false
+        }).eq('id', taskId);
+      } catch (e) {}
+
+      try {
+        await supabase.from('task_logs').delete().eq('task_id', taskId).order('logged_at', { ascending: false }).limit(1);
+      } catch (e) {}
     }
   };
 

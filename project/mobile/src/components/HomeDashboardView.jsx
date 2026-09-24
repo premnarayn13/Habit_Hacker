@@ -302,9 +302,9 @@ export default function HomeDashboardView({
     const dayCountTasks = periodFilteredTasks.filter(t => t.trackingMode === 'count_days');
     const eventCountTasks = periodFilteredTasks.filter(t => t.trackingMode === 'count_event');
 
-    const endDateDone = endDateTasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
-    const dayCountDone = dayCountTasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
-    const eventCountDone = eventCountTasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
+    const endDateDone = endDateTasks.filter(t => t.progressPercent >= 100 || (t.targetCount > 0 && t.currentCount >= t.targetCount) || (t.plannedEnd && new Date() >= new Date(t.plannedEnd) && t.isDoneToday)).length;
+    const dayCountDone = dayCountTasks.filter(t => t.progressPercent >= 100 || (t.targetCount > 0 && t.currentCount >= t.targetCount)).length;
+    const eventCountDone = eventCountTasks.filter(t => t.progressPercent >= 100 || (t.targetCount > 0 && t.currentCount >= t.targetCount)).length;
 
     const endDateRate = endDateTasks.length > 0 ? Math.round((endDateDone / endDateTasks.length) * 100) : 0;
     const dayCountRate = dayCountTasks.length > 0 ? Math.round((dayCountDone / dayCountTasks.length) * 100) : 0;

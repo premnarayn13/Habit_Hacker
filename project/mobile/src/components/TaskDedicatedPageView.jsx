@@ -190,7 +190,7 @@ export default function TaskDedicatedPageView({
   // Subtask Missed Failures & Bottleneck Highlight
   const subtaskFailureStats = directChildSubtasks.map(s => ({
     subtask: s,
-    missedCount: s.missedDaysCount || Math.floor(Math.random() * 4)
+    missedCount: s.missedDaysCount !== undefined ? s.missedDaysCount : Math.max(0, elapsedDays - (s.currentCount || 0))
   })).sort((a, b) => b.missedCount - a.missedCount);
 
   const mostMissedSubtaskItem = subtaskFailureStats.length > 0 ? subtaskFailureStats[0] : null;
@@ -199,7 +199,7 @@ export default function TaskDedicatedPageView({
   const subtaskColors = ['#4338CA', '#F59E0B', '#10B981', '#EF4444', '#06B6D4', '#8B5CF6', '#EC4899'];
   const measureUnit = currentTask.measureUnit || currentTask.eventUnitName || 'units';
   const eventUnitTarget = Number(currentTask.eventUnitTarget || currentTask.measureTarget || 10);
-  const measureTarget = currentTask.measureTarget || eventUnitTarget || 15;
+  const measureTarget = Number(currentTask.measureTarget || eventUnitTarget || 0);
 
   // Total Targeted Measure Calculation by Task Type
   const totalTargetedMeasure = trackingMode === 'count_event'
@@ -217,9 +217,7 @@ export default function TaskDedicatedPageView({
   const currentWorkInProgress = calculateCurrentEventWork(directChildSubtasks);
   const totalCompletedMeasure = trackingMode === 'count_event'
     ? Math.round(((currentCount * eventUnitTarget) + currentWorkInProgress) * 10) / 10
-    : (trackingMode === 'count_days'
-        ? Math.round(currentCount * measureTarget * 10) / 10
-        : Math.round(currentCount * measureTarget * 0.86 * 10) / 10);
+    : Math.round(currentCount * measureTarget * 10) / 10;
 
   const totalTargetLeft = Math.max(0, Math.round((totalTargetedMeasure - totalCompletedMeasure) * 10) / 10);
 
@@ -249,11 +247,11 @@ export default function TaskDedicatedPageView({
     ? currentTask.streakCount 
     : (currentTask.activeStreak !== undefined 
       ? currentTask.activeStreak 
-      : (currentCount > 0 ? Math.min(currentCount, elapsedDays > 0 ? (currentTask.isDoneToday ? Math.min(currentCount, 7) : Math.max(1, Math.min(currentCount, 5))) : 1) : 0));
+      : (currentTask.isDoneToday ? Math.max(1, currentCount) : 0));
 
   const maxStreakRecord = currentTask.maxStreak !== undefined 
     ? currentTask.maxStreak 
-    : Math.max(activeStreak, currentTask.bestStreak || (activeStreak > 0 ? activeStreak + 3 : 0));
+    : Math.max(activeStreak, currentTask.bestStreak || activeStreak);
 
   const missedStreak = currentTask.missedStreak !== undefined 
     ? currentTask.missedStreak 

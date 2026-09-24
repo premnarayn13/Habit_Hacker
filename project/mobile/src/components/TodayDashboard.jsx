@@ -764,7 +764,7 @@ export default function TodayDashboard({
                       {children.map(st => (
                         <div 
                           key={st.id} 
-                          onClick={(e) => { e.stopPropagation(); if (onToggleTask) onToggleTask(st.id); }}
+                          onClick={(e) => { e.stopPropagation(); handleInitiateTaskCompletion(st); }}
                           onDoubleClick={(e) => {
                             e.stopPropagation();
                             if (onNavigateToTaskDedicated) onNavigateToTaskDedicated(st);
@@ -965,7 +965,7 @@ export default function TodayDashboard({
                                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: '#475569', cursor: 'pointer' }}
                               >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <button onClick={(e) => { e.stopPropagation(); if (onToggleTask) onToggleTask(st.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                                  <button onClick={(e) => { e.stopPropagation(); handleInitiateTaskCompletion(st); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                                     {st.isDoneToday ? <CheckCircle2 size={13} color="#16A34A" /> : <Circle size={13} color="#CBD5E1" />}
                                   </button>
                                   <span style={{ textDecoration: 'none', fontWeight: 600, color: st.isDoneToday ? '#16A34A' : '#0F172A' }}>
