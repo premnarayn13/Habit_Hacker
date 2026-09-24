@@ -156,10 +156,7 @@ export function calculateParentCompletionStatus(task, childSubtasks = []) {
  * Returns array of missed day objects: [{ daysAgo, date, dateFormatted, missedSubtasks: [titles] }]
  */
 export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount = 30) {
-  const mandatoryChildren = (childSubtasks || []).filter(c => !c.isOptional);
-  if (!task || !childSubtasks || childSubtasks.length === 0 || mandatoryChildren.length === 0) {
-    return [];
-  }
+  if (!task) return [];
 
   const elapsed = Math.max(1, Math.min(historyDaysCount, task.elapsedDays || historyDaysCount || 30));
   const currentCount = Math.min(elapsed, task.currentCount || task.currentDayCount || 0);
@@ -167,27 +164,30 @@ export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount 
 
   if (missedCount === 0) return [];
 
+  const mandatoryChildren = (childSubtasks || []).filter(c => !c.isOptional);
   const missedDaysList = [];
   const today = new Date();
 
-  // Generate exact missedCount separate dates with incomplete subtasks
+  // Generate exact missedCount separate dates with incomplete items
   for (let m = 0; m < missedCount; m++) {
-    const daysAgo = Math.min(elapsed, Math.max(1, Math.round(((m + 1) * elapsed) / (missedCount + 1))));
+    const daysAgo = m + 1;
     const d = new Date(today);
     d.setDate(today.getDate() - daysAgo);
     const dateStr = d.toISOString().split('T')[0];
     const dateFormatted = d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 
-    // Pick 1 or 2 mandatory subtasks that were incomplete on this specific day
-    const missedSubtaskTitles = [];
-    mandatoryChildren.forEach((child, idx) => {
-      if ((daysAgo + idx) % mandatoryChildren.length === 0 || idx === (m % mandatoryChildren.length)) {
-        missedSubtaskTitles.push(child.title || `Subtask #${idx + 1}`);
+    let missedSubtaskTitles = [];
+    if (mandatoryChildren.length > 0) {
+      mandatoryChildren.forEach((child, idx) => {
+        if ((daysAgo + idx) % 2 === 0 || mandatoryChildren.length === 1) {
+          missedSubtaskTitles.push(child.title || `Subtask #${idx + 1}`);
+        }
+      });
+      if (missedSubtaskTitles.length === 0) {
+        missedSubtaskTitles.push(mandatoryChildren[0].title || `Subtask #1`);
       }
-    });
-
-    if (missedSubtaskTitles.length === 0 && mandatoryChildren.length > 0) {
-      missedSubtaskTitles.push(mandatoryChildren[m % mandatoryChildren.length].title || `Subtask #1`);
+    } else {
+      missedSubtaskTitles.push(task.title ? `${task.title} (Daily Check-in Missed)` : 'Daily Target Incomplete');
     }
 
     missedDaysList.push({

@@ -78,7 +78,7 @@ export default function AnalyticsIntelligenceView({
 
   const [activeInsightModal, setActiveInsightModal] = useState(null); // Selected insight object for "Why?" popup
 
-  // Groq AI Productivity Coach State & Offline Cache
+  // AI Productivity Coach State & Offline Cache
   const [aiState, setAiState] = useState({
     loading: false,
     data: null,
@@ -87,7 +87,7 @@ export default function AnalyticsIntelligenceView({
     cachedTime: null
   });
 
-  const fetchGroqAiInsights = async () => {
+  const fetchAiInsights = async () => {
     setAiState(prev => ({ ...prev, loading: true, error: null }));
     const baseUrl = getApiBaseUrl();
     try {
@@ -108,10 +108,10 @@ export default function AnalyticsIntelligenceView({
     const localCompletion = intel.overallCompletionRate ?? 0;
     const localCompletedCount = intel.completedTasksCount ?? 0;
     const localData = {
-      provider: 'Habit Hacker AI Engine (Dynamic Local Analysis)',
+      provider: 'Habit Hacker AI Intelligence Engine',
       insightContent: localCompletedCount > 0
-        ? `Groq AI calculated an overall completion rate of ${localCompletion}% across your active tasks. Execution momentum is on track.`
-        : `Groq AI detected 0 completed tasks currently. Focus on completing your first active habit today to build momentum.`,
+        ? `AI Productivity Engine calculated an overall completion rate of ${localCompletion}% across your active tasks. Execution momentum is on track.`
+        : `AI Productivity Engine detected 0 completed tasks currently. Focus on completing your first active habit today to build momentum.`,
       disciplineScore: localCompletion,
       recommendations: [
         'Focus Peak: Schedule complex habits during your morning high-energy window.',
@@ -130,7 +130,7 @@ export default function AnalyticsIntelligenceView({
   };
 
   useEffect(() => {
-    fetchGroqAiInsights();
+    fetchAiInsights();
   }, []);
 
   // Dynamic User Categories List
@@ -355,9 +355,6 @@ export default function AnalyticsIntelligenceView({
       </div>
 
       {/* ========================================================================= */}
-      {/* GROQ AI PRODUCTIVITY COACH CARD (SPRING AI + GROQ LLM + OFFLINE VAULT) */}
-      {/* ========================================================================= */}
-      {/* ========================================================================= */}
       {/* AI PRODUCTIVITY COACH CARD (WHITE THEME) */}
       {/* ========================================================================= */}
       <div style={{
@@ -378,7 +375,7 @@ export default function AnalyticsIntelligenceView({
                 AI Productivity Coach
               </h3>
               <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>
-                {aiState.data?.provider ? aiState.data.provider.replace(/Groq/gi, 'Habit Hacker') : 'Habit Hacker AI Intelligence Engine'}
+                {aiState.data?.provider || 'Habit Hacker AI Intelligence Engine'}
               </span>
             </div>
           </div>
@@ -390,7 +387,7 @@ export default function AnalyticsIntelligenceView({
               </span>
             )}
             <button 
-              onClick={fetchGroqAiInsights}
+              onClick={fetchAiInsights}
               disabled={aiState.loading}
               style={{
                 background: '#F8FAFC',
@@ -415,7 +412,7 @@ export default function AnalyticsIntelligenceView({
         {aiState.error ? (
           <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', padding: '12px 16px', borderRadius: '12px', fontSize: '12px', color: '#991B1B' }}>
             <AlertCircle size={14} style={{ display: 'inline', marginRight: '6px' }} />
-            {aiState.error.replace(/Groq Llama-3/gi, 'AI')}
+            {aiState.error}
           </div>
         ) : (
           <div>

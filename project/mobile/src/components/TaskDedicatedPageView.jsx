@@ -133,8 +133,8 @@ export default function TaskDedicatedPageView({
     return Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
   };
 
-  const effectiveStartStr = currentTask.plannedStart || parentTask?.plannedStart || '2026-08-01';
-  const effectiveEndStr = currentTask.plannedEnd || parentTask?.plannedEnd || '2026-09-30';
+  const effectiveStartStr = currentTask.plannedStart || currentTask.start_date || (currentTask.created_at ? currentTask.created_at.split('T')[0] : null) || parentTask?.plannedStart || new Date().toISOString().split('T')[0];
+  const effectiveEndStr = currentTask.plannedEnd || currentTask.end_date || currentTask.deadline || parentTask?.plannedEnd || effectiveStartStr;
 
   const totalWindowDays = calculateSpanDays(effectiveStartStr, effectiveEndStr) || 45;
   const today = new Date();

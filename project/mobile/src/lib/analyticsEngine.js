@@ -89,9 +89,30 @@ export function computeAnalyticsIntelligenceData({
   const standaloneTasks = filteredTasks.filter(t => !t.parentTaskId && !t.parent_id);
   const childSubtaskEntities = subtasks.filter(s => taskIdsSet.has(s.parentTaskId || s.parent_task_id));
 
-  const totalPlannedDays = windowedTaskLogs.length || 1;
-  const completedTaskLogsCount = windowedTaskLogs.filter(l => l.is_completed || l.is_successful || l.isCompleted).length;
-  const overallCompletionRate = Math.round((completedTaskLogsCount / Math.max(1, totalPlannedDays)) * 100);
+  // Dynamic Elapsed Days & Completion Math across Tasks
+  const todayObj = new Date();
+  const todayStr = todayObj.toISOString().split('T')[0];
+  let totalElapsedDaysSum = 0;
+  let totalCompletedDaysSum = 0;
+  let totalMissedDaysSum = 0;
+
+  filteredTasks.forEach(t => {
+    const sDate = new Date(t.plannedStart || t.start_date || (t.created_at ? t.created_at.split('T')[0] : null) || todayObj);
+    const diff = todayObj - sDate;
+    const taskElapsed = isNaN(diff) ? 1 : Math.max(1, Math.floor(diff / (1000 * 60 * 60 * 24)) + 1);
+    const taskCompleted = Math.min(taskElapsed, t.currentCount || (t.isDoneToday ? 1 : 0));
+    const taskMissed = Math.max(0, taskElapsed - taskCompleted);
+
+    totalElapsedDaysSum += taskElapsed;
+    totalCompletedDaysSum += taskCompleted;
+    totalMissedDaysSum += taskMissed;
+  });
+
+  const totalPlannedDays = totalElapsedDaysSum > 0 ? totalElapsedDaysSum : Math.max(1, filteredTasks.length);
+  const completedTaskLogsCount = totalCompletedDaysSum;
+  const overallCompletionRate = totalElapsedDaysSum > 0 
+    ? Math.round((totalCompletedDaysSum / totalElapsedDaysSum) * 100)
+    : (filteredTasks.length > 0 && filteredTasks.some(t => t.isDoneToday) ? Math.round((filteredTasks.filter(t => t.isDoneToday).length / filteredTasks.length) * 100) : 0);
 
   // Measure Output Calculation
   let totalMeasureOutput = 0;
@@ -212,8 +233,6 @@ export function computeAnalyticsIntelligenceData({
   });
 
   // Calculate actual active streak (consecutive calendar days leading up to today/yesterday)
-  const todayObj = new Date();
-  const todayStr = todayObj.toISOString().split('T')[0];
   let currentConsecutive = 0;
   let checkDate = new Date(todayObj);
 
@@ -725,8 +744,8 @@ export function computeAnalyticsIntelligenceData({
   });
 
   // 6. Executive Numerical Scorecard Metrics
-  const safeSurvival = streakSurvivalCurve || { day7: 70 };
-  const executionReliabilityIndex = Math.min(100, Math.round((overallCompletionRate * 0.6) + ((safeSurvival.day7 || 70) * 0.4)));
+  const missRateRatio = totalElapsedDaysSum > 0 ? (totalMissedDaysSum / totalElapsedDaysSum) : 0;
+  const executionReliabilityIndex = Math.min(100, Math.max(0, Math.round(overallCompletionRate * (1 - (missRateRatio * 0.4)))));
   const focusFatigueMultiplier = Math.round((capacityUtilizationPercent / 100) * 10) / 10;
   const totalSubtasksCount = Math.max(1, childSubtaskEntities.length);
   const subtaskEfficiencyRatio = Math.round(( (totalSubtasksCount - (topParentBlockerSubtask ? topParentBlockerSubtask.missedDaysCount : 0)) / totalSubtasksCount) * 100);
