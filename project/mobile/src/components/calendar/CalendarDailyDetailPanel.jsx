@@ -88,7 +88,7 @@ export default function CalendarDailyDetailPanel({ dateData, onClose, onSelectTa
               </div>
             </div>
             <span style={{ fontSize: '11px', fontWeight: 800, color: isOverloaded ? '#DC2626' : '#16A34A', background: '#FFF', padding: '4px 10px', borderRadius: '8px', border: '1px solid #CBD5E1' }}>
-              {isOverloaded ? '⚠️ Overloaded' : 'Optimal Pace'}
+              {isOverloaded ? 'Overloaded' : 'Optimal Pace'}
             </span>
           </div>
 
@@ -96,7 +96,7 @@ export default function CalendarDailyDetailPanel({ dateData, onClose, onSelectTa
           {deadlines.length > 0 && (
             <div>
               <div style={{ fontSize: '11px', fontWeight: 800, color: '#DC2626', textTransform: 'uppercase', marginBottom: '8px' }}>
-                🎯 Hard Deadlines ({deadlines.length})
+                Hard Deadlines ({deadlines.length})
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {deadlines.map((dl, idx) => (
@@ -140,7 +140,7 @@ export default function CalendarDailyDetailPanel({ dateData, onClose, onSelectTa
                   >
                     <div>
                       <div style={{ fontSize: '14px', fontWeight: 800, color: t.isCompleted ? '#15803D' : '#0F172A' }}>{t.title}</div>
-                      <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>📁 {t.category || 'General'} | ⏱️ {t.estimatedMinutes}m</div>
+                      <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>{t.category || 'General'} | {t.estimatedMinutes}m</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <button onClick={(e) => { e.stopPropagation(); onToggleTask && onToggleTask(t.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
@@ -160,7 +160,7 @@ export default function CalendarDailyDetailPanel({ dateData, onClose, onSelectTa
           {habits.length > 0 && (
             <div>
               <div style={{ fontSize: '11px', fontWeight: 800, color: '#EA580C', textTransform: 'uppercase', marginBottom: '8px' }}>
-                🔥 Habits Activity ({habits.length})
+                Habits Activity ({habits.length})
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {habits.map(h => (
@@ -177,11 +177,11 @@ export default function CalendarDailyDetailPanel({ dateData, onClose, onSelectTa
           {(diaryInfo?.hasEntry || todoInfo?.count > 0) && (
             <div style={{ background: '#F1F5F9', borderRadius: '12px', padding: '14px', border: '1px solid #CBD5E1' }}>
               <span style={{ fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
-                🔒 Personal Device-Local Records
+                Personal Device-Local Records
               </span>
               <div style={{ fontSize: '12px', color: '#0F172A', fontWeight: 700 }}>
-                {diaryInfo?.hasEntry && <div>📖 Journal Entry Written on this Date</div>}
-                {todoInfo?.count > 0 && <div>🔔 {todoInfo.count} Personal Reminders Due</div>}
+                {diaryInfo?.hasEntry && <div>Journal Entry Written on this Date</div>}
+                {todoInfo?.count > 0 && <div>{todoInfo.count} Personal Reminders Due</div>}
               </div>
             </div>
           )}

@@ -103,10 +103,15 @@ export default function AuthLandingPage({ onAuthSuccess }) {
         }
 
         // Build user object — id = email (used as user_id in all tables)
+        const chosenDisplayName = data.user?.displayName || nameToUse;
         const loggedInUser = {
           id: cleanEmail,          // user_id = email — consistent across all devices
           email: cleanEmail,
-          user_metadata: { display_name: data.user?.displayName || nameToUse }
+          displayName: chosenDisplayName,
+          user_metadata: { 
+            display_name: chosenDisplayName,
+            full_name: chosenDisplayName
+          }
         };
 
         // Persist session to localStorage

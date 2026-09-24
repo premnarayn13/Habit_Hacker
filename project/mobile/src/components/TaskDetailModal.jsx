@@ -63,7 +63,7 @@ export default function TaskDetailModal({ item, subtasks, isOpen, onClose, onEdi
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <span className={`badge badge-${item.priority ? item.priority.toLowerCase() : 'medium'}`}>{item.priority || 'MEDIUM'}</span>
               {item.isOptional && <span className="badge badge-optional">Optional</span>}
-              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>📁 {item.category || 'General'}</span>
+              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>{item.category || 'General'}</span>
             </div>
             <h3 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A' }}>{item.title}</h3>
           </div>
@@ -96,21 +96,21 @@ export default function TaskDetailModal({ item, subtasks, isOpen, onClose, onEdi
           <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
             <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>PLANNED DATES</div>
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', marginTop: '2px' }}>
-              📅 {item.plannedStart || '2026-08-21'} → {item.plannedEnd || '2026-08-21'}
+              {item.plannedStart || '2026-08-21'} → {item.plannedEnd || '2026-08-21'}
             </div>
           </div>
 
           <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
             <div style={{ fontSize: '11px', color: '#DC2626', fontWeight: 600 }}>FINAL DEADLINE</div>
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#DC2626', marginTop: '2px' }}>
-              ⚠️ {item.deadline || '2026-08-28'}
+              {item.deadline || '2026-08-28'}
             </div>
           </div>
 
           <div style={{ background: '#F8FAFC', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
             <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>TIME & DURATION</div>
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', marginTop: '2px' }}>
-              ⏱️ Est: {item.estimatedMinutes || 60}m | Act: {item.actualMinutes || 0}m
+              Est: {item.estimatedMinutes || 60}m | Act: {item.actualMinutes || 0}m
             </div>
           </div>
         </div>

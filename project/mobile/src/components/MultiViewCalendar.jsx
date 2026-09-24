@@ -61,7 +61,7 @@ export default function MultiViewCalendar({ calendarData, onSelectDate }) {
             </button>
           </div>
 
-          <span className="badge badge-medium">📅 Live Supabase Data</span>
+          <span className="badge badge-medium">Live Supabase Data</span>
         </div>
 
         {/* 7-Day Date Strip */}
@@ -106,7 +106,7 @@ export default function MultiViewCalendar({ calendarData, onSelectDate }) {
                 <div key={task.id} style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '14px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <span style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>{task.title}</span>
-                    <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>📁 {task.category} | Est: {task.estimatedMinutes}m</div>
+                    <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>{task.category} | Est: {task.estimatedMinutes}m</div>
                   </div>
                   <span className={`badge badge-${task.priority.toLowerCase()}`}>{task.priority}</span>
                 </div>

@@ -72,7 +72,7 @@ export default function CalendarWeekView({ dateMap, rangeDates, onSelectDate, on
                 {/* Deadlines indicator */}
                 {deadlines.length > 0 && (
                   <div style={{ background: '#DC2626', color: '#FFF', fontSize: '9px', fontWeight: 800, padding: '2px 4px', borderRadius: '4px', textAlign: 'center', marginBottom: '6px' }}>
-                    🎯 Deadline ({deadlines.length})
+                    Deadline ({deadlines.length})
                   </div>
                 )}
 

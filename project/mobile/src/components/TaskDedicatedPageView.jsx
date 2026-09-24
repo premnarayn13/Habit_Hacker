@@ -1649,12 +1649,16 @@ export default function TaskDedicatedPageView({
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px' }}>
           <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px', textAlign: 'center' }}>
             <span style={{ fontSize: '10px', fontWeight: 800, color: '#D97706', textTransform: 'uppercase' }}>Active Streak</span>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: '#B45309', marginTop: '2px' }}>{activeStreak} Days 🔥</div>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#B45309', marginTop: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <Flame size={20} color="#EA580C" /> {activeStreak} Days
+            </div>
           </div>
 
           <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px', textAlign: 'center' }}>
             <span style={{ fontSize: '10px', fontWeight: 800, color: '#16A34A', textTransform: 'uppercase' }}>Max Streak Record</span>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: '#15803D', marginTop: '2px' }}>{maxStreakRecord} Days 🏆</div>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#15803D', marginTop: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <Trophy size={18} color="#15803D" /> {maxStreakRecord} Days
+            </div>
           </div>
 
           <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', padding: '14px 20px', borderRadius: '14px', flex: 1, minWidth: '140px', textAlign: 'center' }}>

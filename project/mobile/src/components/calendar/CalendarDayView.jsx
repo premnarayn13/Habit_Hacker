@@ -87,7 +87,7 @@ export default function CalendarDayView({ dateData, onSelectTask, onToggleTask, 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {deadlines.map((dl, idx) => (
               <div key={idx} style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>🎯 {dl.task.title}</span>
+                <span>{dl.task.title}</span>
                 <span style={{ fontSize: '11px', color: dl.statusObj?.color || '#DC2626', fontWeight: 800, background: '#FFF', padding: '2px 8px', borderRadius: '6px', border: '1px solid #CBD5E1' }}>
                   {dl.statusObj?.label || 'Deadline'}
                 </span>
@@ -149,15 +149,15 @@ export default function CalendarDayView({ dateData, onSelectTask, onToggleTask, 
                               {t.title}
                             </div>
                             <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span>📁 {t.category || 'General'}</span>
-                              <span>⏱️ {t.estimatedMinutes} mins</span>
-                              {t.trackingMode && <span>📊 Mode: {t.trackingMode}</span>}
+                              <span>{t.category || 'General'}</span>
+                              <span>{t.estimatedMinutes} mins</span>
+                              {t.trackingMode && <span>Mode: {t.trackingMode}</span>}
                             </div>
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '10px', fontWeight: 800, color: t.isCompleted ? '#16A34A' : '#D97706', background: '#FFF', padding: '2px 8px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
-                              {t.isCompleted ? '✓ Completed' : 'Scheduled'}
+                              {t.isCompleted ? 'Completed' : 'Scheduled'}
                             </span>
                             <button
                               onClick={(e) => { e.stopPropagation(); onRescheduleTask && onRescheduleTask(t); }}

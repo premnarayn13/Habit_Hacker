@@ -50,7 +50,7 @@ export default function CalendarRescheduleModal({ task, isOpen, onClose, onSaveR
 
         <div style={{ background: '#F8FAFC', padding: '12px 14px', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '16px' }}>
           <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>{task.title}</div>
-          <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>📁 {task.category || 'General'} | ⏱️ {task.estimatedMinutes || 30} mins</div>
+          <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>{task.category || 'General'} | {task.estimatedMinutes || 30} mins</div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>

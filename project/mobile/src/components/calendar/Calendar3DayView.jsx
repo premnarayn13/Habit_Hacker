@@ -65,7 +65,7 @@ export default function Calendar3DayView({ dateMap, rangeDates, onSelectDate, on
                     {plannedWorkloadMinutes}m ({capacityPercent}%)
                   </span>
                   <span style={{ fontSize: '9px', display: 'block', color: '#64748B', fontWeight: 700 }}>
-                    {isOverloaded ? '⚠️ Overloaded' : 'Cap: 480m'}
+                    {isOverloaded ? 'Overloaded' : 'Cap: 480m'}
                   </span>
                 </div>
               </div>
@@ -73,7 +73,7 @@ export default function Calendar3DayView({ dateMap, rangeDates, onSelectDate, on
               {/* Deadline alert if any */}
               {deadlines.length > 0 && (
                 <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, color: '#DC2626' }}>
-                  🎯 Deadline Today ({deadlines.length})
+                  Deadline Today ({deadlines.length})
                 </div>
               )}
 
@@ -116,7 +116,7 @@ export default function Calendar3DayView({ dateMap, rangeDates, onSelectDate, on
               {/* Habits footer */}
               {habits.length > 0 && (
                 <div style={{ paddingTop: '8px', borderTop: '1px dashed #E2E8F0', fontSize: '11px', color: '#64748B', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>🔥 Habits: {habits.filter(h => h.isCompleted).length}/{habits.length} Done</span>
+                  <span>Habits: {habits.filter(h => h.isCompleted).length}/{habits.length} Done</span>
                   <ChevronRight size={14} color="#DC2626" />
                 </div>
               )}

@@ -187,7 +187,7 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
 
   const SelectedIconComponent = ICON_MAP[selectedIconName] || Bookmark;
 
-  const displayName = currentUser?.user_metadata?.display_name || currentUser?.email?.split('@')[0] || 'User';
+  const displayName = currentUser?.displayName || currentUser?.user_metadata?.display_name || currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || 'User';
   const initial = displayName.charAt(0).toUpperCase();
 
   return (

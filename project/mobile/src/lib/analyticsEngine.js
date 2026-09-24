@@ -408,18 +408,18 @@ export function computeAnalyticsIntelligenceData({
 
     let difficultyType = 'EASY';
     let label = 'Easy / Rapid Execution';
-    let icon = '⚡';
+    let icon = '';
     let recommendation = 'Maintain current execution cadence. Excellent high-consistency performance.';
 
     if (completion < 50 || workload >= 45 || missedLogCount >= 2) {
       difficultyType = 'HARD';
       label = 'Hard / High Concentration Needed';
-      icon = '🔥';
+      icon = '';
       recommendation = `High workload (${workload}m) or low completion rate (${completion}%). Break into 15-minute subtasks and schedule during morning focus blocks.`;
     } else if (missedLogCount > 0 || (streak === 0 && completion > 0 && completion < 80)) {
       difficultyType = 'IRREGULAR';
       label = 'Irregular / Volatile Execution';
-      icon = '⚠️';
+      icon = '';
       recommendation = `Inconsistent execution pattern. Set a fixed daily trigger anchor and pair with mandatory subtask notifications.`;
     }
 

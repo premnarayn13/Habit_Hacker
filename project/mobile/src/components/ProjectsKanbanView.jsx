@@ -38,7 +38,7 @@ export default function ProjectsKanbanView({ tasks }) {
                 {colTasks.map(t => (
                   <div key={t.id} style={{ background: '#FFF', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}>
                     <div style={{ fontSize: '14px', fontWeight: 700, color: '#0F172A' }}>{t.title}</div>
-                    <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>📁 {t.category}</div>
+                    <div style={{ fontSize: '11px', color: '#64748B', marginTop: '4px' }}>{t.category}</div>
                   </div>
                 ))}
               </div>

@@ -126,7 +126,7 @@ export default function CalendarMonthView({ dateMap, currentDate, onSelectDate }
                   {/* Compact Badges */}
                   {deadlines.length > 0 && (
                     <div style={{ fontSize: '8px', fontWeight: 900, background: '#DC2626', color: '#FFF', padding: '1px 3px', borderRadius: '4px', marginBottom: '2px', textAlign: 'center' }}>
-                      🎯 Deadline
+                      Deadline
                     </div>
                   )}
 

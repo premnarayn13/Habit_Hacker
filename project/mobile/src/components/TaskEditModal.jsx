@@ -130,10 +130,10 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask }) {
                 onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value }))}
                 style={{ width: '100%', height: '42px', fontWeight: 800 }}
               >
-                <option value="URGENT">🔥 Urgent (Critical Priority)</option>
-                <option value="HIGH">🔴 High Priority</option>
-                <option value="MEDIUM">🟡 Medium Priority</option>
-                <option value="LOW">🔵 Low Priority</option>
+                <option value="URGENT">Urgent (Critical Priority)</option>
+                <option value="HIGH">High Priority</option>
+                <option value="MEDIUM">Medium Priority</option>
+                <option value="LOW">Low Priority</option>
               </select>
             </div>
 
@@ -144,13 +144,13 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask }) {
                 onChange={(e) => setFormData(prev => ({ ...prev, repeatRule: e.target.value }))}
                 style={{ width: '100%', height: '42px', fontWeight: 700 }}
               >
-                <option value="DAILY">📅 Daily (Every Single Day)</option>
-                <option value="EVERY_2_DAYS">⚡ Every 2 Days</option>
-                <option value="EVERY_3_DAYS">⚡ Every 3 Days</option>
-                <option value="INTERVAL">🔢 Custom Days Interval...</option>
-                <option value="WEEKLY">📆 Weekly (Once a week)</option>
-                <option value="MONTHLY">🗓️ Monthly (Once a month)</option>
-                <option value="NONE">❌ One-Time Only (No Recurrence)</option>
+                <option value="DAILY">Daily (Every Single Day)</option>
+                <option value="EVERY_2_DAYS">Every 2 Days</option>
+                <option value="EVERY_3_DAYS">Every 3 Days</option>
+                <option value="INTERVAL">Custom Days Interval...</option>
+                <option value="WEEKLY">Weekly (Once a week)</option>
+                <option value="MONTHLY">Monthly (Once a month)</option>
+                <option value="NONE">One-Time Only (No Recurrence)</option>
               </select>
             </div>
           </div>

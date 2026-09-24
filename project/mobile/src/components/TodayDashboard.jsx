@@ -819,7 +819,7 @@ export default function TodayDashboard({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {pendingParentTasks.length === 0 ? (
             <div style={{ padding: '16px', textAlign: 'center', background: '#F0FDF4', borderRadius: '12px', border: '1px solid #BBF7D0', color: '#16A34A', fontSize: '12px', fontWeight: 800 }}>
-              🎉 All habits are completed for today!
+              All habits are completed for today!
             </div>
           ) : (
             pendingParentTasks.map(task => {
@@ -1080,7 +1080,7 @@ export default function TodayDashboard({
             <BarChart3 size={18} color="#EA580C" /> Today's Statistical Performance Analytics
           </h3>
           <span style={{ fontSize: '11px', fontWeight: 800, color: '#EA580C', background: '#FFF7ED', padding: '4px 10px', borderRadius: '10px', border: '1px solid #FFEDD5' }}>
-            {stats.completionRate >= 80 ? '🔥 High Output' : stats.completionRate >= 50 ? '⚡ Steady Output' : '🎯 Building Momentum'}
+            {stats.completionRate >= 80 ? 'High Output' : stats.completionRate >= 50 ? 'Steady Output' : 'Building Momentum'}
           </span>
         </div>
 
@@ -1266,7 +1266,7 @@ export default function TodayDashboard({
             <Sparkles size={13} color="#EA580C" /> Daily Discipline Summary
           </span>
           <h4 style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A', margin: '2px 0 0 0' }}>
-            {stats.completionRate === 100 ? '🔥 Perfect Day! 100% Workload Completed!' : `Keep going! You have completed ${stats.completedCount} of ${stats.totalCount} tasks.`}
+            {stats.completionRate === 100 ? 'Perfect Day! 100% Workload Completed!' : `Keep going! You have completed ${stats.completedCount} of ${stats.totalCount} tasks.`}
           </h4>
         </div>
 

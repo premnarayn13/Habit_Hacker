@@ -777,6 +777,37 @@ export default function App() {
       let taskError = null;
 
       const queryEmail = (userEmail || userId || '').toLowerCase().trim();
+
+      // Fetch registered display name from app_users if available
+      if (queryEmail) {
+        try {
+          const { data: userProfile } = await supabase
+            .from('app_users')
+            .select('display_name')
+            .eq('email', queryEmail)
+            .maybeSingle();
+
+          if (userProfile?.display_name) {
+            const profileName = userProfile.display_name.trim();
+            setCurrentUser(prev => {
+              if (!prev) return prev;
+              if (prev.displayName === profileName && prev.user_metadata?.display_name === profileName) return prev;
+              const updated = {
+                ...prev,
+                displayName: profileName,
+                user_metadata: {
+                  ...(prev.user_metadata || {}),
+                  display_name: profileName,
+                  full_name: profileName
+                }
+              };
+              try { localStorage.setItem('hh_auth_user', JSON.stringify(updated)); } catch (e) {}
+              return updated;
+            });
+          }
+        } catch (profErr) {}
+      }
+
       const res = await supabase.from('tasks').select('*').eq('user_id', queryEmail);
       dbTasks = res.data;
       taskError = res.error;

@@ -42,7 +42,7 @@ export default function GoalsManagementView() {
           <div key={g.id} className="glass-panel" style={{ padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
               <div>
-                <span className="badge badge-medium">📁 {g.category}</span>
+                <span className="badge badge-medium">{g.category}</span>
                 <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>{g.title}</h3>
               </div>
               <span style={{ fontSize: '18px', fontWeight: 800, color: '#DC2626' }}>{g.progressPercent}%</span>

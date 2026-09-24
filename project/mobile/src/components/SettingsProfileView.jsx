@@ -49,7 +49,7 @@ export default function SettingsProfileView({
 }) {
   // Settings State — derive display name and email from actual logged-in user
   const [profileData, setProfileData] = useState({
-    displayName: currentUser?.user_metadata?.display_name || currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || 'User',
+    displayName: currentUser?.displayName || currentUser?.user_metadata?.display_name || currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || 'User',
     email: currentUser?.email || '',
     username: currentUser?.email?.split('@')[0] || '',
     capacityHours: Math.round((availableCapacityMinutes || 480) / 60),

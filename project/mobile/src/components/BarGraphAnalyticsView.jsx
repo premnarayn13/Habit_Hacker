@@ -77,7 +77,7 @@ export default function BarGraphAnalyticsView({ tasks = [], subtasks = [] }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {tasks.map((t, idx) => (
               <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', fontWeight: 700, color: '#0F172A', padding: '10px', background: '#F8FAFC', borderRadius: '8px' }}>
-                <span>📁 {t.category}</span>
+                <span>{t.category}</span>
                 <span>{t.title} ({t.progressPercent}%)</span>
               </div>
             ))}

@@ -501,7 +501,7 @@ export default function AnalyticsIntelligenceView({
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 900, color: '#0F172A' }}>{item.title}</span>
-                  <span style={{ fontSize: '10px', fontWeight: 900 }}>{item.icon} {item.label}</span>
+                  <span style={{ fontSize: '10px', fontWeight: 900 }}>{item.label}</span>
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px', fontSize: '9px', fontWeight: 800, color: '#475569', marginBottom: '6px' }}>

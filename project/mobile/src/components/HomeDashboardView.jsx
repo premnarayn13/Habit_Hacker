@@ -104,7 +104,9 @@ export default function HomeDashboardView({
 
   // Dynamic user display name from logged in authentication profile
   const userDisplayName = useMemo(() => {
-    if (currentUser?.user_metadata?.full_name) return currentUser.user_metadata.full_name;
+    if (currentUser?.displayName && currentUser.displayName.trim()) return currentUser.displayName.trim();
+    if (currentUser?.user_metadata?.display_name && currentUser.user_metadata.display_name.trim()) return currentUser.user_metadata.display_name.trim();
+    if (currentUser?.user_metadata?.full_name && currentUser.user_metadata.full_name.trim()) return currentUser.user_metadata.full_name.trim();
     if (currentUser?.email) {
       const prefix = currentUser.email.split('@')[0];
       return prefix.charAt(0).toUpperCase() + prefix.slice(1);
@@ -689,7 +691,7 @@ export default function HomeDashboardView({
         </div>
       </div>
 
-      {/* 2. EXECUTIVE 5-ROW x 2-COLUMN LANDING PAGE KPI SCORECARD DECK */}
+      {/* 2. EXECUTIVE LANDING PAGE KPI SCORECARD DECK */}
       <div style={{
         background: '#FFFFFF',
         border: '1px solid #E2E8F0',
@@ -700,7 +702,7 @@ export default function HomeDashboardView({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <div>
             <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-              <Grid size={18} color="#DC2626" /> Master System KPI Scorecard (5-Row × 2-Column Grid)
+              <Grid size={18} color="#DC2626" /> Master System KPI Scorecard
             </h3>
             <p style={{ fontSize: '12px', color: '#64748B', margin: '2px 0 0 0', fontWeight: 500 }}>
               Dynamic database inventory calculations (Finished, Active, History, Pending, Standalone, Subtasks & Archive)
@@ -714,7 +716,7 @@ export default function HomeDashboardView({
           </button>
         </div>
 
-        {/* 5-Row x 2-Column KPI Card Grid */}
+        {/* Master KPI Card Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '16px' }}>
           
           {/* ROW 1: Completed Habits vs Active Habits */}
@@ -1302,8 +1304,8 @@ export default function HomeDashboardView({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '16px' }}>
           <div style={{ padding: '12px', background: 'linear-gradient(135deg, #FEF2F2, #FFF)', borderRadius: '12px', border: '1px solid #FCA5A5' }}>
             <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 800, display: 'block' }}>CURRENT STREAK</span>
-            <span style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              🔥 {stats.streaks.current} <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>Days</span>
+            <span style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Flame size={20} color="#DC2626" /> {stats.streaks.current} <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>Days</span>
             </span>
             <span style={{ fontSize: '10px', color: '#DC2626', fontWeight: 700, display: 'block' }}>{stats.streaks.toRecordText}</span>
           </div>
@@ -1849,8 +1851,8 @@ export default function HomeDashboardView({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>{task.title}</span>
                       {task.isEarlyEligible && (
-                        <span style={{ fontSize: '9px', fontWeight: 800, color: '#D97706', background: '#FFFBEB', padding: '1px 5px', borderRadius: '4px', border: '1px solid #FDE68A' }}>
-                          ⚡ Early Eligible
+                        <span style={{ fontSize: '9px', fontWeight: 800, color: '#D97706', background: '#FFFBEB', padding: '1px 5px', borderRadius: '4px', border: '1px solid #FDE68A', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                          <Zap size={10} color="#D97706" /> Early Eligible
                         </span>
                       )}
                     </div>
