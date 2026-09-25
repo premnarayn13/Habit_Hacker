@@ -673,11 +673,17 @@ export default function App() {
         
         let parentCurrent = task.currentCount || 0;
         if (isParentWithChildren) {
-          if (parentDoneToday && parentCurrent === 0) parentCurrent = 1;
-          if (!parentDoneToday && parentCurrent === 1 && totalCompletedCount === 0) parentCurrent = 0;
+          if (task.trackingMode === 'count_event') {
+            // Type 3 event count parent: currentCount is the accumulated events completed across days!
+            // Do NOT reset to 0 when children are reset for the next cycle!
+            parentCurrent = task.currentCount || 0;
+          } else {
+            if (parentDoneToday && parentCurrent === 0) parentCurrent = 1;
+            if (!parentDoneToday && parentCurrent === 1 && totalCompletedCount === 0) parentCurrent = 0;
+          }
         }
 
-        const parentDayProg = Math.round((parentCurrent / targetMax) * 100);
+        const parentDayProg = Math.round((parentCurrent / Math.max(1, targetMax)) * 100);
 
         return {
           ...task,
@@ -685,7 +691,7 @@ export default function App() {
           subtaskProgPercent: subtaskProg,
           subtaskCompletedCount: totalCompletedCount,
           subtaskTotalCount: childSubtasks.length,
-          isDoneToday: parentDoneToday,
+          isDoneToday: task.trackingMode === 'count_event' ? (parentCurrent >= targetMax) : parentDoneToday,
           currentCount: parentCurrent,
           currentDayCount: parentCurrent,
           currentEventCount: parentCurrent,
@@ -1155,7 +1161,7 @@ export default function App() {
   const handleToggleTask = async (taskId, customMeasureValue = null) => {
     let updatedTask = null;
 
-    const newTasks = tasks.map(t => {
+    let newTasks = tasks.map(t => {
       if (t.id === taskId) {
         const target = (t.targetCount && t.targetCount > 0) ? t.targetCount : (t.targetDayCount || t.targetEventCount || 1);
         const isDoneCurrently = Boolean(t.isDoneToday);
@@ -1199,59 +1205,156 @@ export default function App() {
       return t;
     });
 
+    // Check Type 3 Parent Event Completion:
+    // If a child of a Type 3 (count_event) parent finishes, check if all mandatory child subtasks are satisfied.
+    // When all mandatory child subtasks are completed:
+    // 1. Parent event count increments by 1.
+    // 2. All child subtasks for this event cycle turn back to 0 (reset measure and status for next cycle).
+    let eventCycleCompleted = false;
+    let completedEventParent = null;
+    let resetSiblings = [];
+
+    if (updatedTask && updatedTask.parentTaskId && updatedTask.isDoneToday) {
+      const parent = newTasks.find(p => p.id === updatedTask.parentTaskId);
+      if (parent && parent.trackingMode === 'count_event') {
+        const siblings = newTasks.filter(item => item.parentTaskId === parent.id);
+        const mandatorySiblings = siblings.filter(item => !item.isOptional);
+        const checkList = mandatorySiblings.length > 0 ? mandatorySiblings : siblings;
+
+        const allMandatoryDone = checkList.length > 0 && checkList.every(item => item.isDoneToday || item.progressPercent >= 100);
+
+        if (allMandatoryDone) {
+          eventCycleCompleted = true;
+          const nextParentEventCount = (parent.currentCount || 0) + 1;
+          const targetEventMax = parent.targetCount || parent.targetEventCount || 10;
+          const parentProg = Math.min(100, Math.round((nextParentEventCount / Math.max(1, targetEventMax)) * 100));
+
+          completedEventParent = {
+            ...parent,
+            currentCount: nextParentEventCount,
+            currentEventCount: nextParentEventCount,
+            progressPercent: parentProg,
+            isDoneToday: nextParentEventCount >= targetEventMax
+          };
+
+          resetSiblings = siblings;
+
+          newTasks = newTasks.map(item => {
+            if (item.id === parent.id) {
+              return completedEventParent;
+            }
+            if (item.parentTaskId === parent.id) {
+              return {
+                ...item,
+                isDoneToday: false,
+                currentCount: 0,
+                progressPercent: 0,
+                loggedMeasureVal: 0,
+                lastMeasuredValue: 0,
+                status: 'PLANNED'
+              };
+            }
+            return item;
+          });
+        }
+      }
+    }
+
     updateTasksState(newTasks);
 
     if (updatedTask) {
       collaborationService.syncTaskCompletionStatus(taskId, currentUser?.email || 'User', updatedTask.isDoneToday);
     }
 
-    if (currentUser && updatedTask) {
-      // Sync to tasks table (only existing columns in schema)
-      try {
-        const taskPayload = {
-          current_count: updatedTask.currentCount,
-          progress_percent: updatedTask.progressPercent,
-          is_done_today: updatedTask.isDoneToday,
-          status: updatedTask.isDoneToday ? 'COMPLETED' : 'INBOX'
-        };
-        if (updatedTask.completedAt) {
-          taskPayload.completed_at = updatedTask.completedAt;
-        }
-        const { error: taskErr } = await supabase.from('tasks').update(taskPayload).eq('id', taskId);
-        if (taskErr) {
-          console.warn('Supabase tasks update warning:', taskErr.message);
-        }
-      } catch (e) {
-        console.warn('Supabase tasks update catch:', e);
-      }
-
-      // Also sync to subtasks table if it is a subtask
-      try {
-        const subPayload = {
-          current_count: updatedTask.currentCount,
-          progress_percent: updatedTask.progressPercent,
-          is_done_today: updatedTask.isDoneToday,
-          status: updatedTask.isDoneToday ? 'COMPLETED' : 'PLANNED'
-        };
-        if (updatedTask.completedAt) {
-          subPayload.completed_at = updatedTask.completedAt;
-        }
-        if (updatedTask.loggedMeasureVal !== undefined) {
-          subPayload.logged_measure_val = updatedTask.loggedMeasureVal;
-        }
-        await supabase.from('subtasks').update(subPayload).eq('id', taskId);
-      } catch (e) {}
-
-      if (updatedTask.isDoneToday) {
+    if (currentUser) {
+      if (eventCycleCompleted && completedEventParent) {
+        // Sync parent event increment to database
         try {
+          await supabase.from('tasks').update({
+            current_count: completedEventParent.currentCount,
+            progress_percent: completedEventParent.progressPercent,
+            is_done_today: completedEventParent.isDoneToday,
+            status: completedEventParent.isDoneToday ? 'COMPLETED' : 'INBOX'
+          }).eq('id', completedEventParent.id);
+
           await supabase.from('task_logs').insert([{
-            task_id: taskId,
+            task_id: completedEventParent.id,
             user_id: currentUser.email || currentUser.id,
             logged_at: new Date().toISOString(),
             increment_value: 1,
-            measured_value: updatedTask.loggedMeasureVal || 0
+            measured_value: completedEventParent.currentCount
           }]);
+        } catch (e) {
+          console.warn('Event parent sync notice:', e);
+        }
+
+        // Reset child subtasks in database for next event cycle
+        for (const st of resetSiblings) {
+          try {
+            await supabase.from('tasks').update({
+              current_count: 0,
+              progress_percent: 0,
+              is_done_today: false,
+              status: 'INBOX'
+            }).eq('id', st.id);
+
+            await supabase.from('subtasks').update({
+              current_count: 0,
+              progress_percent: 0,
+              is_done_today: false,
+              logged_measure_val: 0,
+              status: 'PLANNED'
+            }).eq('id', st.id);
+          } catch (e) {}
+        }
+      } else if (updatedTask) {
+        // Standard single task / subtask sync
+        try {
+          const taskPayload = {
+            current_count: updatedTask.currentCount,
+            progress_percent: updatedTask.progressPercent,
+            is_done_today: updatedTask.isDoneToday,
+            status: updatedTask.isDoneToday ? 'COMPLETED' : 'INBOX'
+          };
+          if (updatedTask.completedAt) {
+            taskPayload.completed_at = updatedTask.completedAt;
+          }
+          const { error: taskErr } = await supabase.from('tasks').update(taskPayload).eq('id', taskId);
+          if (taskErr) {
+            console.warn('Supabase tasks update warning:', taskErr.message);
+          }
+        } catch (e) {
+          console.warn('Supabase tasks update catch:', e);
+        }
+
+        // Also sync to subtasks table if it is a subtask
+        try {
+          const subPayload = {
+            current_count: updatedTask.currentCount,
+            progress_percent: updatedTask.progressPercent,
+            is_done_today: updatedTask.isDoneToday,
+            status: updatedTask.isDoneToday ? 'COMPLETED' : 'PLANNED'
+          };
+          if (updatedTask.completedAt) {
+            subPayload.completed_at = updatedTask.completedAt;
+          }
+          if (updatedTask.loggedMeasureVal !== undefined) {
+            subPayload.logged_measure_val = updatedTask.loggedMeasureVal;
+          }
+          await supabase.from('subtasks').update(subPayload).eq('id', taskId);
         } catch (e) {}
+
+        if (updatedTask.isDoneToday) {
+          try {
+            await supabase.from('task_logs').insert([{
+              task_id: taskId,
+              user_id: currentUser.email || currentUser.id,
+              logged_at: new Date().toISOString(),
+              increment_value: 1,
+              measured_value: updatedTask.loggedMeasureVal || 0
+            }]);
+          } catch (e) {}
+        }
       }
     }
   };
@@ -1798,6 +1901,7 @@ export default function App() {
         isOpen={!!selectedEditItem}
         onClose={() => setSelectedEditItem(null)}
         onSaveTask={handleSaveTaskEdit}
+        existingTasks={tasks}
       />
 
       <DateDurationPickerModal 

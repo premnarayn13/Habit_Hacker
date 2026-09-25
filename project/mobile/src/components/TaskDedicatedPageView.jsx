@@ -213,11 +213,30 @@ export default function TaskDedicatedPageView({
     ? Math.round((totalTargetedMeasure / Math.max(1, totalWindowDays)) * 10) / 10
     : measureTarget;
 
+  // Compute measurable average for child subtasks (using parent measureTarget if no explicit measures)
+  const avgMeasured = calculateMeasurableAverage(directChildSubtasks, measureTarget);
+
+  // Today's actual measure contribution:
+  // If parent has children, calculate sum of child contributions (preserving actual recorded measure without capping)
+  // If standalone, use loggedMeasureVal if logged, else measureTarget
+  const todayChildContribution = directChildSubtasks.reduce((sum, st) => {
+    const isCompleted = st.isDoneToday || st.progressPercent >= 100;
+    return sum + calculateSubtaskContribution(st, isCompleted, st.currentCount, avgMeasured);
+  }, 0);
+
+  const todayActualMeasure = directChildSubtasks.length > 0
+    ? todayChildContribution
+    : (currentTask.loggedMeasureVal !== undefined && currentTask.loggedMeasureVal !== null && Number(currentTask.loggedMeasureVal) > 0
+        ? Number(currentTask.loggedMeasureVal)
+        : (currentTask.isDoneToday ? measureTarget : 0));
+
+  const pastDaysCompleted = Math.max(0, (currentCount || 0) - (currentTask.isDoneToday ? 1 : 0));
+
   // Total Completed Measure Calculation by Task Type
   const currentWorkInProgress = calculateCurrentEventWork(directChildSubtasks);
   const totalCompletedMeasure = trackingMode === 'count_event'
     ? Math.round(((currentCount * eventUnitTarget) + currentWorkInProgress) * 10) / 10
-    : Math.round(currentCount * measureTarget * 10) / 10;
+    : Math.round((pastDaysCompleted * measureTarget + (currentTask.isDoneToday || directChildSubtasks.length > 0 ? todayActualMeasure : 0)) * 10) / 10;
 
   const totalTargetLeft = Math.max(0, Math.round((totalTargetedMeasure - totalCompletedMeasure) * 10) / 10);
 
@@ -258,7 +277,6 @@ export default function TaskDedicatedPageView({
     : (currentTask.isDoneToday ? 0 : Math.max(0, elapsedDays - currentCount));
 
   // FULL TIMELINE DAY-BY-DAY DATA ENGINE (From plannedStart / Day 1 up to today / Day elapsedDays)
-  const avgMeasured = calculateMeasurableAverage(directChildSubtasks);
   const missedDaysRecordsList = getMissedDaysForTask({ ...currentTask, elapsedDays }, directChildSubtasks, elapsedDays);
   const missedDaysSetByAgo = new Set(missedDaysRecordsList.map(m => m.daysAgo));
 
@@ -282,8 +300,16 @@ export default function TaskDedicatedPageView({
 
     let dailyDeltaMeasure = 0;
     if (isCompletedDay) {
-      const numCompletedDays = Math.max(1, totalTimelineDays - missedDaysSetByAgo.size);
-      dailyDeltaMeasure = Math.round((totalCompletedMeasure / numCompletedDays) * 10) / 10;
+      if (idx === totalTimelineDays - 1) {
+        // Today's delta measure reflects actual recorded measure (e.g. 10 instead of capped 5)
+        dailyDeltaMeasure = todayActualMeasure > 0 
+          ? todayActualMeasure 
+          : Math.round((totalCompletedMeasure / Math.max(1, totalTimelineDays - missedDaysSetByAgo.size)) * 10) / 10;
+      } else {
+        const numCompletedPastDays = Math.max(1, totalTimelineDays - missedDaysSetByAgo.size - (todayActualMeasure > 0 ? 1 : 0));
+        const pastCompletedMeasure = Math.max(0, totalCompletedMeasure - (todayActualMeasure > 0 ? todayActualMeasure : 0));
+        dailyDeltaMeasure = Math.round((pastCompletedMeasure / numCompletedPastDays) * 10) / 10;
+      }
     } else {
       dailyDeltaMeasure = 0; // MISSED DAY -> 0 measure, line stays PLAIN HORIZONTAL!
     }
@@ -1858,16 +1884,16 @@ export default function TaskDedicatedPageView({
               </div>
 
               <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '12px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: 800, color: '#0F172A' }}>
-                Achieved Measure: {measureTarget} {measureUnit} (Target Met)
+                Achieved Measure: {currentTask.loggedMeasureVal || measureTarget} {measureUnit} {Number(currentTask.loggedMeasureVal) > measureTarget ? '(Exceeded Target)' : '(Target Met)'}
               </div>
 
               <div style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A', marginTop: '4px' }}>
                 Subtask Contribution Breakdown:
               </div>
-              {directChildSubtasks.slice(0, 3).map(s => (
+              {directChildSubtasks.slice(0, 5).map(s => (
                 <div key={s.id} style={{ fontSize: '11px', color: '#16A34A', fontWeight: 700, background: '#DCFCE7', padding: '8px 12px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
                   <span>✓ {s.title}</span>
-                  <span>{s.hasMeasureTracking ? `${s.measureTarget || 5} ${s.measureUnit || 'units'}` : 'Derived Avg'}</span>
+                  <span>{s.hasMeasureTracking ? `${s.loggedMeasureVal || s.measureTarget || 5} ${s.measureUnit || 'units'}` : 'Derived Avg'}</span>
                 </div>
               ))}
             </div>

@@ -33,23 +33,30 @@ export function canManuallyCompleteTask(task, childSubtasks = []) {
 }
 
 /**
- * Calculates average measure ONLY from subtasks with explicit numerical measures.
- * Excludes event-based and no-measure subtasks.
- * Fallbacks to 1 if no explicit measurable subtasks exist.
+ * Calculates average measure from subtasks with explicit numerical measures.
+ * If no explicit measurable subtasks exist, divides parent measureTarget among mandatory subtasks.
+ * Fallbacks to 1 if no measureTarget exists.
  */
-export function calculateMeasurableAverage(subtasks = []) {
-  if (!subtasks || subtasks.length === 0) return 1;
+export function calculateMeasurableAverage(subtasks = [], parentMeasureTarget = 0) {
+  if (!subtasks || subtasks.length === 0) {
+    return parentMeasureTarget > 0 ? Number(parentMeasureTarget) : 1;
+  }
 
   const explicitMeasuredVals = [];
   subtasks.forEach(st => {
-    if (st.hasMeasureTracking || (st.measureTarget && st.measureTarget > 0)) {
-      const val = st.loggedMeasureVal || st.measureTarget || 4;
-      explicitMeasuredVals.push(Number(val));
+    if (st.hasMeasureTracking || (st.measureTarget && Number(st.measureTarget) > 0)) {
+      const val = (st.loggedMeasureVal !== undefined && st.loggedMeasureVal !== null && Number(st.loggedMeasureVal) > 0)
+        ? Number(st.loggedMeasureVal)
+        : Number(st.measureTarget || 4);
+      explicitMeasuredVals.push(val);
     }
   });
 
   if (explicitMeasuredVals.length === 0) {
-    return 1; // Safe fallback (Edge Case 8)
+    const mandatoryCount = Math.max(1, subtasks.filter(s => !s.isOptional).length);
+    return parentMeasureTarget > 0 
+      ? Math.round((Number(parentMeasureTarget) / mandatoryCount) * 10) / 10 
+      : 1;
   }
 
   const sum = explicitMeasuredVals.reduce((acc, curr) => acc + curr, 0);
@@ -58,13 +65,16 @@ export function calculateMeasurableAverage(subtasks = []) {
 
 /**
  * Computes individual subtask contribution for a given day.
+ * Rule: Preserves actual recorded measure (e.g. recorded 10 when target was 5) without capping!
+ * Non-measure subtasks contribute (1 x avgMeasure) when completed.
  */
 export function calculateSubtaskContribution(subtask, isCompleted = false, eventCount = 0, avgMeasure = 1) {
   if (!subtask) return 0;
 
-  // 1. Measurable subtask
-  if (subtask.hasMeasureTracking || (subtask.measureTarget && subtask.measureTarget > 0)) {
-    if (subtask.loggedMeasureVal !== undefined && subtask.loggedMeasureVal !== null) {
+  // 1. Measurable subtask (Type 2 subhabit)
+  if (subtask.hasMeasureTracking || (subtask.measureTarget && Number(subtask.measureTarget) > 0)) {
+    // If user recorded an explicit measure (even if greater than target, e.g. 10 instead of 5), PRESERVE IT!
+    if (subtask.loggedMeasureVal !== undefined && subtask.loggedMeasureVal !== null && Number(subtask.loggedMeasureVal) > 0) {
       return Number(subtask.loggedMeasureVal);
     }
     return isCompleted ? Number(subtask.measureTarget || 4) : 0;
@@ -76,7 +86,8 @@ export function calculateSubtaskContribution(subtask, isCompleted = false, event
     return Math.round(count * avgMeasure * 10) / 10;
   }
 
-  // 3. Subtask without explicit measure or event count
+  // 3. Subtask without explicit measure (Type 1 non-measure subhabit under Type 2 parent)
+  // When completed, contributes the calculated average of measurable subtasks
   if (isCompleted) {
     return avgMeasure;
   }
