@@ -96,8 +96,14 @@ public class TaskService {
         existing.setSection(updatedData.getSection());
         existing.setTrackingMode(updatedData.getTrackingMode());
         existing.setTargetCount(updatedData.getTargetCount());
+        existing.setRepeatRule(updatedData.getRepeatRule());
+        existing.setCustomIntervalDays(updatedData.getCustomIntervalDays());
         existing.setParentTaskId(updatedData.getParentTaskId());
         existing.setAttachmentName(updatedData.getAttachmentName());
+        if (updatedData.getLoggedMeasureVal() != null) {
+            existing.setLoggedMeasureVal(updatedData.getLoggedMeasureVal());
+            existing.setLastMeasuredValue(updatedData.getLoggedMeasureVal());
+        }
 
         return taskRepository.save(existing);
     }
@@ -115,6 +121,11 @@ public class TaskService {
         task.setCurrentCount(nextCount);
         task.setProgressPercent(nextProg);
         task.setIsDoneToday(true);
+
+        if (customMeasureValue != null) {
+            task.setLoggedMeasureVal(customMeasureValue);
+            task.setLastMeasuredValue(customMeasureValue);
+        }
 
         // Record Daily Activity Log in task_logs table
         TaskLog log = new TaskLog();

@@ -875,6 +875,8 @@ export default function App() {
           hasMeasureTracking: t.has_measure_tracking || false,
           measureUnit: t.measure_unit || t.event_unit_name || 'units',
           measureTarget: Number(t.measure_target || t.event_unit_target || 0),
+          loggedMeasureVal: Number(t.logged_measure_val || t.last_measured_value || 0),
+          lastMeasuredValue: Number(t.last_measured_value || t.logged_measure_val || 0),
           eventUnitTarget: Number(t.event_unit_target || 10),
           eventUnitName: t.event_unit_name || 'units',
           progressPercent: t.progress_percent || 0,
@@ -1277,10 +1279,13 @@ export default function App() {
             status: completedEventParent.isDoneToday ? 'COMPLETED' : 'INBOX'
           }).eq('id', completedEventParent.id);
 
+          const todayStr = new Date().toISOString().split('T')[0];
+          const nowIso = new Date().toISOString();
           await supabase.from('task_logs').insert([{
             task_id: completedEventParent.id,
             user_id: currentUser.email || currentUser.id,
-            logged_at: new Date().toISOString(),
+            logged_date: todayStr,
+            logged_at: nowIso,
             increment_value: 1,
             measured_value: completedEventParent.currentCount
           }]);
@@ -1295,6 +1300,8 @@ export default function App() {
               current_count: 0,
               progress_percent: 0,
               is_done_today: false,
+              logged_measure_val: 0,
+              last_measured_value: 0,
               status: 'INBOX'
             }).eq('id', st.id);
 
@@ -1318,6 +1325,10 @@ export default function App() {
           };
           if (updatedTask.completedAt) {
             taskPayload.completed_at = updatedTask.completedAt;
+          }
+          if (updatedTask.loggedMeasureVal !== undefined) {
+            taskPayload.logged_measure_val = updatedTask.loggedMeasureVal;
+            taskPayload.last_measured_value = updatedTask.loggedMeasureVal;
           }
           const { error: taskErr } = await supabase.from('tasks').update(taskPayload).eq('id', taskId);
           if (taskErr) {
@@ -1344,15 +1355,45 @@ export default function App() {
           await supabase.from('subtasks').update(subPayload).eq('id', taskId);
         } catch (e) {}
 
+        const todayStr = new Date().toISOString().split('T')[0];
+        const nowIso = new Date().toISOString();
+
         if (updatedTask.isDoneToday) {
+          // 1. Log to task_logs: WHICH DAY (logged_date), WHICH MEASURE (measured_value), WHICH TASK (task_id)
           try {
             await supabase.from('task_logs').insert([{
               task_id: taskId,
               user_id: currentUser.email || currentUser.id,
-              logged_at: new Date().toISOString(),
+              logged_date: todayStr,
+              logged_at: nowIso,
               increment_value: 1,
               measured_value: updatedTask.loggedMeasureVal || 0
             }]);
+          } catch (e) {}
+
+          // 2. If subtask, also log to subtask_logs
+          if (updatedTask.parentTaskId) {
+            try {
+              await supabase.from('subtask_logs').insert([{
+                subtask_id: taskId,
+                parent_task_id: updatedTask.parentTaskId,
+                user_id: currentUser.email || currentUser.id,
+                log_date: todayStr,
+                is_completed: true,
+                measured_value: updatedTask.loggedMeasureVal || 0
+              }]);
+            } catch (e) {}
+          }
+
+          // 3. Sync to Spring Boot REST backend if connected
+          try {
+            const baseUrl = getApiBaseUrl();
+            if (baseUrl) {
+              const measureParam = updatedTask.loggedMeasureVal !== undefined ? `&measuredValue=${encodeURIComponent(updatedTask.loggedMeasureVal)}` : '';
+              await fetch(`${baseUrl}/api/tasks/${encodeURIComponent(taskId)}/toggle?userId=${encodeURIComponent(currentUser.email || currentUser.id)}${measureParam}`, {
+                method: 'POST'
+              });
+            }
           } catch (e) {}
         }
       }
@@ -1612,8 +1653,53 @@ export default function App() {
         planned_start: updatedData.plannedStart,
         planned_end: updatedData.plannedEnd,
         deadline: updatedData.deadline,
-        attachment_name: updatedData.attachmentName
+        attachment_name: updatedData.attachmentName,
+        tracking_mode: updatedData.trackingMode,
+        target_count: updatedData.targetCount,
+        repeat_rule: updatedData.repeatRule,
+        custom_interval_days: updatedData.customIntervalDays
       }).eq('id', taskId);
+
+      try {
+        await supabase.from('subtasks').update({
+          title: updatedData.title,
+          description: updatedData.description,
+          priority: updatedData.priority,
+          is_optional: updatedData.isOptional,
+          has_measure_tracking: updatedData.hasMeasureTracking,
+          measure_target: updatedData.measureTarget,
+          measure_unit: updatedData.measureUnit
+        }).eq('id', taskId);
+      } catch (e) {}
+
+      try {
+        const baseUrl = getApiBaseUrl();
+        if (baseUrl) {
+          await fetch(`${baseUrl}/api/tasks/${encodeURIComponent(taskId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: updatedData.title,
+              description: updatedData.description,
+              category: updatedData.category,
+              priority: updatedData.priority,
+              isOptional: updatedData.isOptional,
+              hasMeasureTracking: updatedData.hasMeasureTracking,
+              measureUnit: updatedData.measureUnit,
+              measureTarget: updatedData.measureTarget,
+              startDate: updatedData.plannedStart,
+              endDate: updatedData.plannedEnd,
+              deadline: updatedData.deadline,
+              estimatedMinutes: updatedData.estimatedMinutes,
+              trackingMode: updatedData.trackingMode,
+              targetCount: updatedData.targetCount,
+              repeatRule: updatedData.repeatRule,
+              customIntervalDays: updatedData.customIntervalDays,
+              attachmentName: updatedData.attachmentName
+            })
+          });
+        }
+      } catch (e) {}
     }
   };
 

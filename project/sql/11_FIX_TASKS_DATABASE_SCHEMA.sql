@@ -46,6 +46,8 @@ ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FA
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS is_done_today BOOLEAN DEFAULT FALSE;
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS progress_percent INT DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS logged_measure_val NUMERIC(10, 2) DEFAULT 0;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS last_measured_value NUMERIC(10, 2) DEFAULT 0;
 
 -- 2. ALTER public.subtasks TABLE COLUMNS & CONSTRAINTS
 CREATE TABLE IF NOT EXISTS public.subtasks (
@@ -60,18 +62,27 @@ CREATE TABLE IF NOT EXISTS public.subtasks (
     target_value NUMERIC(10, 2) DEFAULT 0,
     completed_value NUMERIC(10, 2) DEFAULT 0,
     unit VARCHAR(50) DEFAULT 'units',
+    has_measure_tracking BOOLEAN DEFAULT FALSE,
+    measure_target NUMERIC(10, 2) DEFAULT 0,
+    measure_unit TEXT DEFAULT 'units',
+    logged_measure_val NUMERIC(10, 2) DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE public.subtasks ALTER COLUMN user_id TYPE VARCHAR(255);
 ALTER TABLE public.subtasks ALTER COLUMN id TYPE VARCHAR(255);
 ALTER TABLE public.subtasks DROP CONSTRAINT IF EXISTS subtasks_user_id_fkey;
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS has_measure_tracking BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS measure_target NUMERIC(10, 2) DEFAULT 0;
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS measure_unit TEXT DEFAULT 'units';
+ALTER TABLE public.subtasks ADD COLUMN IF NOT EXISTS logged_measure_val NUMERIC(10, 2) DEFAULT 0;
 
--- 3. ALTER LOG TABLES
+-- 3. ALTER LOG TABLES (RECORDS WHICH DAY, WHICH TASK, WHICH MEASURE)
 CREATE TABLE IF NOT EXISTS public.task_logs (
     id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
     task_id VARCHAR(255) NOT NULL,
     user_id VARCHAR(255) NOT NULL,
+    logged_date DATE DEFAULT CURRENT_DATE,
     logged_at TIMESTAMPTZ DEFAULT NOW(),
     increment_value INT DEFAULT 1,
     measured_value NUMERIC(10, 2) DEFAULT 0,
@@ -81,6 +92,8 @@ CREATE TABLE IF NOT EXISTS public.task_logs (
 ALTER TABLE public.task_logs ALTER COLUMN user_id TYPE VARCHAR(255);
 ALTER TABLE public.task_logs ALTER COLUMN task_id TYPE VARCHAR(255);
 ALTER TABLE public.task_logs DROP CONSTRAINT IF EXISTS task_logs_user_id_fkey;
+ALTER TABLE public.task_logs ADD COLUMN IF NOT EXISTS logged_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE public.task_logs ADD COLUMN IF NOT EXISTS measured_value NUMERIC(10, 2) DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS public.subtask_logs (
     id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -95,6 +108,8 @@ CREATE TABLE IF NOT EXISTS public.subtask_logs (
 
 ALTER TABLE public.subtask_logs ALTER COLUMN user_id TYPE VARCHAR(255);
 ALTER TABLE public.subtask_logs DROP CONSTRAINT IF EXISTS subtask_logs_user_id_fkey;
+ALTER TABLE public.subtask_logs ADD COLUMN IF NOT EXISTS log_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE public.subtask_logs ADD COLUMN IF NOT EXISTS measured_value NUMERIC(10, 2) DEFAULT 0;
 
 -- 4. DISABLE RLS & GRANT ALL PERMISSIONS
 ALTER TABLE public.tasks DISABLE ROW LEVEL SECURITY;

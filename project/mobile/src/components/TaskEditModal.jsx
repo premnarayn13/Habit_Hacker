@@ -37,7 +37,7 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
         category: item.category || 'General',
         priority: item.priority || 'HIGH',
         trackingMode: mode,
-        hasMeasureTracking: mode === 'count_days',
+        hasMeasureTracking: Boolean(item.hasMeasureTracking || Number(item.measureTarget) > 0 || mode === 'count_days'),
         measureTarget: item.measureTarget || 0,
         measureUnit: item.measureUnit || 'units',
         eventUnitName: item.eventUnitName || item.measureUnit || 'units',
@@ -73,14 +73,38 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
 
   const totalSpanDays = calculateSpanDays(formData.plannedStart, formData.plannedEnd);
 
+  const getFrequencyScheduleInfo = (rule, customDays, spanDays) => {
+    const span = Math.max(1, parseInt(spanDays) || 1);
+    switch (rule) {
+      case 'DAILY':
+        return { count: span, explanation: 'Every single day (100% frequency)' };
+      case 'EVERY_2_DAYS':
+        return { count: Math.ceil(span / 2), explanation: '1 active day every 2 days (~50% frequency)' };
+      case 'EVERY_3_DAYS':
+        return { count: Math.ceil(span / 3), explanation: '1 active day every 3 days (~33% frequency)' };
+      case 'INTERVAL': {
+        const interval = Math.max(1, parseInt(customDays) || 1);
+        return { count: Math.ceil(span / interval), explanation: `1 active day every ${interval} days` };
+      }
+      case 'WEEKLY':
+        return { count: Math.ceil(span / 7), explanation: '1 active day every 7 days (weekly)' };
+      case 'MONTHLY':
+        return { count: Math.ceil(span / 30), explanation: '1 active day every 30 days (monthly)' };
+      case 'NONE':
+        return { count: 1, explanation: 'One-time only on scheduled date' };
+      default:
+        return { count: span, explanation: 'Daily recurrence' };
+    }
+  };
+
   const parentTask = existingTasks.find(t => t.id === formData.parentTaskId);
-  const isParentStandardType1 = parentTask && (parentTask.trackingMode === 'end_date' && !parentTask.hasMeasureTracking);
+  const isParentNonMeasure = parentTask && !parentTask.hasMeasureTracking && (!parentTask.measureTarget || Number(parentTask.measureTarget) <= 0);
 
   let validationError = '';
   if (totalSpanDays <= 0) {
     validationError = 'End Date must be greater than or equal to Start Date.';
-  } else if (isParentStandardType1 && (formData.trackingMode !== 'end_date' || formData.hasMeasureTracking)) {
-    validationError = 'Parent habit is a Standard (non-measure) habit. Subhabits under a Standard habit must also be Standard habits.';
+  } else if (isParentNonMeasure && (formData.hasMeasureTracking || Number(formData.measureTarget) > 0)) {
+    validationError = 'Parent habit does not track quantitative measure. Subhabits under a non-measured habit cannot track measures.';
   } else if (formData.trackingMode === 'count_days') {
     const target = parseInt(formData.targetCount) || 1;
     if (totalSpanDays < target) {
@@ -113,19 +137,37 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
     e.preventDefault();
     if (validationError) return;
 
-    const isMeasurable = formData.trackingMode === 'count_days';
     const isEventCount = formData.trackingMode === 'count_event';
+    const hasMeasure = Boolean(
+      formData.hasMeasureTracking || 
+      (formData.measureTarget && Number(formData.measureTarget) > 0) ||
+      formData.trackingMode === 'count_days' ||
+      (isEventCount && formData.eventUnitTarget > 0)
+    );
+    const measureVal = hasMeasure 
+      ? Number(isEventCount ? (formData.eventUnitTarget || formData.measureTarget || 10) : (formData.measureTarget || 0)) 
+      : 0;
+    const measureUnitStr = hasMeasure 
+      ? (isEventCount ? (formData.eventUnitName || formData.measureUnit || 'units') : (formData.measureUnit || 'units'))
+      : '';
+
+    const scheduledInfo = getFrequencyScheduleInfo(formData.repeatRule, formData.customIntervalDays, totalSpanDays);
+    const calculatedTargetCount = formData.trackingMode === 'end_date'
+      ? scheduledInfo.count
+      : (formData.trackingMode === 'count_days' || isEventCount ? (parseInt(formData.targetCount) || 50) : totalSpanDays);
 
     const updatedData = {
       ...formData,
-      hasMeasureTracking: isMeasurable,
-      measureTarget: isMeasurable ? Number(formData.measureTarget || 0) : 0,
-      measureUnit: isMeasurable ? (formData.measureUnit || 'units') : (isEventCount ? (formData.eventUnitName || 'units') : ''),
+      hasMeasureTracking: hasMeasure,
+      measureTarget: measureVal,
+      measureUnit: measureUnitStr,
       plannedStart: formData.plannedStart,
       plannedEnd: formData.plannedEnd,
       deadline: formData.plannedEnd,
-      targetCount: isMeasurable || isEventCount ? (parseInt(formData.targetCount) || 50) : totalSpanDays,
-      targetDayCount: isMeasurable ? (parseInt(formData.targetCount) || totalSpanDays) : null,
+      targetCount: calculatedTargetCount,
+      targetDayCount: formData.trackingMode === 'count_days' 
+        ? (parseInt(formData.targetCount) || totalSpanDays) 
+        : (formData.trackingMode === 'end_date' ? scheduledInfo.count : null),
       targetEventCount: isEventCount ? (parseInt(formData.targetCount) || 10) : null,
       repeatRule: formData.trackingMode === 'end_date' ? formData.repeatRule : 'DAILY'
     };
@@ -238,11 +280,11 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
             </span>
           </div>
 
-          {/* PARENT TYPE RESTRICTION NOTICE IF PARENT IS TYPE-1 */}
-          {isParentStandardType1 && (
+          {/* PARENT TYPE RESTRICTION NOTICE IF PARENT IS NON-MEASURABLE */}
+          {isParentNonMeasure && (
             <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', padding: '10px 14px', borderRadius: '10px', fontSize: '11px', fontWeight: 700, color: '#B45309', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <AlertTriangle size={15} color="#D97706" />
-              Standard Parent Habit: Subhabits under a Standard habit must also be Standard habits (measure tracking cannot roll into a non-measure parent).
+              Non-Measured Parent Habit: Subhabits under a non-measured habit cannot track quantitative measures (measures cannot roll into a non-measured parent).
             </div>
           )}
 
@@ -256,22 +298,22 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
               {[
                 { 
-                  label: 'Type 1: Standard Habit', 
+                  label: 'Type 1: Scheduled Habit', 
                   val: 'end_date', 
-                  desc: 'Scheduled / Frequency Driven',
+                  desc: 'Frequency & Date (Daily Measure)',
                   disabled: false 
                 },
                 { 
-                  label: 'Type 2: Measurable Habit', 
+                  label: 'Type 2: Target Days Habit', 
                   val: 'count_days', 
-                  desc: 'Quantitative Daily / Target Measure',
-                  disabled: Boolean(isParentStandardType1) 
+                  desc: 'Target Days Count (Daily Measure)',
+                  disabled: Boolean(isParentNonMeasure) 
                 },
                 { 
                   label: 'Type 3: Event Count Habit', 
                   val: 'count_event', 
-                  desc: 'Cycle / Repetitions Across Days',
-                  disabled: Boolean(isParentStandardType1) 
+                  desc: 'Cycle / Repetitions (Per-Event Measure)',
+                  disabled: Boolean(isParentNonMeasure) 
                 }
               ].map((m) => {
                 const isSelected = formData.trackingMode === m.val;
@@ -284,8 +326,7 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
                       if (m.disabled) return;
                       setFormData(prev => ({ 
                         ...prev, 
-                        trackingMode: m.val,
-                        hasMeasureTracking: m.val === 'count_days'
+                        trackingMode: m.val
                       }));
                     }}
                     style={{
@@ -306,43 +347,127 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
               })}
             </div>
 
-            {/* SUB-SECTION A: FREQUENCY (ONLY FOR TYPE-1 ALONE!) */}
-            {formData.trackingMode === 'end_date' && (
-              <div style={{ background: '#FFF', padding: '12px', borderRadius: '10px', border: '1px solid #CBD5E1' }}>
-                <label style={{ fontSize: '12px', color: '#475569', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
-                  RECURRENCE FREQUENCY (SCHEDULE)
-                </label>
-                <select 
-                  value={formData.repeatRule}
-                  onChange={(e) => setFormData(prev => ({ ...prev, repeatRule: e.target.value }))}
-                  style={{ width: '100%', height: '40px', fontWeight: 700 }}
-                >
-                  <option value="DAILY">Daily (Every Single Day)</option>
-                  <option value="EVERY_2_DAYS">Every 2 Days</option>
-                  <option value="EVERY_3_DAYS">Every 3 Days</option>
-                  <option value="INTERVAL">Custom Days Interval...</option>
-                  <option value="WEEKLY">Weekly (Once a week)</option>
-                  <option value="MONTHLY">Monthly (Once a month)</option>
-                  <option value="NONE">One-Time Only (No Recurrence)</option>
-                </select>
-
-                {formData.repeatRule === 'INTERVAL' && (
-                  <div style={{ marginTop: '8px' }}>
-                    <label style={{ fontSize: '11px', color: '#0F172A', fontWeight: 800, display: 'block', marginBottom: '4px' }}>
-                      Repeat Every N Days (e.g. 4 days, 5 days)
+            {/* SUB-SECTION A: TYPE-1 SCHEDULE & MEASURE PARAMETERS */}
+            {formData.trackingMode === 'end_date' && (() => {
+              const schedInfo = getFrequencyScheduleInfo(formData.repeatRule, formData.customIntervalDays, totalSpanDays);
+              return (
+                <div style={{ background: '#FFF', padding: '14px', borderRadius: '12px', border: '1px solid #CBD5E1', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '12px', color: '#475569', fontWeight: 700, display: 'block', marginBottom: '6px' }}>
+                      RECURRENCE FREQUENCY (SCHEDULE)
                     </label>
-                    <input 
-                      type="number" 
-                      min="1" 
-                      max="90"
-                      value={formData.customIntervalDays}
-                      onChange={(e) => setFormData(prev => ({ ...prev, customIntervalDays: parseInt(e.target.value) || 1 }))}
-                      style={{ width: '100%', height: '38px', fontWeight: 800 }}
-                    />
+                    <select 
+                      value={formData.repeatRule}
+                      onChange={(e) => setFormData(prev => ({ ...prev, repeatRule: e.target.value }))}
+                      style={{ width: '100%', height: '40px', fontWeight: 700 }}
+                    >
+                      <option value="DAILY">Daily (Every Single Day)</option>
+                      <option value="EVERY_2_DAYS">Every 2 Days (2 Days Once)</option>
+                      <option value="EVERY_3_DAYS">Every 3 Days (3 Days Once)</option>
+                      <option value="INTERVAL">Custom Days Interval...</option>
+                      <option value="WEEKLY">Weekly (Once a week)</option>
+                      <option value="MONTHLY">Monthly (Once a month)</option>
+                      <option value="NONE">One-Time Only (No Recurrence)</option>
+                    </select>
+
+                    {formData.repeatRule === 'INTERVAL' && (
+                      <div style={{ marginTop: '8px' }}>
+                        <label style={{ fontSize: '11px', color: '#0F172A', fontWeight: 800, display: 'block', marginBottom: '4px' }}>
+                          Repeat Every N Days (e.g. 4 days once, 5 days once)
+                        </label>
+                        <input 
+                          type="number" 
+                          min="1" 
+                          max="90"
+                          value={formData.customIntervalDays}
+                          onChange={(e) => setFormData(prev => ({ ...prev, customIntervalDays: parseInt(e.target.value) || 1 }))}
+                          style={{ width: '100%', height: '38px', fontWeight: 800 }}
+                        />
+                      </div>
+                    )}
+
+                    {/* DYNAMIC CALCULATED SCHEDULED DAYS BADGE */}
+                    <div style={{
+                      marginTop: '10px',
+                      background: 'linear-gradient(135deg, #FEF2F2, #FFF7ED)',
+                      border: '1.5px solid #FCA5A5',
+                      borderRadius: '12px',
+                      padding: '10px 14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#991B1B', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <Calendar size={14} color="#DC2626" /> Scheduled Active Days:
+                        </span>
+                        <span style={{ fontSize: '14px', fontWeight: 900, color: '#DC2626', background: '#FFF', padding: '2px 10px', borderRadius: '8px', border: '1px solid #F87171' }}>
+                          {schedInfo.count} Days
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#7F1D1D', fontWeight: 600 }}>
+                        Based on your frequency selection, this habit will occur <strong>{schedInfo.count} times</strong> across your <strong>{totalSpanDays}-day window</strong> ({schedInfo.explanation}).
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-            )}
+
+                  {/* DAILY MEASURE FOR TYPE-1 (COMMON TO ALL TYPES!) */}
+                  <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 800, color: '#DC2626', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Ruler size={13} /> DAILY TARGET MEASURE & UNIT
+                      </div>
+                      <label style={{ fontSize: '11px', fontWeight: 700, color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                        <input 
+                          type="checkbox"
+                          checked={formData.hasMeasureTracking || Number(formData.measureTarget) > 0}
+                          onChange={(e) => setFormData(prev => ({ 
+                            ...prev, 
+                            hasMeasureTracking: e.target.checked,
+                            measureTarget: e.target.checked ? (prev.measureTarget || 5) : 0
+                          }))}
+                          style={{ accentColor: '#DC2626', cursor: 'pointer' }}
+                        />
+                        Track Measure
+                      </label>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div>
+                        <label style={{ fontSize: '11px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Daily Target Measure</label>
+                        <input 
+                          type="number" 
+                          step="any"
+                          placeholder="e.g. 5" 
+                          value={formData.measureTarget ?? ''}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setFormData(prev => ({ 
+                              ...prev, 
+                              measureTarget: val,
+                              hasMeasureTracking: val > 0
+                            }));
+                          }}
+                          style={{ width: '100%', height: '38px', borderRadius: '8px', fontSize: '12px', paddingLeft: '10px', fontWeight: 800 }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '11px', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '4px' }}>Measure Unit</label>
+                        <input 
+                          type="text" 
+                          placeholder="e.g. km, pages, mins, cups" 
+                          value={formData.measureUnit}
+                          onChange={(e) => setFormData(prev => ({ ...prev, measureUnit: e.target.value }))}
+                          style={{ width: '100%', height: '38px', borderRadius: '8px', fontSize: '12px', paddingLeft: '10px' }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#64748B', marginTop: '4px' }}>
+                      Measure is common to all habit types: track daily numeric output (e.g. 5 km every 2 days).
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* SUB-SECTION B: TYPE-2 MEASURABLE INPUTS */}
             {formData.trackingMode === 'count_days' && (

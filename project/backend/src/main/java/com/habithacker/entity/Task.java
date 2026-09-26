@@ -84,6 +84,15 @@ public class Task {
     @Column(name = "is_done_today")
     private Boolean isDoneToday = false;
 
+    @Column(name = "custom_interval_days")
+    private Integer customIntervalDays = 1;
+
+    @Column(name = "logged_measure_val")
+    private Double loggedMeasureVal = 0.0;
+
+    @Column(name = "last_measured_value")
+    private Double lastMeasuredValue = 0.0;
+
     public Task() {}
 
     // Getters and Setters
@@ -174,4 +183,13 @@ public class Task {
     public Integer getCurrentDayCount() { return currentCount; }
     public Integer getTargetEventCount() { return targetCount; }
     public Integer getCurrentEventCount() { return currentCount; }
+
+    public Integer getCustomIntervalDays() { return customIntervalDays; }
+    public void setCustomIntervalDays(Integer customIntervalDays) { this.customIntervalDays = customIntervalDays; }
+
+    public Double getLoggedMeasureVal() { return loggedMeasureVal; }
+    public void setLoggedMeasureVal(Double loggedMeasureVal) { this.loggedMeasureVal = loggedMeasureVal; }
+
+    public Double getLastMeasuredValue() { return lastMeasuredValue; }
+    public void setLastMeasuredValue(Double lastMeasuredValue) { this.lastMeasuredValue = lastMeasuredValue; }
 }
