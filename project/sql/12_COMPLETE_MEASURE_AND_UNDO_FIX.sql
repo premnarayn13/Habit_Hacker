@@ -4,7 +4,6 @@
 -- ============================================================================
 
 -- STEP 0: DROP DEPENDENT VIEWS WITH CASCADE FIRST
--- (Fixes "cannot alter type of a column used by a view or rule: view_parent_task_missed_days")
 DROP VIEW IF EXISTS public.view_parent_task_missed_days CASCADE;
 
 DO $$
@@ -107,25 +106,62 @@ ALTER TABLE IF EXISTS public.subtask_logs DROP CONSTRAINT IF EXISTS subtask_logs
 ALTER TABLE IF EXISTS public.subtask_logs DROP CONSTRAINT IF EXISTS subtask_logs_subtask_id_fkey;
 ALTER TABLE IF EXISTS public.subtask_logs DROP CONSTRAINT IF EXISTS subtask_logs_parent_task_id_fkey;
 
--- STEP 3: CONVERT COLUMNS TO VARCHAR(255) WITH SAFE CASTING
-ALTER TABLE IF EXISTS public.tasks ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
-ALTER TABLE IF EXISTS public.tasks ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
-ALTER TABLE IF EXISTS public.tasks ALTER COLUMN parent_task_id TYPE VARCHAR(255) USING parent_task_id::text;
-ALTER TABLE IF EXISTS public.tasks ALTER COLUMN parent_id TYPE VARCHAR(255) USING parent_id::text;
+-- STEP 3: CONVERT EXISTING COLUMNS TO VARCHAR(255) SAFELY (ONLY IF COLUMN EXISTS)
+DO $$
+BEGIN
+    -- tasks
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tasks' AND column_name='id') THEN
+        ALTER TABLE public.tasks ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tasks' AND column_name='user_id') THEN
+        ALTER TABLE public.tasks ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tasks' AND column_name='parent_task_id') THEN
+        ALTER TABLE public.tasks ALTER COLUMN parent_task_id TYPE VARCHAR(255) USING parent_task_id::text;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='tasks' AND column_name='parent_id') THEN
+        ALTER TABLE public.tasks ALTER COLUMN parent_id TYPE VARCHAR(255) USING parent_id::text;
+    END IF;
 
-ALTER TABLE IF EXISTS public.subtasks ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
-ALTER TABLE IF EXISTS public.subtasks ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
-ALTER TABLE IF EXISTS public.subtasks ALTER COLUMN parent_task_id TYPE VARCHAR(255) USING parent_task_id::text;
-ALTER TABLE IF EXISTS public.subtasks ALTER COLUMN parent_id TYPE VARCHAR(255) USING parent_id::text;
+    -- subtasks
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='subtasks' AND column_name='id') THEN
+        ALTER TABLE public.subtasks ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='subtasks' AND column_name='user_id') THEN
+        ALTER TABLE public.subtasks ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='subtasks' AND column_name='parent_task_id') THEN
+        ALTER TABLE public.subtasks ALTER COLUMN parent_task_id TYPE VARCHAR(255) USING parent_task_id::text;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='subtasks' AND column_name='parent_id') THEN
+        ALTER TABLE public.subtasks ALTER COLUMN parent_id TYPE VARCHAR(255) USING parent_id::text;
+    END IF;
 
-ALTER TABLE IF EXISTS public.task_logs ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
-ALTER TABLE IF EXISTS public.task_logs ALTER COLUMN task_id TYPE VARCHAR(255) USING task_id::text;
-ALTER TABLE IF EXISTS public.task_logs ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
+    -- task_logs
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='task_logs' AND column_name='id') THEN
+        ALTER TABLE public.task_logs ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='task_logs' AND column_name='task_id') THEN
+        ALTER TABLE public.task_logs ALTER COLUMN task_id TYPE VARCHAR(255) USING task_id::text;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='task_logs' AND column_name='user_id') THEN
+        ALTER TABLE public.task_logs ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
+    END IF;
 
-ALTER TABLE IF EXISTS public.subtask_logs ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
-ALTER TABLE IF EXISTS public.subtask_logs ALTER COLUMN subtask_id TYPE VARCHAR(255) USING subtask_id::text;
-ALTER TABLE IF EXISTS public.subtask_logs ALTER COLUMN parent_task_id TYPE VARCHAR(255) USING parent_task_id::text;
-ALTER TABLE IF EXISTS public.subtask_logs ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
+    -- subtask_logs
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='subtask_logs' AND column_name='id') THEN
+        ALTER TABLE public.subtask_logs ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='subtask_logs' AND column_name='subtask_id') THEN
+        ALTER TABLE public.subtask_logs ALTER COLUMN subtask_id TYPE VARCHAR(255) USING subtask_id::text;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='subtask_logs' AND column_name='parent_task_id') THEN
+        ALTER TABLE public.subtask_logs ALTER COLUMN parent_task_id TYPE VARCHAR(255) USING parent_task_id::text;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='subtask_logs' AND column_name='user_id') THEN
+        ALTER TABLE public.subtask_logs ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
+    END IF;
+END $$;
 
 -- STEP 4: ENSURE ALL QUANTITATIVE MEASURE AND TRACKING COLUMNS EXIST
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS has_measure_tracking BOOLEAN DEFAULT FALSE;
@@ -143,6 +179,8 @@ ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS planned_start TEXT;
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS planned_end TEXT;
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS deadline TEXT;
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS repeat_rule VARCHAR(50) DEFAULT 'DAILY';
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS parent_task_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS parent_id VARCHAR(255);
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
@@ -161,10 +199,13 @@ ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS measure_target NU
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS logged_measure_val NUMERIC DEFAULT 0;
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS is_done_today BOOLEAN DEFAULT FALSE;
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS is_optional BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS parent_task_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS parent_id VARCHAR(255);
 
 ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS log_date DATE DEFAULT CURRENT_DATE;
 ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT FALSE;
 ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS measured_value NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS parent_task_id VARCHAR(255);
 ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS notes TEXT;
 
 -- STEP 5: CREATE HIGH PERFORMANCE INDEXES
