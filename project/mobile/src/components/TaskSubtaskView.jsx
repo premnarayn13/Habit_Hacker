@@ -539,6 +539,25 @@ export default function TaskSubtaskView({
                           </span>
                         )}
 
+                        {/* Measure Target Pill (Applies to Type 1, Type 2, Type 3) */}
+                        {(task.hasMeasureTracking || Number(task.measureTarget) > 0) && (
+                          <span style={{ 
+                            fontSize: '10px', 
+                            fontWeight: 800, 
+                            color: '#BE185D', 
+                            background: '#FDF2F8', 
+                            border: '1px solid #FBCFE8', 
+                            padding: '2px 7px', 
+                            borderRadius: '6px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}>
+                            <Ruler size={10} color="#BE185D" />
+                            {task.loggedMeasureVal ? `${task.loggedMeasureVal} / ` : ''}{task.measureTarget || 0} {task.measureUnit || 'units'}
+                          </span>
+                        )}
+
                         {/* Collaborator Pill */}
                         {task.collab && (
                           <span style={{ fontSize: '10px', color: '#7C3AED', fontWeight: 800, background: '#F3E8FF', border: '1px solid #DDD6FE', padding: '2px 7px', borderRadius: '6px' }}>

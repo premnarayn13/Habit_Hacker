@@ -726,6 +726,11 @@ export default function TodayDashboard({
                           <span style={{ fontSize: '9px', fontWeight: 700, color: '#64748B' }}>
                             {getFrequencyLabel(task)}
                           </span>
+                          {(task.hasMeasureTracking || Number(task.measureTarget) > 0) && (
+                            <span style={{ fontSize: '9px', fontWeight: 800, color: '#BE185D', background: '#FDF2F8', padding: '1px 5px', borderRadius: '4px', border: '1px solid #FBCFE8', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                              <Ruler size={9} /> {task.measureTarget || 0} {task.measureUnit || 'units'}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
