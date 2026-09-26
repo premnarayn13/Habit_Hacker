@@ -728,11 +728,33 @@ export default function TodayDashboard({
                           <span style={{ fontSize: '9px', fontWeight: 700, color: '#64748B' }}>
                             {getFrequencyLabel(task)}
                           </span>
-                          {(task.hasMeasureTracking || Number(task.measureTarget) > 0) && (
-                            <span style={{ fontSize: '9px', fontWeight: 800, color: '#BE185D', background: '#FDF2F8', padding: '1px 5px', borderRadius: '4px', border: '1px solid #FBCFE8', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                              <Ruler size={9} /> {task.measureTarget || 0} {task.measureUnit || 'units'}
-                            </span>
-                          )}
+                          {(() => {
+                            const isParent = children.length > 0;
+                            const parentDailyMeasure = isParent ? calculateParentDailyMeasure(children) : Number(task.loggedMeasureVal || 0);
+                            const targetMeasure = Number(task.measureTarget || (isParent ? children.reduce((acc, c) => acc + Number(c.measureTarget || 0), 0) : 0));
+                            const hasMeasure = task.hasMeasureTracking || targetMeasure > 0 || parentDailyMeasure > 0;
+
+                            if (!hasMeasure) return null;
+
+                            return (
+                              <span style={{ 
+                                fontSize: '9px', 
+                                fontWeight: 800, 
+                                color: parentDailyMeasure > 0 ? '#15803D' : '#BE185D', 
+                                background: parentDailyMeasure > 0 ? '#DCFCE7' : '#FDF2F8', 
+                                padding: '1px 5px', 
+                                borderRadius: '4px', 
+                                border: `1px solid ${parentDailyMeasure > 0 ? '#86EFAC' : '#FBCFE8'}`, 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: '2px' 
+                              }}>
+                                <Ruler size={9} /> 
+                                {parentDailyMeasure > 0 ? `${parentDailyMeasure} / ` : ''}{targetMeasure > 0 ? targetMeasure : (task.measureTarget || 0)} {task.measureUnit || 'units'}
+                                {isParent && parentDailyMeasure > 0 && <span style={{ fontSize: '8px', color: '#166534', fontWeight: 900 }}>(subtasks)</span>}
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -1041,7 +1063,16 @@ export default function TodayDashboard({
                     <div>
                       <span style={{ fontSize: '12px', fontWeight: 900, color: '#15803D', textDecoration: 'none' }}>{parent.title}</span>
                       <div style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700 }}>
-                        Completed • {parent.hasMeasureTracking ? `Logged: ${parent.loggedMeasureVal !== undefined && parent.loggedMeasureVal !== null ? parent.loggedMeasureVal : (parent.measureTarget || 0)} ${parent.measureUnit || 'units'}` : 'Standard Habit'}
+                        {(() => {
+                          const childList = tasks.filter(t => t.parentTaskId === parent.id);
+                          const isParent = childList.length > 0;
+                          const parentMeasure = isParent ? calculateParentDailyMeasure(childList) : Number(parent.loggedMeasureVal || 0);
+                          const targetMeasure = Number(parent.measureTarget || (isParent ? childList.reduce((acc, c) => acc + Number(c.measureTarget || 0), 0) : 0));
+                          const hasMeasure = parent.hasMeasureTracking || targetMeasure > 0 || parentMeasure > 0;
+                          if (!hasMeasure) return 'Completed • Standard Habit';
+                          const displayLogged = parentMeasure > 0 ? parentMeasure : (parent.loggedMeasureVal !== undefined && parent.loggedMeasureVal !== null ? parent.loggedMeasureVal : targetMeasure);
+                          return `Completed • Logged: ${displayLogged} / ${targetMeasure > 0 ? targetMeasure : displayLogged} ${parent.measureUnit || 'units'}${isParent ? ' (from subtasks)' : ''}`;
+                        })()}
                       </div>
                     </div>
                   </div>

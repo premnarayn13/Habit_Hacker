@@ -24,7 +24,7 @@ import {
   ExternalLink,
   Paperclip
 } from 'lucide-react';
-import { isParentTaskWithChildren, canManuallyCompleteTask } from '../lib/taskHierarchyEngine';
+import { isParentTaskWithChildren, canManuallyCompleteTask, calculateParentDailyMeasure } from '../lib/taskHierarchyEngine';
 
 export default function TaskSubtaskView({ 
   tasks, 
@@ -540,23 +540,33 @@ export default function TaskSubtaskView({
                         )}
 
                         {/* Measure Target Pill (Applies to Type 1, Type 2, Type 3) */}
-                        {(task.hasMeasureTracking || Number(task.measureTarget) > 0) && (
-                          <span style={{ 
-                            fontSize: '10px', 
-                            fontWeight: 800, 
-                            color: '#BE185D', 
-                            background: '#FDF2F8', 
-                            border: '1px solid #FBCFE8', 
-                            padding: '2px 7px', 
-                            borderRadius: '6px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '3px'
-                          }}>
-                            <Ruler size={10} color="#BE185D" />
-                            {task.loggedMeasureVal ? `${task.loggedMeasureVal} / ` : ''}{task.measureTarget || 0} {task.measureUnit || 'units'}
-                          </span>
-                        )}
+                        {(() => {
+                          const isParent = childTasks && childTasks.length > 0;
+                          const parentDailyMeasure = isParent ? calculateParentDailyMeasure(childTasks) : Number(task.loggedMeasureVal || 0);
+                          const targetMeasure = Number(task.measureTarget || (isParent ? childTasks.reduce((acc, c) => acc + Number(c.measureTarget || 0), 0) : 0));
+                          const hasMeasure = task.hasMeasureTracking || targetMeasure > 0 || parentDailyMeasure > 0;
+
+                          if (!hasMeasure) return null;
+
+                          return (
+                            <span style={{ 
+                              fontSize: '10px', 
+                              fontWeight: 800, 
+                              color: parentDailyMeasure > 0 ? '#15803D' : '#BE185D', 
+                              background: parentDailyMeasure > 0 ? '#DCFCE7' : '#FDF2F8', 
+                              border: `1px solid ${parentDailyMeasure > 0 ? '#86EFAC' : '#FBCFE8'}`, 
+                              padding: '2px 7px', 
+                              borderRadius: '6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}>
+                              <Ruler size={10} color={parentDailyMeasure > 0 ? '#15803D' : '#BE185D'} />
+                              {parentDailyMeasure > 0 ? `${parentDailyMeasure} / ` : ''}{targetMeasure > 0 ? targetMeasure : (task.measureTarget || 0)} {task.measureUnit || 'units'}
+                              {isParent && parentDailyMeasure > 0 && <span style={{ fontSize: '9px', color: '#166534', fontWeight: 800 }}>(subtasks)</span>}
+                            </span>
+                          );
+                        })()}
 
                         {/* Collaborator Pill */}
                         {task.collab && (
