@@ -135,7 +135,9 @@ export default function TodayDashboard({
   tasks = [], 
   habits = [], 
   disciplineScore = { disciplineScore: 85, grade: 'A', taskCompletionRate: 70 }, 
+  taskLogs = [],
   onToggleTask, 
+  onUndoTask,
   onHabitCheckIn, 
   onUpdateTaskProgress,
   onOpenQuickAdd,
@@ -1029,13 +1031,17 @@ export default function TodayDashboard({
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '10px 12px', borderRadius: '12px', cursor: 'pointer' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button onClick={() => onToggleTask && onToggleTask(parent.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                    <button 
+                      onClick={() => onUndoTask ? onUndoTask(parent.id) : onToggleTask && onToggleTask(parent.id)} 
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                      title="Undo Today's Completion"
+                    >
                       <CheckCircle2 size={20} color="#16A34A" />
                     </button>
                     <div>
                       <span style={{ fontSize: '12px', fontWeight: 900, color: '#15803D', textDecoration: 'none' }}>{parent.title}</span>
                       <div style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700 }}>
-                        Completed • {parent.hasMeasureTracking ? `Logged: ${parent.loggedMeasureVal || parent.measureTarget || 0} ${parent.measureUnit || ''}` : 'Standard Habit'}
+                        Completed • {parent.hasMeasureTracking ? `Logged: ${parent.loggedMeasureVal !== undefined && parent.loggedMeasureVal !== null ? parent.loggedMeasureVal : (parent.measureTarget || 0)} ${parent.measureUnit || 'units'}` : 'Standard Habit'}
                       </div>
                     </div>
                   </div>
@@ -1050,7 +1056,7 @@ export default function TodayDashboard({
                       </button>
                     )}
                     <button
-                      onClick={() => onToggleTask && onToggleTask(parent.id)}
+                      onClick={() => onUndoTask ? onUndoTask(parent.id) : onToggleTask && onToggleTask(parent.id)}
                       style={{ background: '#FFF', border: '1px solid #CBD5E1', color: '#64748B', padding: '5px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
                     >
                       <Undo2 size={11} /> Undo

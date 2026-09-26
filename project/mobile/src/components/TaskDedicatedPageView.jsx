@@ -80,6 +80,8 @@ export default function TaskDedicatedPageView({
   childSubtasks = [], 
   parentTask = null,
   allTasks = [],
+  taskLogs = [],
+  subtaskLogs = [],
   onBack, 
   onEditTask,
   onArchiveTask,
@@ -100,7 +102,8 @@ export default function TaskDedicatedPageView({
   const [graphZoomLevel, setGraphZoomLevel] = useState(1); // 1x, 1.25x, 1.5x, 2x, 2.5x
   const [isFullscreenGraph, setIsFullscreenGraph] = useState(false);
 
-  const currentTask = (breadcrumbStack && breadcrumbStack.length > 0) ? breadcrumbStack[breadcrumbStack.length - 1] : task;
+  const activeSelectedTask = (breadcrumbStack && breadcrumbStack.length > 0) ? breadcrumbStack[breadcrumbStack.length - 1] : task;
+  const currentTask = (allTasks && allTasks.find(t => t.id === activeSelectedTask.id)) || activeSelectedTask;
 
   if (!currentTask) {
     return (
@@ -203,41 +206,109 @@ export default function TaskDedicatedPageView({
 
   // Total Targeted Measure Calculation by Task Type
   const totalTargetedMeasure = trackingMode === 'count_event'
-    ? (targetCount > 50 ? targetCount : Math.round(targetCount * eventUnitTarget * 10) / 10)
+    ? Math.round(targetCount * (measureTarget > 0 ? measureTarget : eventUnitTarget) * 10) / 10
     : (trackingMode === 'count_days'
         ? Math.round(targetCount * measureTarget * 10) / 10
         : Math.round(totalWindowDays * measureTarget * 10) / 10);
 
   // Daily Target Measure Rate
   const dailyTargetMeasure = trackingMode === 'count_event'
-    ? Math.round((totalTargetedMeasure / Math.max(1, totalWindowDays)) * 10) / 10
+    ? (measureTarget > 0 ? measureTarget : eventUnitTarget)
     : measureTarget;
+
+  // Extract explicit logged measures from database logs for this task
+  const relevantTaskLogs = (taskLogs || []).filter(l => (l.task_id || l.taskId) === currentTask.id);
+  const logsByDate = {};
+  relevantTaskLogs.forEach(l => {
+    const dateKey = l.logged_date || (l.logged_at ? l.logged_at.split('T')[0] : null);
+    if (dateKey) {
+      logsByDate[dateKey] = Number(l.measured_value !== undefined ? l.measured_value : (l.logged_measure_val || 0));
+    }
+  });
 
   // Compute measurable average for child subtasks (using parent measureTarget if no explicit measures)
   const avgMeasured = calculateMeasurableAverage(directChildSubtasks, measureTarget);
 
   // Today's actual measure contribution:
   // If parent has children, calculate sum of child contributions (preserving actual recorded measure without capping)
-  // If standalone, use loggedMeasureVal if logged, else measureTarget
+  // If standalone, use loggedMeasureVal if logged, else database log, else lastMeasuredValue, else measureTarget
   const todayChildContribution = directChildSubtasks.reduce((sum, st) => {
     const isCompleted = st.isDoneToday || st.progressPercent >= 100;
     return sum + calculateSubtaskContribution(st, isCompleted, st.currentCount, avgMeasured);
   }, 0);
 
+  const todayStr = new Date().toISOString().split('T')[0];
+  const loggedTodayVal = logsByDate[todayStr];
+
   const todayActualMeasure = directChildSubtasks.length > 0
     ? todayChildContribution
     : (currentTask.loggedMeasureVal !== undefined && currentTask.loggedMeasureVal !== null && Number(currentTask.loggedMeasureVal) > 0
         ? Number(currentTask.loggedMeasureVal)
-        : (currentTask.isDoneToday ? measureTarget : 0));
+        : (loggedTodayVal !== undefined 
+            ? loggedTodayVal 
+            : (currentTask.isDoneToday ? (currentTask.lastMeasuredValue || measureTarget) : 0)));
 
-  const pastDaysCompleted = Math.max(0, (currentCount || 0) - (currentTask.isDoneToday ? 1 : 0));
+  // FULL TIMELINE DAY-BY-DAY DATA ENGINE (From plannedStart / Day 1 up to today / Day elapsedDays)
+  const missedDaysRecordsList = getMissedDaysForTask({ ...currentTask, elapsedDays }, directChildSubtasks, elapsedDays);
+  const missedDaysSetByAgo = new Set(missedDaysRecordsList.map(m => m.daysAgo));
 
-  // Total Completed Measure Calculation by Task Type
-  const currentWorkInProgress = calculateCurrentEventWork(directChildSubtasks);
-  const totalCompletedMeasure = trackingMode === 'count_event'
-    ? Math.round(((currentCount * eventUnitTarget) + currentWorkInProgress) * 10) / 10
-    : Math.round((pastDaysCompleted * measureTarget + (currentTask.isDoneToday || directChildSubtasks.length > 0 ? todayActualMeasure : 0)) * 10) / 10;
+  const startTimelineDate = new Date(effectiveStartStr);
+  const totalTimelineDays = Math.max(1, elapsedDays);
 
+  let runningCumulativeActualMeasure = 0;
+
+  const fullTimelineDailyData = Array.from({ length: totalTimelineDays }).map((_, idx) => {
+    const dayNumber = idx + 1; // 1-indexed (Day 1, Day 2, ..., Day elapsedDays)
+    const daysAgo = totalTimelineDays - dayNumber;
+    
+    const d = new Date(startTimelineDate);
+    d.setDate(startTimelineDate.getDate() + idx);
+    const dateStr = d.toISOString().split('T')[0];
+    const monthDayStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const weekdayStr = d.toLocaleDateString('en-US', { weekday: 'short' });
+
+    const isMissedDay = missedDaysSetByAgo.has(daysAgo);
+    const isCompletedDay = !isMissedDay;
+
+    let dailyDeltaMeasure = 0;
+    if (isCompletedDay) {
+      if (idx === totalTimelineDays - 1) {
+        // Today's delta measure reflects actual recorded measure (e.g. 12 instead of capped 5)
+        dailyDeltaMeasure = todayActualMeasure > 0 ? todayActualMeasure : measureTarget;
+      } else {
+        // Past completed day: check if explicit log exists in database for this date
+        if (logsByDate[dateStr] !== undefined && logsByDate[dateStr] > 0) {
+          dailyDeltaMeasure = logsByDate[dateStr];
+        } else if (currentTask.lastMeasuredValue !== undefined && currentTask.lastMeasuredValue > 0) {
+          dailyDeltaMeasure = currentTask.lastMeasuredValue;
+        } else {
+          dailyDeltaMeasure = measureTarget > 0 ? measureTarget : 1;
+        }
+      }
+    } else {
+      dailyDeltaMeasure = 0; // MISSED DAY -> 0 measure, line stays PLAIN HORIZONTAL!
+    }
+
+    runningCumulativeActualMeasure = Math.round((runningCumulativeActualMeasure + dailyDeltaMeasure) * 10) / 10;
+    
+    const expectedTargetValAtDay = Math.min(totalTargetedMeasure, Math.round((dayNumber * dailyTargetMeasure) * 10) / 10);
+
+    return {
+      dayNumber,
+      daysAgo,
+      dateStr,
+      monthDayStr,
+      weekdayStr,
+      isCompletedDay,
+      isMissedDay,
+      dailyDeltaMeasure,
+      actualCumulativeVal: runningCumulativeActualMeasure,
+      expectedTargetVal: expectedTargetValAtDay
+    };
+  });
+
+  // Total Completed Measure is the TRUE accumulated measure across all completed days (No Capping!)
+  const totalCompletedMeasure = runningCumulativeActualMeasure;
   const totalTargetLeft = Math.max(0, Math.round((totalTargetedMeasure - totalCompletedMeasure) * 10) / 10);
 
   // Target days left vs remaining calendar days
@@ -276,90 +347,41 @@ export default function TaskDedicatedPageView({
     ? currentTask.missedStreak 
     : (currentTask.isDoneToday ? 0 : Math.max(0, elapsedDays - currentCount));
 
-  // FULL TIMELINE DAY-BY-DAY DATA ENGINE (From plannedStart / Day 1 up to today / Day elapsedDays)
-  const missedDaysRecordsList = getMissedDaysForTask({ ...currentTask, elapsedDays }, directChildSubtasks, elapsedDays);
-  const missedDaysSetByAgo = new Set(missedDaysRecordsList.map(m => m.daysAgo));
-
-  const startTimelineDate = new Date(effectiveStartStr);
-  const totalTimelineDays = Math.max(1, elapsedDays);
-
-  let runningCumulativeActualMeasure = 0;
-
-  const fullTimelineDailyData = Array.from({ length: totalTimelineDays }).map((_, idx) => {
-    const dayNumber = idx + 1; // 1-indexed (Day 1, Day 2, ..., Day elapsedDays)
-    const daysAgo = totalTimelineDays - dayNumber;
-    
-    const d = new Date(startTimelineDate);
-    d.setDate(startTimelineDate.getDate() + idx);
-    const dateStr = d.toISOString().split('T')[0];
-    const monthDayStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const weekdayStr = d.toLocaleDateString('en-US', { weekday: 'short' });
-
-    const isMissedDay = missedDaysSetByAgo.has(daysAgo);
-    const isCompletedDay = !isMissedDay;
-
-    let dailyDeltaMeasure = 0;
-    if (isCompletedDay) {
-      if (idx === totalTimelineDays - 1) {
-        // Today's delta measure reflects actual recorded measure (e.g. 10 instead of capped 5)
-        dailyDeltaMeasure = todayActualMeasure > 0 
-          ? todayActualMeasure 
-          : Math.round((totalCompletedMeasure / Math.max(1, totalTimelineDays - missedDaysSetByAgo.size)) * 10) / 10;
-      } else {
-        const numCompletedPastDays = Math.max(1, totalTimelineDays - missedDaysSetByAgo.size - (todayActualMeasure > 0 ? 1 : 0));
-        const pastCompletedMeasure = Math.max(0, totalCompletedMeasure - (todayActualMeasure > 0 ? todayActualMeasure : 0));
-        dailyDeltaMeasure = Math.round((pastCompletedMeasure / numCompletedPastDays) * 10) / 10;
-      }
-    } else {
-      dailyDeltaMeasure = 0; // MISSED DAY -> 0 measure, line stays PLAIN HORIZONTAL!
-    }
-
-    runningCumulativeActualMeasure = Math.round((runningCumulativeActualMeasure + dailyDeltaMeasure) * 10) / 10;
-    
-    // Final day lands EXACTLY on totalCompletedMeasure!
-    const finalCumulativeVal = (idx === totalTimelineDays - 1) 
-      ? totalCompletedMeasure 
-      : runningCumulativeActualMeasure;
-
-    const expectedTargetValAtDay = Math.min(totalTargetedMeasure, Math.round((dayNumber * dailyTargetMeasure) * 10) / 10);
-
-    return {
-      dayNumber,
-      daysAgo,
-      dateStr,
-      monthDayStr,
-      weekdayStr,
-      isCompletedDay,
-      isMissedDay,
-      dailyDeltaMeasure,
-      actualCumulativeVal: finalCumulativeVal,
-      expectedTargetVal: expectedTargetValAtDay
-    };
-  });
-
-  // Daily Subtask Stacked Bar Measures from Day 1 to Today
+  // Daily Subtask / Standalone Stacked Bar Measures from Day 1 to Today
   const fullSubtaskDailyMeasures = fullTimelineDailyData.map(dayInfo => {
     let totalColumnVal = 0;
+    let subtaskContributions = [];
 
-    const subtaskContributions = directChildSubtasks.map((st, sIdx) => {
-      const color = subtaskColors[sIdx % subtaskColors.length];
-      const isCompletedDay = dayInfo.isCompletedDay;
-      const evCount = st.trackingMode === 'count_event' ? (st.currentCount || 2) : 1;
-      
-      const val = calculateSubtaskContribution(st, isCompletedDay, evCount, avgMeasured);
-      if (isCompletedDay) totalColumnVal += val;
+    if (directChildSubtasks.length > 0) {
+      subtaskContributions = directChildSubtasks.map((st, sIdx) => {
+        const color = subtaskColors[sIdx % subtaskColors.length];
+        const isCompletedDay = dayInfo.isCompletedDay;
+        const evCount = st.trackingMode === 'count_event' ? (st.currentCount || 2) : 1;
+        
+        const val = calculateSubtaskContribution(st, isCompletedDay, evCount, avgMeasured);
+        if (isCompletedDay) totalColumnVal += val;
 
-      return {
-        id: st.id,
-        title: st.title,
-        val: isCompletedDay ? val : 0,
-        color,
-        note: isCompletedDay ? `Logged ${val} ${measureUnit}` : 'Missed Day (0 Measure)'
-      };
-    });
+        return {
+          id: st.id,
+          title: st.title,
+          val: isCompletedDay ? val : 0,
+          color,
+          note: isCompletedDay ? `Logged ${val} ${measureUnit}` : 'Missed Day (0 Measure)'
+        };
+      });
+    } else {
+      totalColumnVal = dayInfo.dailyDeltaMeasure;
+      subtaskContributions = [{
+        id: currentTask.id,
+        title: currentTask.title,
+        val: dayInfo.dailyDeltaMeasure,
+        color: '#2563EB',
+        note: dayInfo.isCompletedDay ? `Logged ${dayInfo.dailyDeltaMeasure} ${measureUnit}` : 'Missed Day (0 Measure)'
+      }];
+    }
 
     totalColumnVal = dayInfo.isCompletedDay ? Math.round(totalColumnVal * 10) / 10 : 0;
-    const columnPercentage = Math.min(100, Math.round((totalColumnVal / Math.max(1, dailyTargetMeasure)) * 100));
+    const columnPercentage = Math.round((totalColumnVal / Math.max(1, dailyTargetMeasure)) * 100);
 
     return {
       date: dayInfo.dateStr,
@@ -981,25 +1003,30 @@ export default function TaskDedicatedPageView({
       {/* ========================================================================= */}
       {/* 8. CONTRIBUTION / SUBTASK ANALYTICS PANEL (STACKED COLUMN — IMAGE 2 MODEL) */}
       {/* ========================================================================= */}
-      {(trackingMode === 'end_date' || trackingMode === 'count_days') && (
+      {(trackingMode === 'end_date' || trackingMode === 'count_days') && (() => {
+        const maxBarVal = Math.max(25, ...sampleDailyMeasures.map(d => d.totalColumnVal), Math.round((dailyTargetMeasure || 5) * 1.5));
+
+        return (
         <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.03)', width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
           <div style={{ marginBottom: '18px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#1E293B', margin: 0, textAlign: 'center' }}>
-              Subtask Contribution per Day - Grouped Breakdown
+              {directChildSubtasks.length > 0 ? 'Subtask Contribution per Day - Grouped Breakdown' : 'Daily Measure Output & Efficiency Breakdown'}
             </h3>
             <p style={{ fontSize: '11px', color: '#64748B', margin: '4px 0 0 0', textAlign: 'center' }}>
-              Explicit measure subtasks contribute logged units. Event-count subtasks contribute (Event Count × Avg Explicit Measure). Standard subtasks contribute (+1 × Avg Explicit Measure).
+              {directChildSubtasks.length > 0
+                ? 'Explicit measure subtasks contribute logged units. Non-measure subtasks contribute average. Target reflects efficiency without capping.'
+                : `Actual recorded measure units per day. Daily Target: ${dailyTargetMeasure} ${measureUnit}/day. Accumulates toward ${totalTargetedMeasure} ${measureUnit}.`}
             </p>
           </div>
 
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
             <div style={{ flex: 1, minWidth: '260px', maxWidth: '100%', display: 'flex', gap: '12px', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '8px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '220px', paddingBottom: '24px', fontSize: '10px', fontWeight: 800, color: '#64748B', flexShrink: 0 }}>
-                <span>25</span>
-                <span>20</span>
-                <span>15</span>
-                <span>10</span>
-                <span>5</span>
+                <span>{maxBarVal}</span>
+                <span>{Math.round(maxBarVal * 0.8)}</span>
+                <span>{Math.round(maxBarVal * 0.6)}</span>
+                <span>{Math.round(maxBarVal * 0.4)}</span>
+                <span>{Math.round(maxBarVal * 0.2)}</span>
                 <span>0</span>
               </div>
 
@@ -1012,7 +1039,7 @@ export default function TaskDedicatedPageView({
                       <span style={{ fontSize: '8px', fontWeight: 800, color: '#64748B', display: 'block' }}>{d.columnPercentage}%</span>
                     </div>
 
-                    <div style={{ width: '100%', maxWidth: '36px', borderRadius: '10px', overflow: 'hidden', display: 'flex', flexDirection: 'column-reverse', background: '#E2E8F0', height: `${Math.min(100, (d.totalColumnVal / 25) * 80)}%`, minHeight: '12px' }}>
+                    <div style={{ width: '100%', maxWidth: '36px', borderRadius: '10px', overflow: 'hidden', display: 'flex', flexDirection: 'column-reverse', background: '#E2E8F0', height: `${Math.min(100, (d.totalColumnVal / maxBarVal) * 85)}%`, minHeight: '12px' }}>
                       {d.subtaskContributions.map((sc, scIdx) => (
                         <div 
                           key={scIdx} 
@@ -1048,26 +1075,44 @@ export default function TaskDedicatedPageView({
 
             <div style={{ background: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', width: '240px', flexShrink: 0 }}>
               <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block', marginBottom: '8px', borderBottom: '1px solid #CBD5E1', paddingBottom: '4px' }}>
-                Subtask Contribution Key
+                {directChildSubtasks.length > 0 ? 'Subtask Contribution Key' : 'Daily Output Summary'}
               </span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {directChildSubtasks.map((st, i) => {
-                  const val = Number(st.measureTarget || st.loggedMeasureVal || 0);
-                  const unitStr = val > 0 ? ` (+${val} ${measureUnit})` : (st.isOptional ? ' (Optional)' : ' (Standard)');
-                  return (
-                    <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#1E293B' }}>
-                      <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: subtaskColors[i % subtaskColors.length], flexShrink: 0 }} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {st.title} <strong style={{ color: '#2563EB', fontWeight: 800 }}>{unitStr}</strong>
-                      </span>
+                {directChildSubtasks.length > 0 ? (
+                  directChildSubtasks.map((st, i) => {
+                    const val = Number(st.measureTarget || st.loggedMeasureVal || 0);
+                    const unitStr = val > 0 ? ` (+${val} ${measureUnit})` : (st.isOptional ? ' (Optional)' : ' (Standard)');
+                    return (
+                      <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#1E293B' }}>
+                        <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: subtaskColors[i % subtaskColors.length], flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {st.title} <strong style={{ color: '#2563EB', fontWeight: 800 }}>{unitStr}</strong>
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <>
+                    <div style={{ fontSize: '11px', color: '#334155' }}>
+                      Daily Target: <strong style={{ color: '#2563EB' }}>{dailyTargetMeasure} {measureUnit}/day</strong>
                     </div>
-                  );
-                })}
+                    <div style={{ fontSize: '11px', color: '#334155' }}>
+                      Logged Today: <strong style={{ color: '#16A34A' }}>{todayActualMeasure} {measureUnit}</strong>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#334155' }}>
+                      Total Achieved: <strong style={{ color: '#EA580C' }}>{totalCompletedMeasure} {measureUnit}</strong>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#334155' }}>
+                      Goal Target: <strong style={{ color: '#0F172A' }}>{totalTargetedMeasure} {measureUnit}</strong>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* EVENT COUNT HISTOGRAM / MULTI-EVENT CLUSTER BAR GRAPH (TYPE 1 ONLY) */}

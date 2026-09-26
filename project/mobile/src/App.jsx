@@ -1171,6 +1171,7 @@ export default function App() {
 
   const handleToggleTask = async (taskId, customMeasureValue = null) => {
     let updatedTask = null;
+    const currentUserId = (currentUser?.email || currentUser?.id || 'demo-user-123').toLowerCase().trim();
 
     let newTasks = tasks.map(t => {
       if (t.id === taskId) {
@@ -1180,10 +1181,16 @@ export default function App() {
         let nextCount = t.currentCount || 0;
         let nextIsDone = false;
 
-        if (isDoneCurrently) {
+        if (customMeasureValue !== null && isDoneCurrently) {
+          // Editing measure on an already completed task
+          nextCount = t.currentCount || 1;
+          nextIsDone = true;
+        } else if (isDoneCurrently) {
+          // Normal toggle off (undo completion)
           nextCount = Math.max(0, nextCount - 1);
           nextIsDone = false;
         } else {
+          // Normal toggle on (complete)
           nextCount = nextCount + 1;
           nextIsDone = true;
         }
@@ -1216,11 +1223,7 @@ export default function App() {
       return t;
     });
 
-    // Check Type 3 Parent Event Completion:
-    // If a child of a Type 3 (count_event) parent finishes, check if all mandatory child subtasks are satisfied.
-    // When all mandatory child subtasks are completed:
-    // 1. Parent event count increments by 1.
-    // 2. All child subtasks for this event cycle turn back to 0 (reset measure and status for next cycle).
+    // Check Type 3 Parent Event Completion
     let eventCycleCompleted = false;
     let completedEventParent = null;
     let resetSiblings = [];
@@ -1277,7 +1280,10 @@ export default function App() {
       collaborationService.syncTaskCompletionStatus(taskId, currentUser?.email || 'User', updatedTask.isDoneToday);
     }
 
-    if (currentUser) {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const nowIso = new Date().toISOString();
+
+    if (currentUser && updatedTask) {
       if (eventCycleCompleted && completedEventParent) {
         // Sync parent event increment to database
         try {
@@ -1288,11 +1294,9 @@ export default function App() {
             status: completedEventParent.isDoneToday ? 'COMPLETED' : 'INBOX'
           }).eq('id', completedEventParent.id);
 
-          const todayStr = new Date().toISOString().split('T')[0];
-          const nowIso = new Date().toISOString();
           await supabase.from('task_logs').insert([{
             task_id: completedEventParent.id,
-            user_id: currentUser.email || currentUser.id,
+            user_id: currentUserId,
             logged_date: todayStr,
             logged_at: nowIso,
             increment_value: 1,
@@ -1323,7 +1327,7 @@ export default function App() {
             }).eq('id', st.id);
           } catch (e) {}
         }
-      } else if (updatedTask) {
+      } else {
         // Standard single task / subtask sync
         try {
           const taskPayload = {
@@ -1364,42 +1368,130 @@ export default function App() {
           await supabase.from('subtasks').update(subPayload).eq('id', taskId);
         } catch (e) {}
 
-        const todayStr = new Date().toISOString().split('T')[0];
-        const nowIso = new Date().toISOString();
-
         if (updatedTask.isDoneToday) {
-          // 1. Log to task_logs: WHICH DAY (logged_date), WHICH MEASURE (measured_value), WHICH TASK (task_id)
+          // COMPLETED or MEASURE EDITED: Log to task_logs and state
           try {
-            await supabase.from('task_logs').insert([{
-              task_id: taskId,
-              user_id: currentUser.email || currentUser.id,
-              logged_date: todayStr,
-              logged_at: nowIso,
-              increment_value: 1,
-              measured_value: updatedTask.loggedMeasureVal || 0
-            }]);
-          } catch (e) {}
+            // Check if today log already exists
+            const { data: existingLogs } = await supabase
+              .from('task_logs')
+              .select('id')
+              .eq('task_id', taskId)
+              .eq('logged_date', todayStr);
 
-          // 2. If subtask, also log to subtask_logs
+            if (existingLogs && existingLogs.length > 0) {
+              await supabase
+                .from('task_logs')
+                .update({ measured_value: updatedTask.loggedMeasureVal || 0 })
+                .eq('id', existingLogs[0].id);
+            } else {
+              await supabase.from('task_logs').insert([{
+                task_id: taskId,
+                user_id: currentUserId,
+                logged_date: todayStr,
+                logged_at: nowIso,
+                increment_value: 1,
+                measured_value: updatedTask.loggedMeasureVal || 0
+              }]);
+            }
+
+            // Immediately reflect in React taskLogs state
+            setTaskLogs(prev => {
+              const existingIdx = prev.findIndex(l => (l.task_id || l.taskId) === taskId && (l.logged_date === todayStr || (l.logged_at && l.logged_at.startsWith(todayStr))));
+              if (existingIdx !== -1) {
+                const copy = [...prev];
+                copy[existingIdx] = { ...copy[existingIdx], measured_value: updatedTask.loggedMeasureVal || 0 };
+                return copy;
+              }
+              return [{
+                id: 'log-' + Date.now(),
+                task_id: taskId,
+                user_id: currentUserId,
+                logged_date: todayStr,
+                logged_at: nowIso,
+                increment_value: 1,
+                measured_value: updatedTask.loggedMeasureVal || 0
+              }, ...prev];
+            });
+          } catch (e) {
+            console.warn('task_logs sync catch:', e);
+          }
+
+          // If subtask, also log to subtask_logs
           if (updatedTask.parentTaskId) {
             try {
               await supabase.from('subtask_logs').insert([{
                 subtask_id: taskId,
                 parent_task_id: updatedTask.parentTaskId,
-                user_id: currentUser.email || currentUser.id,
+                user_id: currentUserId,
                 log_date: todayStr,
                 is_completed: true,
                 measured_value: updatedTask.loggedMeasureVal || 0
               }]);
+              setSubtaskLogs(prev => [{
+                id: 'sublog-' + Date.now(),
+                subtask_id: taskId,
+                parent_task_id: updatedTask.parentTaskId,
+                user_id: currentUserId,
+                log_date: todayStr,
+                is_completed: true,
+                measured_value: updatedTask.loggedMeasureVal || 0
+              }, ...prev]);
             } catch (e) {}
           }
 
-          // 3. Sync to Spring Boot REST backend if connected
+          // Sync to Spring Boot REST backend
           try {
             const baseUrl = getApiBaseUrl();
             if (baseUrl) {
               const measureParam = updatedTask.loggedMeasureVal !== undefined ? `&measuredValue=${encodeURIComponent(updatedTask.loggedMeasureVal)}` : '';
-              await fetch(`${baseUrl}/api/tasks/${encodeURIComponent(taskId)}/toggle?userId=${encodeURIComponent(currentUser.email || currentUser.id)}${measureParam}`, {
+              await fetch(`${baseUrl}/api/tasks/${encodeURIComponent(taskId)}/toggle?userId=${encodeURIComponent(currentUserId)}${measureParam}`, {
+                method: 'POST'
+              });
+            }
+          } catch (e) {}
+        } else {
+          // TOGGLED OFF (UNDO): Delete today's log & call backend undo
+          try {
+            const { data: latestLogs } = await supabase
+              .from('task_logs')
+              .select('id')
+              .eq('task_id', taskId)
+              .order('logged_at', { ascending: false })
+              .limit(1);
+
+            if (latestLogs && latestLogs.length > 0) {
+              await supabase.from('task_logs').delete().eq('id', latestLogs[0].id);
+            }
+
+            setTaskLogs(prev => {
+              const idx = [...prev].reverse().findIndex(l => (l.task_id || l.taskId) === taskId);
+              if (idx === -1) return prev;
+              const actualIdx = prev.length - 1 - idx;
+              return prev.filter((_, i) => i !== actualIdx);
+            });
+          } catch (e) {
+            console.warn('task_logs undo delete catch:', e);
+          }
+
+          if (updatedTask.parentTaskId) {
+            try {
+              const { data: latestSubLogs } = await supabase
+                .from('subtask_logs')
+                .select('id')
+                .eq('subtask_id', taskId)
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+              if (latestSubLogs && latestSubLogs.length > 0) {
+                await supabase.from('subtask_logs').delete().eq('id', latestSubLogs[0].id);
+              }
+            } catch (e) {}
+          }
+
+          try {
+            const baseUrl = getApiBaseUrl();
+            if (baseUrl) {
+              await fetch(`${baseUrl}/api/tasks/${encodeURIComponent(taskId)}/undo?userId=${encodeURIComponent(currentUserId)}`, {
                 method: 'POST'
               });
             }
@@ -1411,11 +1503,13 @@ export default function App() {
 
   const handleUndoTask = async (taskId) => {
     let updatedTask = null;
+    const currentUserId = (currentUser?.email || currentUser?.id || 'demo-user-123').toLowerCase().trim();
+    const childIdsToUndo = [];
 
     const newTasks = tasks.map(t => {
       if (t.id === taskId) {
         let prevCount = Math.max(0, (t.currentCount || 1) - 1);
-        const target = t.targetCount || 1;
+        const target = (t.targetCount && t.targetCount > 0) ? t.targetCount : (t.targetDayCount || t.targetEventCount || 1);
         const prevProg = Math.round((prevCount / Math.max(1, target)) * 100);
 
         updatedTask = {
@@ -1424,9 +1518,19 @@ export default function App() {
           currentDayCount: prevCount,
           currentEventCount: prevCount,
           progressPercent: prevProg,
-          isDoneToday: false
+          isDoneToday: false,
+          completedAt: null
         };
         return updatedTask;
+      }
+      // If this task has child subtasks that are completed today, unmark them too
+      if (t.parentTaskId === taskId && t.isDoneToday) {
+        childIdsToUndo.push(t.id);
+        return {
+          ...t,
+          isDoneToday: false,
+          completedAt: null
+        };
       }
       return t;
     });
@@ -1434,6 +1538,7 @@ export default function App() {
     updateTasksState(newTasks);
 
     if (currentUser && updatedTask) {
+      // 1. Update task in database
       try {
         await supabase.from('tasks').update({
           current_count: updatedTask.currentCount,
@@ -1452,8 +1557,50 @@ export default function App() {
         }).eq('id', taskId);
       } catch (e) {}
 
+      // 2. Unmark child subtasks if any
+      for (const cId of childIdsToUndo) {
+        try {
+          await supabase.from('tasks').update({ is_done_today: false, status: 'INBOX' }).eq('id', cId);
+          await supabase.from('subtasks').update({ is_done_today: false, status: 'PLANNED' }).eq('id', cId);
+          const { data: cLogs } = await supabase.from('task_logs').select('id').eq('task_id', cId).order('logged_at', { ascending: false }).limit(1);
+          if (cLogs && cLogs.length > 0) {
+            await supabase.from('task_logs').delete().eq('id', cLogs[0].id);
+          }
+        } catch (e) {}
+      }
+
+      // 3. Properly delete the latest log from task_logs via two-step query
       try {
-        await supabase.from('task_logs').delete().eq('task_id', taskId).order('logged_at', { ascending: false }).limit(1);
+        const { data: latestLogs } = await supabase
+          .from('task_logs')
+          .select('id')
+          .eq('task_id', taskId)
+          .order('logged_at', { ascending: false })
+          .limit(1);
+
+        if (latestLogs && latestLogs.length > 0) {
+          await supabase.from('task_logs').delete().eq('id', latestLogs[0].id);
+        }
+
+        // Update React state taskLogs
+        setTaskLogs(prev => {
+          const idx = [...prev].reverse().findIndex(l => (l.task_id || l.taskId) === taskId);
+          if (idx === -1) return prev;
+          const actualIdx = prev.length - 1 - idx;
+          return prev.filter((_, i) => i !== actualIdx);
+        });
+      } catch (e) {
+        console.warn('Supabase task_logs delete catch:', e);
+      }
+
+      // 4. Call Spring Boot REST API undo endpoint
+      try {
+        const baseUrl = getApiBaseUrl();
+        if (baseUrl) {
+          await fetch(`${baseUrl}/api/tasks/${encodeURIComponent(taskId)}/undo?userId=${encodeURIComponent(currentUserId)}`, {
+            method: 'POST'
+          });
+        }
       } catch (e) {}
     }
   };
@@ -1814,6 +1961,8 @@ export default function App() {
               childSubtasks={tasks.filter(t => t.parentTaskId === dedicatedTaskPageItem.id)}
               parentTask={tasks.find(t => t.id === dedicatedTaskPageItem.parentTaskId)}
               allTasks={tasks}
+              taskLogs={taskLogs}
+              subtaskLogs={subtaskLogs}
               onBack={() => setDedicatedTaskPageItem(null)}
               onEditTask={(t) => setSelectedEditItem(t)}
               onArchiveTask={handleArchiveTask}
@@ -1844,7 +1993,9 @@ export default function App() {
                   tasks={activeTasks}
                   habits={habits}
                   disciplineScore={disciplineScore}
+                  taskLogs={taskLogs}
                   onToggleTask={handleToggleTask}
+                  onUndoTask={handleUndoTask}
                   onHabitCheckIn={(id) => setHabits(prev => prev.map(h => h.id === id ? { ...h, actualValue: h.targetValue } : h))}
                   onUpdateTaskProgress={(id, prog) => {
                     const updated = tasks.map(t => t.id === id ? { ...t, progressPercent: prog } : t);
