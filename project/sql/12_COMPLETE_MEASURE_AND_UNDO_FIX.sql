@@ -1,9 +1,9 @@
 -- ============================================================================
 -- HABIT HACKER: DEFINITIVE POSTGRESQL SCHEMA FIX FOR MEASURE & UNDO TRACKING
 -- Run this ENTIRE script in your Supabase SQL Editor.
--- It automatically drops any blocking views (like view_parent_task_missed_days),
--- eliminates all Foreign Key & UUID syntax restrictions, ensures all quantitative
--- measure columns exist, and allows seamless measure & undo tracking.
+-- It safely drops dependent views, automatically drops foreign keys,
+-- checks column existence before type alterations, adds all measure columns,
+-- and grants full access to anon and authenticated roles.
 -- ============================================================================
 
 -- STEP 0: DROP ANY BLOCKING VIEWS THAT DEPEND ON TASKS / SUBTASKS COLUMNS
@@ -14,7 +14,7 @@ DROP VIEW IF EXISTS public.view_tasks CASCADE;
 DROP VIEW IF EXISTS public.view_task_logs CASCADE;
 DROP VIEW IF EXISTS public.view_subtasks CASCADE;
 
--- Dynamically drop any other view in public schema that depends on tasks or subtasks
+-- Dynamically drop any other view in public schema that depends on tasks, subtasks, or logs
 DO $$
 DECLARE
     v_rec RECORD;
@@ -111,38 +111,82 @@ CREATE TABLE IF NOT EXISTS public.subtask_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- STEP 2: DROP ALL RESTRICTIVE FOREIGN KEY CONSTRAINTS
+-- STEP 2: DROP ALL FOREIGN KEY CONSTRAINTS DYNAMICALLY
 -- Prevents foreign key violations when using email user IDs and string/UUID task IDs
-ALTER TABLE IF EXISTS public.task_logs DROP CONSTRAINT IF EXISTS task_logs_user_id_fkey;
-ALTER TABLE IF EXISTS public.task_logs DROP CONSTRAINT IF EXISTS task_logs_task_id_fkey;
-ALTER TABLE IF EXISTS public.tasks DROP CONSTRAINT IF EXISTS tasks_user_id_fkey;
-ALTER TABLE IF EXISTS public.subtasks DROP CONSTRAINT IF EXISTS subtasks_user_id_fkey;
-ALTER TABLE IF EXISTS public.subtasks DROP CONSTRAINT IF EXISTS subtasks_parent_task_id_fkey;
-ALTER TABLE IF EXISTS public.subtask_logs DROP CONSTRAINT IF EXISTS subtask_logs_user_id_fkey;
-ALTER TABLE IF EXISTS public.subtask_logs DROP CONSTRAINT IF EXISTS subtask_logs_subtask_id_fkey;
-ALTER TABLE IF EXISTS public.subtask_logs DROP CONSTRAINT IF EXISTS subtask_logs_parent_task_id_fkey;
+DO $$
+DECLARE
+    c RECORD;
+BEGIN
+    FOR c IN (
+        SELECT conname, conrelid::regclass AS tabname
+        FROM pg_constraint
+        WHERE connamespace = 'public'::regnamespace
+          AND conrelid::regclass::text IN ('tasks', 'subtasks', 'task_logs', 'subtask_logs', 'public.tasks', 'public.subtasks', 'public.task_logs', 'public.subtask_logs')
+          AND contype = 'f'
+    ) LOOP
+        EXECUTE 'ALTER TABLE ' || c.tabname || ' DROP CONSTRAINT IF EXISTS ' || quote_ident(c.conname);
+    END LOOP;
+END $$;
 
--- STEP 3: CONVERT COLUMNS TO VARCHAR(255) WITH SAFE CASTING
-ALTER TABLE IF EXISTS public.tasks ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
-ALTER TABLE IF EXISTS public.tasks ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
-ALTER TABLE IF EXISTS public.tasks ALTER COLUMN parent_task_id TYPE VARCHAR(255) USING parent_task_id::text;
-ALTER TABLE IF EXISTS public.tasks ALTER COLUMN parent_id TYPE VARCHAR(255) USING parent_id::text;
+-- STEP 3: CONVERT UUID COLUMNS TO VARCHAR(255) SAFELY
+-- Only converts if column exists and is currently of type uuid
+DO $$
+BEGIN
+    -- tasks.id
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'tasks' AND column_name = 'id' AND data_type = 'uuid') THEN
+        ALTER TABLE public.tasks ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
+    END IF;
 
-ALTER TABLE IF EXISTS public.subtasks ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
-ALTER TABLE IF EXISTS public.subtasks ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
-ALTER TABLE IF EXISTS public.subtasks ALTER COLUMN parent_task_id TYPE VARCHAR(255) USING parent_task_id::text;
-ALTER TABLE IF EXISTS public.subtasks ALTER COLUMN parent_id TYPE VARCHAR(255) USING parent_id::text;
+    -- tasks.user_id
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'tasks' AND column_name = 'user_id' AND data_type = 'uuid') THEN
+        ALTER TABLE public.tasks ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
+    END IF;
 
-ALTER TABLE IF EXISTS public.task_logs ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
-ALTER TABLE IF EXISTS public.task_logs ALTER COLUMN task_id TYPE VARCHAR(255) USING task_id::text;
-ALTER TABLE IF EXISTS public.task_logs ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
+    -- subtasks.id
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'subtasks' AND column_name = 'id' AND data_type = 'uuid') THEN
+        ALTER TABLE public.subtasks ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
+    END IF;
 
-ALTER TABLE IF EXISTS public.subtask_logs ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
-ALTER TABLE IF EXISTS public.subtask_logs ALTER COLUMN subtask_id TYPE VARCHAR(255) USING subtask_id::text;
-ALTER TABLE IF EXISTS public.subtask_logs ALTER COLUMN parent_task_id TYPE VARCHAR(255) USING parent_task_id::text;
-ALTER TABLE IF EXISTS public.subtask_logs ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
+    -- subtasks.user_id
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'subtasks' AND column_name = 'user_id' AND data_type = 'uuid') THEN
+        ALTER TABLE public.subtasks ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
+    END IF;
+
+    -- task_logs.id
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'task_logs' AND column_name = 'id' AND data_type = 'uuid') THEN
+        ALTER TABLE public.task_logs ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
+    END IF;
+
+    -- task_logs.task_id
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'task_logs' AND column_name = 'task_id' AND data_type = 'uuid') THEN
+        ALTER TABLE public.task_logs ALTER COLUMN task_id TYPE VARCHAR(255) USING task_id::text;
+    END IF;
+
+    -- task_logs.user_id
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'task_logs' AND column_name = 'user_id' AND data_type = 'uuid') THEN
+        ALTER TABLE public.task_logs ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
+    END IF;
+
+    -- subtask_logs.id
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'subtask_logs' AND column_name = 'id' AND data_type = 'uuid') THEN
+        ALTER TABLE public.subtask_logs ALTER COLUMN id TYPE VARCHAR(255) USING id::text;
+    END IF;
+
+    -- subtask_logs.subtask_id
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'subtask_logs' AND column_name = 'subtask_id' AND data_type = 'uuid') THEN
+        ALTER TABLE public.subtask_logs ALTER COLUMN subtask_id TYPE VARCHAR(255) USING subtask_id::text;
+    END IF;
+
+    -- subtask_logs.user_id
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'subtask_logs' AND column_name = 'user_id' AND data_type = 'uuid') THEN
+        ALTER TABLE public.subtask_logs ALTER COLUMN user_id TYPE VARCHAR(255) USING user_id::text;
+    END IF;
+END $$;
 
 -- STEP 4: ENSURE ALL QUANTITATIVE MEASURE AND TRACKING COLUMNS EXIST
+-- On tasks
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS parent_task_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS parent_id VARCHAR(255);
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS has_measure_tracking BOOLEAN DEFAULT FALSE;
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS measure_unit VARCHAR(50) DEFAULT 'units';
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS measure_target NUMERIC DEFAULT 0;
@@ -162,14 +206,9 @@ ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTA
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE;
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 
--- Task Logs Columns (Which day, which task, which measure)
-ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS logged_date DATE DEFAULT CURRENT_DATE;
-ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS logged_at TIMESTAMPTZ DEFAULT NOW();
-ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS increment_value INT DEFAULT 1;
-ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS measured_value NUMERIC DEFAULT 0;
-ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS is_successful BOOLEAN DEFAULT TRUE;
-
--- Subtasks & Subtask Logs Columns
+-- On subtasks
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS parent_task_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS parent_id VARCHAR(255);
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS has_measure_tracking BOOLEAN DEFAULT FALSE;
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS measure_unit VARCHAR(50) DEFAULT 'units';
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS measure_target NUMERIC DEFAULT 0;
@@ -177,6 +216,15 @@ ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS logged_measure_va
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS is_done_today BOOLEAN DEFAULT FALSE;
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS is_optional BOOLEAN DEFAULT FALSE;
 
+-- On task_logs
+ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS logged_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS logged_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS increment_value INT DEFAULT 1;
+ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS measured_value NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS is_successful BOOLEAN DEFAULT TRUE;
+
+-- On subtask_logs
+ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS parent_task_id VARCHAR(255);
 ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS log_date DATE DEFAULT CURRENT_DATE;
 ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT FALSE;
 ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS measured_value NUMERIC DEFAULT 0;
@@ -199,7 +247,7 @@ GRANT ALL ON TABLE public.subtasks TO anon, authenticated, service_role, postgre
 GRANT ALL ON TABLE public.task_logs TO anon, authenticated, service_role, postgres;
 GRANT ALL ON TABLE public.subtask_logs TO anon, authenticated, service_role, postgres;
 
--- STEP 7: RECREATE CLEAN MISSED DAYS VIEW (IF NEEDED BY ANY EXTERNAL CLIENTS)
+-- STEP 7: RECREATE CLEAN MISSED DAYS VIEW
 CREATE OR REPLACE VIEW public.view_parent_task_missed_days AS
 SELECT 
     t.id,
