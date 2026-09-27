@@ -311,107 +311,116 @@ BEGIN
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
-        logged_measure_val, is_done_today, parent_task_id
+        logged_measure_val, is_done_today, parent_task_id, planned_start, planned_end, deadline
     ) VALUES (
         'sub-p1-s1-morning-yoga', v_user_id,
         '[S1.1] Morning Yoga & Breathwork (Type 1)',
         'End-date tracked physical mobility session', 'Health', 'MEDIUM', 'end_date',
-        30, 2, TRUE, 'mins', 10, 0, FALSE, 'parent-type1-wellness-routine'
+        30, 2, TRUE, 'mins', 10, 0, FALSE, 'parent-type1-wellness-routine',
+        d_day3, CURRENT_DATE + 27, CURRENT_DATE + 27
     );
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
-        logged_measure_val, is_done_today, parent_task_id
+        logged_measure_val, is_done_today, parent_task_id, planned_start, planned_end, deadline
     ) VALUES (
         'sub-p1-s2-hydration-focus', v_user_id,
         '[S1.2] Hydration & Nutrition Tracker (Type 2)',
         'Count-days tracked hydration intake', 'Health', 'MEDIUM', 'count_days',
-        30, 2, TRUE, 'glasses', 10, 0, FALSE, 'parent-type1-wellness-routine'
+        30, 2, TRUE, 'glasses', 10, 0, FALSE, 'parent-type1-wellness-routine',
+        d_day3, CURRENT_DATE + 27, CURRENT_DATE + 27
     );
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
-        logged_measure_val, is_done_today, parent_task_id
+        logged_measure_val, is_done_today, parent_task_id, planned_start, planned_end, deadline
     ) VALUES (
         'sub-p1-s3-mindfulness-sessions', v_user_id,
         '[S1.3] Guided Zen Sessions (Type 3 - 2 Events)',
         'Event count subhabit: 2 zen sessions per cycle', 'Health', 'MEDIUM', 'count_event',
-        2, 2, TRUE, 'mins', 10, 0, FALSE, 'parent-type1-wellness-routine'
+        2, 2, TRUE, 'mins', 10, 0, FALSE, 'parent-type1-wellness-routine',
+        d_day3, CURRENT_DATE + 27, CURRENT_DATE + 27
     );
 
     -- --- SUBHABITS FOR PARENT 2 ---
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
-        logged_measure_val, is_done_today, parent_task_id
+        logged_measure_val, is_done_today, parent_task_id, planned_start, planned_end, deadline
     ) VALUES (
         'sub-p2-s1-tech-reading', v_user_id,
         '[S2.1] Architectural Book Study (Type 1)',
         'End-date technical literature reading', 'Career', 'MEDIUM', 'end_date',
-        60, 2, TRUE, 'pages', 15, 0, FALSE, 'parent-type2-coding-sprint'
+        60, 2, TRUE, 'pages', 15, 0, FALSE, 'parent-type2-coding-sprint',
+        d_day3, CURRENT_DATE + 87, CURRENT_DATE + 87
     );
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
-        logged_measure_val, is_done_today, parent_task_id
+        logged_measure_val, is_done_today, parent_task_id, planned_start, planned_end, deadline
     ) VALUES (
         'sub-p2-s2-leetcode-problems', v_user_id,
         '[S2.2] Algorithm Challenges (Type 2)',
         'Count-days code challenge solving', 'Career', 'HIGH', 'count_days',
-        60, 2, TRUE, 'problems', 15, 0, FALSE, 'parent-type2-coding-sprint'
+        60, 2, TRUE, 'problems', 15, 0, FALSE, 'parent-type2-coding-sprint',
+        d_day3, CURRENT_DATE + 87, CURRENT_DATE + 87
     );
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
-        logged_measure_val, is_done_today, parent_task_id
+        logged_measure_val, is_done_today, parent_task_id, planned_start, planned_end, deadline
     ) VALUES (
         'sub-p2-s3-git-pull-requests', v_user_id,
         '[S2.3] PR Review Sprints (Type 3 - 2 Events)',
         'Event-count code review commits', 'Career', 'MEDIUM', 'count_event',
-        2, 2, TRUE, 'reviews', 10, 0, FALSE, 'parent-type2-coding-sprint'
+        2, 2, TRUE, 'reviews', 10, 0, FALSE, 'parent-type2-coding-sprint',
+        d_day3, CURRENT_DATE + 87, CURRENT_DATE + 87
     );
 
     -- --- SUBHABITS FOR PARENT 3 ---
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
-        logged_measure_val, is_done_today, parent_task_id
+        logged_measure_val, is_done_today, parent_task_id, planned_start, planned_end, deadline
     ) VALUES (
         'sub-p3-s1-core-backend-api', v_user_id,
         '[S3.1] Backend Services & Migration (Type 1)',
         'End-date API development milestones', 'Projects', 'HIGH', 'end_date',
-        10, 3, TRUE, 'points', 20, 0, FALSE, 'parent-type3-project-milestones'
+        10, 3, TRUE, 'points', 20, 0, FALSE, 'parent-type3-project-milestones',
+        d_day3, CURRENT_DATE + 42, CURRENT_DATE + 42
     );
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
-        logged_measure_val, is_done_today, parent_task_id
+        logged_measure_val, is_done_today, parent_task_id, planned_start, planned_end, deadline
     ) VALUES (
         'sub-p3-s2-frontend-ui-views', v_user_id,
         '[S3.2] React UI Component Polishing (Type 2)',
         'Count-days design system implementation', 'Projects', 'HIGH', 'count_days',
-        10, 3, TRUE, 'points', 25, 0, FALSE, 'parent-type3-project-milestones'
+        10, 3, TRUE, 'points', 25, 0, FALSE, 'parent-type3-project-milestones',
+        d_day3, CURRENT_DATE + 42, CURRENT_DATE + 42
     );
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
-        logged_measure_val, is_done_today, parent_task_id
+        logged_measure_val, is_done_today, parent_task_id, planned_start, planned_end, deadline
     ) VALUES (
         'sub-p3-s3-integration-testing', v_user_id,
         '[S3.3] E2E Integration Cycles (Type 3 - 2 Events)',
         'Event-count test deployment suite', 'Projects', 'HIGH', 'count_event',
-        2, 2, TRUE, 'points', 20, 0, FALSE, 'parent-type3-project-milestones'
+        2, 2, TRUE, 'points', 20, 0, FALSE, 'parent-type3-project-milestones',
+        d_day3, CURRENT_DATE + 42, CURRENT_DATE + 42
     );
 
     -- POPULATE subtasks TABLE
     INSERT INTO public.subtasks (
         id, parent_task_id, user_id, title, description, status,
         has_measure_tracking, measure_target, measure_unit, logged_measure_val, is_done_today,
-        tracking_mode, target_count, current_count
+        tracking_mode, target_count, current_count, planned_start, planned_end
     )
     SELECT id, parent_task_id, user_id, title, description, 'PLANNED',
            has_measure_tracking, measure_target, measure_unit, 0, FALSE,
-           tracking_mode, target_count, current_count
+           tracking_mode, target_count, current_count, planned_start, planned_end
     FROM public.tasks
     WHERE parent_task_id IS NOT NULL AND user_id = v_user_id;
 

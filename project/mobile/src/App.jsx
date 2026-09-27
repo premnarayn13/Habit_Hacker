@@ -740,6 +740,8 @@ export default function App() {
       localStorage.setItem('habit_hacker_tasks_' + userEmail.toLowerCase(), JSON.stringify(processed));
     }
     setTasks(processed);
+    setSubtasks(processed.filter(t => t.parentTaskId));
+    setHabits(processed);
   };
 
   const fetchUserData = async (userId, userEmail = '') => {
@@ -768,7 +770,10 @@ export default function App() {
           try {
             const parsed = JSON.parse(emailCached);
             if (parsed && Array.isArray(parsed)) {
-              setTasks(processSubtaskLifecycles(parsed));
+              const processed = processSubtaskLifecycles(parsed);
+              setTasks(processed);
+              setSubtasks(processed.filter(t => t.parentTaskId));
+              setHabits(processed);
             }
           } catch (e) {}
         }
@@ -873,41 +878,48 @@ export default function App() {
       }
 
       if (dbTasks && dbTasks.length > 0) {
-        const mappedTasks = dbTasks.map(t => ({
-          id: t.id,
-          user_id: t.user_id,
-          title: t.title,
-          description: t.description || '',
-          collab: t.collab || '',
-          priority: t.priority || 'MEDIUM',
-          isOptional: t.is_optional || false,
-          hasMeasureTracking: Boolean(t.has_measure_tracking || (t.measure_target && Number(t.measure_target) > 0) || (t.event_unit_target && Number(t.event_unit_target) > 0)),
-          measureUnit: t.measure_unit || t.event_unit_name || 'units',
-          measureTarget: Number(t.measure_target || t.event_unit_target || 0),
-          loggedMeasureVal: Number(t.logged_measure_val || t.last_measured_value || 0),
-          lastMeasuredValue: Number(t.last_measured_value || t.logged_measure_val || 0),
-          eventUnitTarget: Number(t.event_unit_target || 10),
-          eventUnitName: t.event_unit_name || 'units',
-          progressPercent: t.progress_percent || 0,
-          plannedStart: t.planned_start || t.start_date || '',
-          plannedEnd: t.planned_end || t.end_date || '',
-          deadline: t.deadline || t.planned_end || '',
-          estimatedMinutes: t.estimated_minutes || 30,
-          actualMinutes: t.actual_minutes || 0,
-          category: t.category || 'General',
-          section: t.section || 'General',
-          trackingMode: t.tracking_mode || 'end_date',
-          targetCount: t.target_count || t.target_day_count || 50,
-          currentCount: t.current_count || t.current_day_count || 0,
-          repeatRule: t.repeat_rule || 'DAILY',
-          customIntervalDays: t.custom_interval_days || 2,
-          parentTaskId: t.parent_task_id || t.parent_id || '',
-          attachmentName: t.attachment_name || '',
-          isArchived: t.is_archived || false,
-          archivedAt: t.archived_at || null,
-          isDoneToday: t.is_done_today || false,
-          skipReason: ''
-        }));
+        const mappedTasks = dbTasks.map(t => {
+          const parentItem = (t.parent_task_id || t.parent_id) ? dbTasks.find(p => p.id === (t.parent_task_id || t.parent_id)) : null;
+          const pStart = t.planned_start || t.start_date || (parentItem ? (parentItem.planned_start || parentItem.start_date || '') : '');
+          const pEnd = t.planned_end || t.end_date || (parentItem ? (parentItem.planned_end || parentItem.end_date || '') : '');
+          const pDead = t.deadline || t.planned_end || (parentItem ? (parentItem.deadline || parentItem.planned_end || '') : '');
+
+          return {
+            id: t.id,
+            user_id: t.user_id,
+            title: t.title,
+            description: t.description || '',
+            collab: t.collab || '',
+            priority: t.priority || (parentItem ? parentItem.priority : 'MEDIUM'),
+            isOptional: t.is_optional || false,
+            hasMeasureTracking: Boolean(t.has_measure_tracking || (t.measure_target && Number(t.measure_target) > 0) || (t.event_unit_target && Number(t.event_unit_target) > 0)),
+            measureUnit: t.measure_unit || t.event_unit_name || 'units',
+            measureTarget: Number(t.measure_target || t.event_unit_target || 0),
+            loggedMeasureVal: Number(t.logged_measure_val || t.last_measured_value || 0),
+            lastMeasuredValue: Number(t.last_measured_value || t.logged_measure_val || 0),
+            eventUnitTarget: Number(t.event_unit_target || 10),
+            eventUnitName: t.event_unit_name || 'units',
+            progressPercent: t.progress_percent || 0,
+            plannedStart: pStart,
+            plannedEnd: pEnd,
+            deadline: pDead,
+            estimatedMinutes: t.estimated_minutes || 30,
+            actualMinutes: t.actual_minutes || 0,
+            category: t.category || (parentItem ? parentItem.category : 'General'),
+            section: t.section || 'General',
+            trackingMode: t.tracking_mode || 'end_date',
+            targetCount: t.target_count || t.target_day_count || 50,
+            currentCount: t.current_count || t.current_day_count || 0,
+            repeatRule: t.repeat_rule || 'DAILY',
+            customIntervalDays: t.custom_interval_days || 2,
+            parentTaskId: t.parent_task_id || t.parent_id || '',
+            attachmentName: t.attachment_name || '',
+            isArchived: t.is_archived || false,
+            archivedAt: t.archived_at || null,
+            isDoneToday: t.is_done_today || false,
+            skipReason: ''
+          };
+        });
 
         mappedTasks.forEach(st => {
           const existingIdx = fetchedItems.findIndex(t => t.id === st.id);
@@ -920,26 +932,36 @@ export default function App() {
       }
 
       if (dbSubtasks && dbSubtasks.length > 0) {
-        const mappedSubtasks = dbSubtasks.map(s => ({
-          id: s.id,
-          parentTaskId: s.parent_task_id || s.parent_id || '',
-          title: s.title,
-          description: s.description || '',
-          user_id: s.user_id,
-          category: s.category || 'General',
-          priority: s.priority || 'MEDIUM',
-          trackingMode: s.tracking_mode || 'end_date',
-          hasMeasureTracking: Boolean(s.has_measure_tracking || (s.measure_target && Number(s.measure_target) > 0)),
-          measureTarget: Number(s.measure_target || 0),
-          measureUnit: s.measure_unit || 'units',
-          loggedMeasureVal: Number(s.logged_measure_val || 0),
-          currentEventWork: Number(s.current_event_work || 0),
-          isOptional: s.is_optional ?? false,
-          isDoneToday: s.is_done_today ?? false,
-          currentCount: s.current_count || 0,
-          progressPercent: s.progress_percent || 0,
-          isArchived: false
-        }));
+        const mappedSubtasks = dbSubtasks.map(s => {
+          const parentItem = (s.parent_task_id || s.parent_id) ? (dbTasks?.find(p => p.id === (s.parent_task_id || s.parent_id)) || fetchedItems.find(p => p.id === (s.parent_task_id || s.parent_id))) : null;
+          const pStart = s.planned_start || s.start_date || (parentItem ? (parentItem.planned_start || parentItem.plannedStart || '') : '');
+          const pEnd = s.planned_end || s.end_date || (parentItem ? (parentItem.planned_end || parentItem.plannedEnd || '') : '');
+          const pDead = s.deadline || (parentItem ? (parentItem.deadline || parentItem.plannedEnd || '') : '');
+
+          return {
+            id: s.id,
+            parentTaskId: s.parent_task_id || s.parent_id || '',
+            title: s.title,
+            description: s.description || '',
+            user_id: s.user_id,
+            category: s.category || (parentItem ? parentItem.category : 'General'),
+            priority: s.priority || (parentItem ? parentItem.priority : 'MEDIUM'),
+            trackingMode: s.tracking_mode || 'end_date',
+            hasMeasureTracking: Boolean(s.has_measure_tracking || (s.measure_target && Number(s.measure_target) > 0)),
+            measureTarget: Number(s.measure_target || 0),
+            measureUnit: s.measure_unit || 'units',
+            loggedMeasureVal: Number(s.logged_measure_val || 0),
+            currentEventWork: Number(s.current_event_work || 0),
+            isOptional: s.is_optional ?? false,
+            isDoneToday: s.is_done_today ?? false,
+            currentCount: s.current_count || 0,
+            progressPercent: s.progress_percent || 0,
+            plannedStart: pStart,
+            plannedEnd: pEnd,
+            deadline: pDead,
+            isArchived: false
+          };
+        });
 
         mappedSubtasks.forEach(st => {
           const existingIdx = fetchedItems.findIndex(t => t.id === st.id);

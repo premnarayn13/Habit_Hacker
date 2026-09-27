@@ -34,7 +34,7 @@ export function filterLogsByTimeWindow(logs = [], timeWindow = '30D', customRang
 
   const cutoffStr = cutoffDate.toISOString().split('T')[0];
   return logs.filter(l => {
-    const d = l.log_date || l.logged_date || l.completion_date || l.entry_date;
+    const d = l.log_date || l.logged_date || l.completion_date || l.entry_date || (l.logged_at ? l.logged_at.split('T')[0] : null) || (l.completion_timestamp ? l.completion_timestamp.split('T')[0] : null) || (l.created_at ? l.created_at.split('T')[0] : null);
     return d && d >= cutoffStr;
   });
 }
@@ -77,9 +77,9 @@ export function computeAnalyticsIntelligenceData({
 
   // Filter logs by time window & matching tasks
   const windowedTaskLogs = filterLogsByTimeWindow(taskLogs.filter(l => taskIdsSet.has(l.task_id || l.taskId)), timeWindow);
-  const windowedSubtaskLogs = filterLogsByTimeWindow(subtaskLogs.filter(l => taskIdsSet.has(l.parent_task_id || l.parentTaskId)), timeWindow);
-  const windowedEventLogs = filterLogsByTimeWindow(eventLogs.filter(e => taskIdsSet.has(e.parent_task_id || e.parentTaskId)), timeWindow);
-  const windowedMissedDays = filterLogsByTimeWindow(missedDaysLogs.filter(m => taskIdsSet.has(m.parent_task_id || m.parentTaskId)), timeWindow);
+  const windowedSubtaskLogs = filterLogsByTimeWindow(subtaskLogs.filter(l => taskIdsSet.has(l.subtask_id || l.subtaskId || l.parent_task_id || l.parentTaskId)), timeWindow);
+  const windowedEventLogs = filterLogsByTimeWindow(eventLogs.filter(e => taskIdsSet.has(e.task_id || e.taskId || e.parent_task_id || e.parentTaskId)), timeWindow);
+  const windowedMissedDays = filterLogsByTimeWindow(missedDaysLogs.filter(m => taskIdsSet.has(m.task_id || m.taskId || m.parent_task_id || m.parentTaskId)), timeWindow);
 
   // ---------------------------------------------------------------------------
   // LEVEL 1: WHAT HAPPENED (Raw Performance & Numerical Stats)
@@ -87,7 +87,9 @@ export function computeAnalyticsIntelligenceData({
   const totalTaskCount = filteredTasks.length;
   const parentTasks = filteredTasks.filter(t => !t.parentTaskId && !t.parent_id);
   const standaloneTasks = filteredTasks.filter(t => !t.parentTaskId && !t.parent_id);
-  const childSubtaskEntities = subtasks.filter(s => taskIdsSet.has(s.parentTaskId || s.parent_task_id));
+  const childSubtaskEntities = (subtasks && subtasks.length > 0)
+    ? subtasks.filter(s => taskIdsSet.has(s.parentTaskId || s.parent_task_id || s.id))
+    : filteredTasks.filter(t => t.parentTaskId || t.parent_id);
 
   // Dynamic Elapsed Days & Completion Math across Tasks
   const todayObj = new Date();
@@ -97,7 +99,9 @@ export function computeAnalyticsIntelligenceData({
   let totalMissedDaysSum = 0;
 
   filteredTasks.forEach(t => {
-    const sDate = new Date(t.plannedStart || t.start_date || (t.created_at ? t.created_at.split('T')[0] : null) || todayObj);
+    const parentObj = t.parentTaskId ? filteredTasks.find(p => p.id === t.parentTaskId) : null;
+    const pStart = t.plannedStart || t.start_date || (parentObj ? (parentObj.plannedStart || parentObj.start_date) : null);
+    const sDate = new Date(pStart || (t.created_at ? t.created_at.split('T')[0] : null) || todayObj);
     const diff = todayObj - sDate;
     const taskElapsed = isNaN(diff) ? 1 : Math.max(1, Math.floor(diff / (1000 * 60 * 60 * 24)) + 1);
     const taskCompleted = Math.min(taskElapsed, t.currentCount || (t.isDoneToday ? 1 : 0));
@@ -191,6 +195,23 @@ export function computeAnalyticsIntelligenceData({
     }
     logCategoryWeekdayMap[cat][dayIdx].total += 1;
     if (l.is_completed || l.is_successful || l.isCompleted) {
+      logCategoryWeekdayMap[cat][dayIdx].completed += 1;
+    }
+  });
+
+  windowedSubtaskLogs.forEach(l => {
+    const dStr = l.log_date || l.logged_date || l.entry_date;
+    if (!dStr) return;
+    const dateObj = new Date(dStr);
+    const dayIdx = (dateObj.getDay() + 6) % 7;
+    const taskObj = filteredTasks.find(t => t.id === (l.subtask_id || l.subtaskId || l.parent_task_id || l.parentTaskId));
+    const cat = taskObj ? (taskObj.category || 'General') : 'General';
+
+    if (!logCategoryWeekdayMap[cat]) {
+      logCategoryWeekdayMap[cat] = Array.from({ length: 7 }).map(() => ({ total: 0, completed: 0 }));
+    }
+    logCategoryWeekdayMap[cat][dayIdx].total += 1;
+    if (l.is_completed || l.isCompleted) {
       logCategoryWeekdayMap[cat][dayIdx].completed += 1;
     }
   });

@@ -178,23 +178,53 @@ export default function HomeDashboardView({
     // Dynamic date boundary filtering for Today, Week, Month, Year
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
-    
+
+    const taskMap = new Map();
+    all.forEach(t => { if (t && t.id) taskMap.set(t.id, t); });
+
+    const resolveDates = (t) => {
+      let start = t.plannedStart || '';
+      let end = t.plannedEnd || '';
+      if ((!start || !end) && t.parentTaskId && taskMap.has(t.parentTaskId)) {
+        const parent = taskMap.get(t.parentTaskId);
+        if (!start) start = parent.plannedStart || '';
+        if (!end) end = parent.plannedEnd || '';
+      }
+      return { start, end };
+    };
+
     if (periodFilter === 'Today') {
-      return all.filter(t => t && t.plannedStart <= todayStr && t.plannedEnd >= todayStr);
+      return all.filter(t => {
+        if (!t) return false;
+        const { start, end } = resolveDates(t);
+        return (!start || start <= todayStr) && (!end || end >= todayStr);
+      });
     }
     if (periodFilter === 'This Week') {
       const startOfWeek = new Date(today);
       startOfWeek.setDate(today.getDate() - today.getDay());
       const startStr = startOfWeek.toISOString().split('T')[0];
-      return all.filter(t => t && (t.plannedEnd >= startStr || t.plannedStart >= startStr));
+      return all.filter(t => {
+        if (!t) return false;
+        const { start, end } = resolveDates(t);
+        return (end && end >= startStr) || (start && start >= startStr) || (!start && !end);
+      });
     }
     if (periodFilter === 'This Month') {
       const currentMonth = today.toISOString().slice(0, 7);
-      return all.filter(t => t && ((t.plannedStart && t.plannedStart.startsWith(currentMonth)) || (t.plannedEnd && t.plannedEnd.startsWith(currentMonth))));
+      return all.filter(t => {
+        if (!t) return false;
+        const { start, end } = resolveDates(t);
+        return (start && start.startsWith(currentMonth)) || (end && end.startsWith(currentMonth)) || (!start && !end);
+      });
     }
     if (periodFilter === 'This Year') {
       const currentYear = today.getFullYear().toString();
-      return all.filter(t => t && ((t.plannedStart && t.plannedStart.startsWith(currentYear)) || (t.plannedEnd && t.plannedEnd.startsWith(currentYear))));
+      return all.filter(t => {
+        if (!t) return false;
+        const { start, end } = resolveDates(t);
+        return (start && start.startsWith(currentYear)) || (end && end.startsWith(currentYear)) || (!start && !end);
+      });
     }
     return all;
   }, [tasks, periodFilter]);
@@ -209,7 +239,7 @@ export default function HomeDashboardView({
       if (!t) return false;
       if (t.progressPercent >= 100) return true;
       if (t.targetCount > 0 && t.currentCount >= t.targetCount) return true;
-      if (t.plannedEnd && todayStr >= t.plannedEnd) return true;
+      if (t.plannedEnd && todayStr >= t.plannedEnd && (t.isDoneToday || t.progressPercent >= 100 || (t.currentCount && t.currentCount > 0))) return true;
       return false;
     };
 
@@ -241,10 +271,10 @@ export default function HomeDashboardView({
       if (t.parentTaskId) {
         if (t.isOptional) {
           totalOptionalSubtasks++;
-          if (t.isDoneToday || isHabitFinished(t)) completedOptionalSubtasks++;
+          if (t.isDoneToday || isHabitFinished(t) || (t.currentCount && t.currentCount > 0)) completedOptionalSubtasks++;
         } else {
           totalMandatorySubtasks++;
-          if (t.isDoneToday || isHabitFinished(t)) completedMandatorySubtasks++;
+          if (t.isDoneToday || isHabitFinished(t) || (t.currentCount && t.currentCount > 0)) completedMandatorySubtasks++;
         }
       }
     });
@@ -252,10 +282,14 @@ export default function HomeDashboardView({
     const finishedHabitsCount = periodFilteredTasks.filter(t => isHabitFinished(t)).length;
     const activeTasksCount = periodFilteredTasks.filter(t => !isHabitFinished(t)).length;
     const completedTasksCount = finishedHabitsCount;
-    const pendingTasksCount = periodFilteredTasks.filter(t => !isHabitFinished(t) && !t.isDoneToday).length;
-    const completionRate = totalAllTasks > 0 ? Math.round((finishedHabitsCount / totalAllTasks) * 100) : 0;
+    const pendingTasksCount = periodFilteredTasks.filter(t => !t.isDoneToday && t.progressPercent < 100).length;
+
+    // Overall completion pace / execution rate
+    const tasksWithExecution = periodFilteredTasks.filter(t => t.isDoneToday || (t.currentCount && t.currentCount > 0) || t.progressPercent >= 100 || isHabitFinished(t)).length;
+    const completionRate = totalAllTasks > 0 ? Math.round((tasksWithExecution / totalAllTasks) * 100) : 0;
     const mandatorySubtaskRate = totalMandatorySubtasks > 0 ? Math.round((completedMandatorySubtasks / totalMandatorySubtasks) * 100) : 0;
     const optionalSubtaskRate = totalOptionalSubtasks > 0 ? Math.round((completedOptionalSubtasks / totalOptionalSubtasks) * 100) : 0;
+    const archivedCount = (tasks || []).filter(t => t && t.isArchived).length + (taskArchiveLogs || []).length;
 
     // Real-Time Dynamic Streaks & Momentum Calculations
     let currentConsecutive = 0;
@@ -315,13 +349,26 @@ export default function HomeDashboardView({
     const dayCountTasks = periodFilteredTasks.filter(t => t.trackingMode === 'count_days');
     const eventCountTasks = periodFilteredTasks.filter(t => t.trackingMode === 'count_event');
 
-    const endDateDone = endDateTasks.filter(t => t.progressPercent >= 100 || (t.targetCount > 0 && t.currentCount >= t.targetCount) || (t.plannedEnd && new Date() >= new Date(t.plannedEnd) && t.isDoneToday)).length;
-    const dayCountDone = dayCountTasks.filter(t => t.progressPercent >= 100 || (t.targetCount > 0 && t.currentCount >= t.targetCount)).length;
-    const eventCountDone = eventCountTasks.filter(t => t.progressPercent >= 100 || (t.targetCount > 0 && t.currentCount >= t.targetCount)).length;
+    const endDateDone = endDateTasks.filter(t => t.isDoneToday || isHabitFinished(t) || (t.currentCount && t.currentCount > 0) || t.progressPercent >= 100).length;
+    const dayCountDone = dayCountTasks.filter(t => t.isDoneToday || isHabitFinished(t) || (t.currentCount && t.currentCount > 0) || t.progressPercent >= 100).length;
+    const eventCountDone = eventCountTasks.filter(t => t.isDoneToday || isHabitFinished(t) || (t.currentCount && t.currentCount > 0) || t.progressPercent >= 100).length;
 
-    const endDateRate = endDateTasks.length > 0 ? Math.round((endDateDone / endDateTasks.length) * 100) : 0;
-    const dayCountRate = dayCountTasks.length > 0 ? Math.round((dayCountDone / dayCountTasks.length) * 100) : 0;
-    const eventCountRate = eventCountTasks.length > 0 ? Math.round((eventCountDone / eventCountTasks.length) * 100) : 0;
+    const calcTypeRate = (taskList, doneCount) => {
+      if (!taskList || taskList.length === 0) return 0;
+      let totalP = 0;
+      taskList.forEach(t => {
+        if (t.progressPercent > 0) totalP += t.progressPercent;
+        else if (t.targetCount > 0) totalP += Math.min(100, Math.round(((t.currentCount || 0) / t.targetCount) * 100));
+        else if (t.isDoneToday) totalP += 100;
+      });
+      const avgP = Math.round(totalP / taskList.length);
+      const activeRate = Math.round((doneCount / taskList.length) * 100);
+      return Math.max(avgP, activeRate);
+    };
+
+    const endDateRate = calcTypeRate(endDateTasks, endDateDone);
+    const dayCountRate = calcTypeRate(dayCountTasks, dayCountDone);
+    const eventCountRate = calcTypeRate(eventCountTasks, eventCountDone);
 
     // Category Breakdown
     const categoriesSet = new Set();
@@ -330,7 +377,7 @@ export default function HomeDashboardView({
 
     const categoryStats = categoryList.map(cat => {
       const catTasks = periodFilteredTasks.filter(t => t && t.category === cat);
-      const catDone = catTasks.filter(t => isHabitFinished(t)).length;
+      const catDone = catTasks.filter(t => t.isDoneToday || isHabitFinished(t) || (t.currentCount && t.currentCount > 0) || t.progressPercent >= 100).length;
       const catPending = catTasks.length - catDone;
       const catRate = catTasks.length > 0 ? Math.round((catDone / catTasks.length) * 100) : 0;
       return {
@@ -349,26 +396,92 @@ export default function HomeDashboardView({
     const mostImprovedCategory = categoryStats.slice().sort((a, b) => b.done - a.done)[0] || { category: 'General', done: 0 };
 
     // Accumulated Real-Time Measured Work
+    const filterLogByPeriod = (logDate) => {
+      if (!logDate) return false;
+      const dStr = typeof logDate === 'string' ? logDate.split('T')[0] : '';
+      if (!dStr) return false;
+      if (periodFilter === 'All Time') return true;
+      if (periodFilter === 'Today') return dStr === todayStr;
+      if (periodFilter === 'This Week') {
+        const startOfWeek = new Date(todayObj);
+        startOfWeek.setDate(todayObj.getDate() - todayObj.getDay());
+        const startStr = startOfWeek.toISOString().split('T')[0];
+        return dStr >= startStr;
+      }
+      if (periodFilter === 'This Month') {
+        return dStr.startsWith(todayStr.slice(0, 7));
+      }
+      if (periodFilter === 'This Year') {
+        return dStr.startsWith(todayStr.slice(0, 4));
+      }
+      return true;
+    };
+
     let questionsSolved = 0;
     let pagesRead = 0;
     let exerciseMins = 0;
     let studyHours = 0;
     const measureCategoryTotals = {};
 
-    periodFilteredTasks.forEach(t => {
-      if (t && (t.hasMeasureTracking || t.loggedMeasureVal || t.currentEventWork || t.measureUnit)) {
-        const val = Number(t.loggedMeasureVal || t.currentEventWork || t.currentCount || 0);
-        const unit = (t.measureUnit || '').toLowerCase();
-        const cat = t.category || 'General';
-        measureCategoryTotals[cat] = (measureCategoryTotals[cat] || 0) + val;
+    // 1. Ingest all matching subtask_logs
+    (subtaskLogs || []).forEach(l => {
+      const d = l.log_date || l.logged_date || l.entry_date;
+      if (!filterLogByPeriod(d)) return;
+      const val = Number(l.measured_value || l.measuredValue || 0);
+      if (val <= 0) return;
+      
+      const subtaskItem = periodFilteredTasks.find(t => t.id === (l.subtask_id || l.subtaskId)) ||
+                          (subtasks || []).find(s => s.id === (l.subtask_id || l.subtaskId)) ||
+                          periodFilteredTasks.find(t => t.id === (l.parent_task_id || l.parentTaskId));
+      const unit = (subtaskItem?.measureUnit || l.measure_unit || '').toLowerCase();
+      const cat = subtaskItem?.category || 'General';
 
-        if (unit.includes('question') || unit.includes('problem')) questionsSolved += val;
-        else if (unit.includes('page')) pagesRead += val;
-        else if (unit.includes('min') || unit.includes('exercise')) exerciseMins += val;
-        else if (unit.includes('hour') || unit.includes('study')) studyHours += val;
-        else questionsSolved += val;
-      }
+      measureCategoryTotals[cat] = (measureCategoryTotals[cat] || 0) + val;
+      if (unit.includes('question') || unit.includes('problem') || unit.includes('review') || unit.includes('point')) questionsSolved += val;
+      else if (unit.includes('page') || unit.includes('book')) pagesRead += val;
+      else if (unit.includes('min') || unit.includes('exercise') || unit.includes('mobility')) exerciseMins += val;
+      else if (unit.includes('hour') || unit.includes('study')) studyHours += val;
+      else questionsSolved += val;
     });
+
+    // 2. Ingest task_logs that are standalone or parents (avoid double-counting if subtask logs exist)
+    (taskLogs || []).forEach(l => {
+      const d = l.logged_date || l.log_date || l.entry_date;
+      if (!filterLogByPeriod(d)) return;
+      const val = Number(l.measured_value || l.measuredValue || 0);
+      if (val <= 0) return;
+      const taskItem = periodFilteredTasks.find(t => t.id === (l.task_id || l.taskId));
+      if (!taskItem) return;
+      const hasChildren = (subtasksMap[taskItem.id] || []).length > 0;
+      if (hasChildren) return;
+
+      const unit = (taskItem.measureUnit || '').toLowerCase();
+      const cat = taskItem.category || 'General';
+      measureCategoryTotals[cat] = (measureCategoryTotals[cat] || 0) + val;
+      if (unit.includes('question') || unit.includes('problem') || unit.includes('point')) questionsSolved += val;
+      else if (unit.includes('page')) pagesRead += val;
+      else if (unit.includes('min') || unit.includes('exercise')) exerciseMins += val;
+      else if (unit.includes('hour') || unit.includes('study')) studyHours += val;
+      else questionsSolved += val;
+    });
+
+    // 3. Fallback: If no logs yet in period, check today's loggedMeasureVal on items
+    if (questionsSolved === 0 && pagesRead === 0 && exerciseMins === 0 && studyHours === 0) {
+      periodFilteredTasks.forEach(t => {
+        if (t && (t.hasMeasureTracking || t.loggedMeasureVal || t.currentEventWork || t.measureUnit)) {
+          const val = Number(t.loggedMeasureVal || t.currentEventWork || t.currentCount || 0);
+          const unit = (t.measureUnit || '').toLowerCase();
+          const cat = t.category || 'General';
+          measureCategoryTotals[cat] = (measureCategoryTotals[cat] || 0) + val;
+
+          if (unit.includes('question') || unit.includes('problem')) questionsSolved += val;
+          else if (unit.includes('page')) pagesRead += val;
+          else if (unit.includes('min') || unit.includes('exercise')) exerciseMins += val;
+          else if (unit.includes('hour') || unit.includes('study')) studyHours += val;
+          else questionsSolved += val;
+        }
+      });
+    }
 
     const totalMeasureUnits = questionsSolved + pagesRead + exerciseMins + studyHours || 1;
     const measureCategoryShare = Object.entries(measureCategoryTotals).map(([cat, val]) => ({
@@ -459,6 +572,7 @@ export default function HomeDashboardView({
       completionRate,
       mandatorySubtaskRate,
       optionalSubtaskRate,
+      archivedCount,
       productivityScore,
       endDateTasksCount: endDateTasks.length,
       endDateDone,
@@ -761,7 +875,7 @@ export default function HomeDashboardView({
           {/* ROW 4: Archived Habits (In Pause) vs Mandatory Subhabits */}
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#FEF2F2', borderRadius: '14px', border: '1px solid #FECACA', borderLeft: '4px solid #DC2626', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ARCHIVED HABITS (IN PAUSE)</span>
-            <div style={{ fontSize: '24px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>{stats.blockedParents}</div>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>{stats.archivedCount ?? 0}</div>
             <span style={{ fontSize: '11px', color: '#991B1B', fontWeight: 600 }}>Habits currently in archive / pause state</span>
           </div>
 
