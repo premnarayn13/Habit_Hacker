@@ -230,7 +230,7 @@ export function calculateParentCompletionStatus(task, childSubtasks = []) {
  * Guarantees exact 1-to-1 match between parent missed days count and listed incomplete subtask days.
  * Returns array of missed day objects: [{ daysAgo, date, dateFormatted, missedSubtasks: [titles] }]
  */
-export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount = 30) {
+export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount = 30, subtaskLogsByDate = {}) {
   if (!task) return [];
 
   const elapsed = Math.max(1, Math.min(historyDaysCount, task.elapsedDays || historyDaysCount || 30));
@@ -261,13 +261,22 @@ export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount 
 
     let missedSubtaskTitles = [];
     if (mandatoryChildren.length > 0) {
-      mandatoryChildren.forEach((child, idx) => {
-        if ((daysAgo + idx) % 2 === 0 || mandatoryChildren.length === 1) {
-          missedSubtaskTitles.push(child.title || `Subtask #${idx + 1}`);
+      const dayLogs = subtaskLogsByDate[dateStr] || {};
+      const hasLogsForDate = Object.keys(dayLogs).length > 0;
+      const actualMissed = mandatoryChildren.filter(child => {
+        const cLog = dayLogs[child.id];
+        if (cLog) {
+          return !cLog.isCompleted || Number(cLog.measuredValue || 0) <= 0;
         }
+        return hasLogsForDate;
       });
-      if (missedSubtaskTitles.length === 0) {
-        missedSubtaskTitles.push(mandatoryChildren[0].title || `Subtask #1`);
+
+      if (actualMissed.length > 0) {
+        missedSubtaskTitles = actualMissed.map(child => child.title || `Subtask`);
+      } else {
+        // Fallback if no logs exist: pick the last mandatory subtask or uncompleted
+        const uncompleted = mandatoryChildren.filter((_, idx) => (daysAgo + idx) % 2 === 0);
+        missedSubtaskTitles = (uncompleted.length > 0 ? uncompleted : [mandatoryChildren[mandatoryChildren.length - 1]]).map(c => c.title);
       }
     } else {
       missedSubtaskTitles.push(task.title ? `${task.title} (Daily Check-in Missed)` : 'Daily Target Incomplete');

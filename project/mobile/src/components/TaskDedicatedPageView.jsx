@@ -82,6 +82,7 @@ export default function TaskDedicatedPageView({
   allTasks = [],
   taskLogs = [],
   subtaskLogs = [],
+  eventLogs = [],
   onBack, 
   onEditTask,
   onArchiveTask,
@@ -190,32 +191,27 @@ export default function TaskDedicatedPageView({
     ? Math.min(100, Math.round((currentCount / targetCount) * 100))
     : 0;
 
-  const missedDaysCount = Math.max(0, elapsedDays - currentCount);
-  const missRatePercent = elapsedDays > 0 ? Math.round((missedDaysCount / elapsedDays) * 100) : 0;
-
   // Direct Child Subtasks
   const directChildSubtasks = (childSubtasks && childSubtasks.length > 0)
     ? childSubtasks
     : (allTasks ? allTasks.filter(t => t && currentTask && t.parentTaskId === currentTask.id) : []);
 
-  // Subtask Missed Failures & Bottleneck Highlight
-  const subtaskFailureStats = directChildSubtasks.map(s => ({
-    subtask: s,
-    missedCount: s.missedDaysCount !== undefined ? s.missedDaysCount : Math.max(0, elapsedDays - (s.currentCount || 0))
-  })).sort((a, b) => b.missedCount - a.missedCount);
-
-  const mostMissedSubtaskItem = subtaskFailureStats.length > 0 ? subtaskFailureStats[0] : null;
-
   // Subtask Contribution Palette
   const subtaskColors = ['#4338CA', '#F59E0B', '#10B981', '#EF4444', '#06B6D4', '#8B5CF6', '#EC4899'];
   const measureUnit = currentTask.measureUnit || currentTask.eventUnitName || 'units';
-  const eventUnitTarget = Number(currentTask.eventUnitTarget || currentTask.measureTarget || 10);
-  
-  // Aggregate measure targets: if parent has children, default to sum of children's measure targets if parent not set
+
+  // Aggregate measure targets: if parent has children, default to sum of children's measure targets
   const childMeasureSum = directChildSubtasks.reduce((sum, st) => sum + Number(st.measureTarget || 0), 0);
-  const measureTarget = Number(currentTask.measureTarget) > 0 
-    ? Number(currentTask.measureTarget) 
-    : (childMeasureSum > 0 ? childMeasureSum : Number(currentTask.eventUnitTarget || 0));
+  const eventUnitTarget = Number(
+    currentTask.eventUnitTarget > 0 
+      ? currentTask.eventUnitTarget 
+      : (childMeasureSum > 0 ? childMeasureSum : (currentTask.measureTarget > 0 ? currentTask.measureTarget : 65))
+  );
+  const measureTarget = Number(
+    currentTask.measureTarget > 0 && currentTask.measureTarget !== 10
+      ? (childMeasureSum > 0 ? childMeasureSum : currentTask.measureTarget)
+      : (childMeasureSum > 0 ? childMeasureSum : eventUnitTarget)
+  );
 
   // Total Targeted Measure Calculation by Task Type (Across All 3 Parent Types)
   const totalTargetedMeasure = trackingMode === 'count_event'
@@ -475,7 +471,7 @@ export default function TaskDedicatedPageView({
             : (currentTask.isDoneToday ? (currentTask.lastMeasuredValue || measureTarget) : 0)));
 
   // FULL TIMELINE DAY-BY-DAY DATA ENGINE (From plannedStart / Day 1 up to today / Day elapsedDays)
-  const missedDaysRecordsList = getMissedDaysForTask({ ...currentTask, elapsedDays }, directChildSubtasks, elapsedDays);
+  const missedDaysRecordsList = getMissedDaysForTask({ ...currentTask, elapsedDays }, directChildSubtasks, elapsedDays, subtaskLogsByDate);
   const missedDaysSetByAgo = new Set(missedDaysRecordsList.map(m => m.daysAgo));
 
   const startTimelineDate = new Date(effectiveStartStr);
@@ -504,8 +500,15 @@ export default function TaskDedicatedPageView({
       const daySubLogs = subtaskLogsByDate[dateStr];
       const dayPLog = (taskLogs || []).find(l => (l.task_id === currentTask.id || l.taskId === currentTask.id) && getCleanDate(l) === dateStr);
       const directSubLog = (subtaskLogs || []).find(l => (l.subtask_id === currentTask.id || l.subtaskId === currentTask.id || l.task_id === currentTask.id) && getCleanDate(l) === dateStr);
+      const dayEvLog = (eventLogs || []).find(el => 
+        (el.task_id === currentTask.id || el.taskId === currentTask.id || el.parent_task_id === currentTask.id || el.parentTaskId === currentTask.id) &&
+        getCleanDate(el) === dateStr
+      );
 
-      if (directChildSubtasks.length > 0) {
+      if (trackingMode === 'count_event' && dayEvLog) {
+        isCompletedDay = true;
+        isMissedDay = false;
+      } else if (directChildSubtasks.length > 0) {
         if (dayPLog) {
           if (dayPLog.is_successful === true || (dayPLog.is_successful !== false && (dayPLog.increment_value > 0 || dayPLog.measured_value > 0))) {
             isCompletedDay = true;
@@ -558,7 +561,14 @@ export default function TaskDedicatedPageView({
       if (daysAgo === 0) {
         dailyDeltaMeasure = todayActualMeasure > 0 ? todayActualMeasure : (currentTask.isDoneToday ? (measureTarget || 1) : 0);
       } else {
-        if (logsByDate[dateStr] !== undefined && logsByDate[dateStr] > 0) {
+        const dayEvLog = (eventLogs || []).find(el => 
+          (el.task_id === currentTask.id || el.taskId === currentTask.id || el.parent_task_id === currentTask.id || el.parentTaskId === currentTask.id) &&
+          getCleanDate(el) === dateStr
+        );
+
+        if (trackingMode === 'count_event' && dayEvLog) {
+          dailyDeltaMeasure = Number(dayEvLog.total_work_accumulated || eventUnitTarget || 65);
+        } else if (logsByDate[dateStr] !== undefined && logsByDate[dateStr] > 0) {
           dailyDeltaMeasure = logsByDate[dateStr];
         } else if (subtaskLogsByDate[dateStr]?.[currentTask.id]?.measuredValue > 0) {
           dailyDeltaMeasure = subtaskLogsByDate[dateStr][currentTask.id].measuredValue;
@@ -600,9 +610,43 @@ export default function TaskDedicatedPageView({
     };
   });
 
-  // Total Completed Measure is the TRUE accumulated measure across all completed days (No Capping!)
-  const totalCompletedMeasure = runningCumulativeActualMeasure;
+  // Total Completed Measure is the TRUE accumulated measure across all completed events/days (No Capping!)
+  const eventMeasurePerUnit = (measureTarget > 0 ? measureTarget : eventUnitTarget);
+  const computedEventCompletedMeasure = currentCount * eventMeasurePerUnit;
+  const totalCompletedMeasure = trackingMode === 'count_event'
+    ? Math.max(runningCumulativeActualMeasure, computedEventCompletedMeasure)
+    : runningCumulativeActualMeasure;
   const totalTargetLeft = Math.max(0, Math.round((totalTargetedMeasure - totalCompletedMeasure) * 10) / 10);
+
+  // Past missed days count (excludes today in progress)
+  const pastMissedDaysCount = fullTimelineDailyData.filter(d => d.daysAgo > 0 && d.isMissedDay).length;
+  const missedDaysCount = pastMissedDaysCount;
+  const missRatePercent = elapsedDays > 1 ? Math.round((missedDaysCount / (elapsedDays - (currentTask.isDoneToday ? 0 : 1))) * 100) : 0;
+
+  // Subtask Missed Failures & Bottleneck Highlight (Derived from actual past subtask logs)
+  const subtaskFailureStats = directChildSubtasks.map(s => {
+    let missedCount = 0;
+    fullTimelineDailyData.forEach(d => {
+      if (d.daysAgo > 0) {
+        const dayLog = subtaskLogsByDate[d.dateStr]?.[s.id];
+        if (dayLog) {
+          if (!dayLog.isCompleted || Number(dayLog.measuredValue || 0) <= 0) {
+            missedCount++;
+          }
+        } else if (d.isMissedDay) {
+          missedCount++;
+        }
+      }
+    });
+    return {
+      subtask: s,
+      missedCount
+    };
+  }).sort((a, b) => b.missedCount - a.missedCount);
+
+  const mostMissedSubtaskItem = (subtaskFailureStats.length > 0 && subtaskFailureStats[0].missedCount > 0) 
+    ? subtaskFailureStats[0] 
+    : null;
 
   // Target days left vs remaining calendar days
   const effectiveTargetDays = trackingMode === 'end_date' ? totalWindowDays : targetCount;
@@ -796,62 +840,119 @@ export default function TaskDedicatedPageView({
 
   const sampleDailyMeasures = fullSubtaskDailyMeasures;
 
-  // Event Count Daily Cluster Data (Derived from actual completed event logs & task currentCount)
+  // Event Count Daily Cluster Data (Derived from actual completed event logs & timeline records)
   const eventClusterDailyData = (() => {
-    const totalEvents = currentCount || 0;
-    let remainingEventsToPlace = totalEvents;
-    let eventCounter = 1;
+    // Collect all event logs for this task or its parent/children
+    const taskEvLogs = (eventLogs || []).filter(el => 
+      el.task_id === currentTask.id || el.taskId === currentTask.id || el.parent_task_id === currentTask.id || el.parentTaskId === currentTask.id
+    );
+
+    // Render the active 7-day window leading up to today
     const daysArr = Array.from({ length: 7 });
-    
-    const dayEventCounts = [0, 0, 0, 0, 0, 0, 0];
-    if (totalEvents > 0) {
-      if (currentTask.isDoneToday || totalEvents === 1) {
-        dayEventCounts[6] = 1;
-        remainingEventsToPlace -= 1;
-      }
-      if (remainingEventsToPlace > 0) {
-        const ydayEvents = Math.min(remainingEventsToPlace, 2);
-        dayEventCounts[5] = ydayEvents;
-        remainingEventsToPlace -= ydayEvents;
-      }
-      let dayIdx = 4;
-      while (remainingEventsToPlace > 0 && dayIdx >= 0) {
-        const placed = Math.min(remainingEventsToPlace, 2);
-        dayEventCounts[dayIdx] = placed;
-        remainingEventsToPlace -= placed;
-        dayIdx--;
-      }
-    }
+    let globalEvCounter = 1;
 
     return daysArr.map((_, idx) => {
       const d = new Date();
       d.setDate(d.getDate() - (6 - idx));
+      const dateStr = d.toISOString().split('T')[0];
       const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
-      const eventCountToday = dayEventCounts[idx];
+      const daysAgo = 6 - idx;
 
-      const events = Array.from({ length: eventCountToday }).map(() => {
-        const curEvNum = eventCounter++;
-        const subtaskSegments = directChildSubtasks.map((st, sIdx) => {
-          const color = subtaskColors[sIdx % subtaskColors.length];
-          const val = Number(st.measureTarget || (sIdx === 0 ? 6 : (sIdx === 1 ? 3 : 1)));
+      // Find all completed events on this date
+      const matchingEvLogs = taskEvLogs.filter(el => getCleanDate(el) === dateStr);
+
+      let events = [];
+      let eventCountToday = matchingEvLogs.length;
+
+      if (eventCountToday > 0) {
+        events = matchingEvLogs.map(el => {
+          const curEvNum = el.event_number || el.eventNumber || globalEvCounter++;
+          const subtaskSegments = directChildSubtasks.map((st, sIdx) => {
+            const color = subtaskColors[sIdx % subtaskColors.length];
+            let val = Number(st.measureTarget || (sIdx === 0 ? 20 : (sIdx === 1 ? 25 : 20)));
+            if (el.subtask_breakdown) {
+              try {
+                const bk = typeof el.subtask_breakdown === 'string' ? JSON.parse(el.subtask_breakdown) : el.subtask_breakdown;
+                const matchKey = Object.keys(bk).find(k => k.includes(st.id) || st.id.includes(k) || k.toLowerCase().includes(st.title.slice(0, 5).toLowerCase()));
+                if (matchKey && bk[matchKey] !== undefined) val = Number(bk[matchKey]);
+              } catch (e) {
+                // ignore
+              }
+            }
+            return {
+              subtaskId: st.id,
+              title: st.title,
+              val,
+              color,
+              pct: Math.round((val / Math.max(1, eventUnitTarget)) * 100)
+            };
+          });
+
           return {
-            subtaskId: st.id,
-            title: st.title,
-            val,
-            color,
-            pct: Math.round((val / Math.max(1, eventUnitTarget)) * 100)
+            eventId: curEvNum,
+            label: `Ev #${curEvNum}`,
+            subtaskSegments: subtaskSegments.length > 0 ? subtaskSegments : [{
+              subtaskId: currentTask.id,
+              title: currentTask.title,
+              val: Number(el.total_work_accumulated || eventUnitTarget || 10),
+              color: '#2563EB',
+              pct: 100
+            }]
           };
         });
+      } else {
+        // Fallback check from subtaskLogsByDate or timeline day
+        const timelineDay = fullTimelineDailyData.find(td => td.dateStr === dateStr);
+        let fallbackEvents = 0;
 
-        return {
-          eventId: curEvNum,
-          label: `Ev #${curEvNum}`,
-          subtaskSegments
-        };
-      });
+        if (directChildSubtasks.length > 0) {
+          // Parent task: check if day was completed
+          if (timelineDay && timelineDay.isCompletedDay) {
+            fallbackEvents = 1;
+          }
+        } else {
+          // Subhabit with Type 3 (count_event): multiple events can be completed on a single day
+          const loggedEv = subtaskLogsByDate[dateStr]?.[currentTask.id]?.eventCount;
+          if (loggedEv !== undefined && Number(loggedEv) > 0) {
+            fallbackEvents = Number(loggedEv);
+          } else if (timelineDay && timelineDay.isCompletedDay) {
+            fallbackEvents = Number(currentTask.targetCount || 2);
+          }
+        }
+
+        eventCountToday = fallbackEvents;
+        events = Array.from({ length: eventCountToday }).map(() => {
+          const curEvNum = globalEvCounter++;
+          const subtaskSegments = directChildSubtasks.length > 0
+            ? directChildSubtasks.map((st, sIdx) => {
+                const color = subtaskColors[sIdx % subtaskColors.length];
+                const val = Number(st.measureTarget || (sIdx === 0 ? 20 : (sIdx === 1 ? 25 : 20)));
+                return {
+                  subtaskId: st.id,
+                  title: st.title,
+                  val,
+                  color,
+                  pct: Math.round((val / Math.max(1, eventUnitTarget)) * 100)
+                };
+              })
+            : [{
+                subtaskId: currentTask.id,
+                title: currentTask.title,
+                val: Number(currentTask.measureTarget || 10),
+                color: '#2563EB',
+                pct: 100
+              }];
+
+          return {
+            eventId: curEvNum,
+            label: `Ev #${curEvNum}`,
+            subtaskSegments
+          };
+        });
+      }
 
       return {
-        date: d.toISOString().split('T')[0],
+        date: dateStr,
         dayLabel,
         eventCountToday,
         events
@@ -863,38 +964,51 @@ export default function TaskDedicatedPageView({
   const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const monthLabels52 = ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
   
-  const missedDaysRecords = getMissedDaysForTask({ ...currentTask, elapsedDays }, directChildSubtasks, elapsedDays);
+  const missedDaysRecords = getMissedDaysForTask({ ...currentTask, elapsedDays }, directChildSubtasks, elapsedDays, subtaskLogsByDate);
   const missedDaysMap = new Set(missedDaysRecords.map(m => m.daysAgo));
 
+  const todayDayOfWeek = today.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
   const heatmap52WeeksData = Array.from({ length: 52 }).map((_, wIdx) => {
     return Array.from({ length: 7 }).map((_, dIdx) => {
-      // 52 weeks = 364 days. Current week is wIdx = 51.
-      const daysAgo = (51 - wIdx) * 7 + (6 - dIdx);
+      // In week 51 (current week), cell at row todayDayOfWeek is Today (daysAgo = 0)
+      const daysAgo = (51 - wIdx) * 7 + (todayDayOfWeek - dIdx);
       
-      // Check if day falls within elapsed operational timeline (0 <= daysAgo <= elapsedDays)
-      const isWithinElapsedTimeline = daysAgo >= 0 && daysAgo <= elapsedDays;
-      if (!isWithinElapsedTimeline) {
-        return { intensity: 0, measureVal: 0, daysAgo, status: daysAgo < 0 ? 'Future Day (Yet to Come)' : 'Before Task Creation Date' };
+      // Check if day falls within operational timeline
+      if (daysAgo < 0) {
+        return { intensity: 0, measureVal: 0, daysAgo, status: 'Future Day (Yet to Come)' };
+      }
+      if (daysAgo >= elapsedDays) {
+        return { intensity: 0, measureVal: 0, daysAgo, status: 'Before Task Creation Date' };
       }
 
-      // Determine if task was completed on this active day
-      const isDayCompleted = daysAgo === 0 
-        ? Boolean(currentTask.isDoneToday || currentTask.progressPercent >= 100 || currentCount > 0)
-        : (currentCount >= (elapsedDays - daysAgo));
+      const cellDate = new Date(today);
+      cellDate.setDate(today.getDate() - daysAgo);
+      const cellDateStr = cellDate.toISOString().split('T')[0];
+      const cellFormattedDate = cellDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-      if (!isDayCompleted) {
-        // Active day NOT done / missed -> RED COLOR (intensity = -1)
-        return { intensity: -1, measureVal: 0, daysAgo, status: 'Not Done (Missed Active Day)' };
+      const matchTimelineDay = fullTimelineDailyData.find(d => d.dateStr === cellDateStr);
+
+      if (daysAgo === 0) {
+        if (currentTask.isDoneToday) {
+          const val = Number(currentTask.loggedMeasureVal || measureTarget || 1);
+          return { intensity: 3, measureVal: val, daysAgo, status: `${cellFormattedDate}: Completed Today (${val} ${measureUnit})` };
+        }
+        return { intensity: 0, measureVal: 0, daysAgo, status: `${cellFormattedDate}: Today (In Progress)` };
+      }
+
+      if (!matchTimelineDay || matchTimelineDay.isMissedDay) {
+        // Missed Active Day -> RED COLOR
+        return { intensity: -1, measureVal: 0, daysAgo, status: `${cellFormattedDate}: Missed Active Day (0 / Incomplete)` };
       }
 
       // Task WAS completed on this day
       if (!currentTask.hasMeasureTracking) {
-        // Non-measure based task (standard check-off) -> Solid Medium Green
-        return { intensity: 3, measureVal: 1, daysAgo, status: 'Completed (Standard Check-off)' };
+        return { intensity: 3, measureVal: 1, daysAgo, status: `${cellFormattedDate}: Completed (Standard Check-off)` };
       }
 
-      // Measure-based task -> Green intensity driven by logged daily measure vs target
-      const dayMeasureVal = Number(currentTask.measureTarget || 10);
+      const dayMeasureVal = matchTimelineDay.dailyDeltaMeasure > 0 
+        ? matchTimelineDay.dailyDeltaMeasure 
+        : Number(currentTask.measureTarget || 10);
       const targetRatio = dailyTargetMeasure > 0 ? (dayMeasureVal / dailyTargetMeasure) : 1;
       let intensity = 3;
       if (targetRatio < 0.5) intensity = 1;
@@ -906,7 +1020,7 @@ export default function TaskDedicatedPageView({
         intensity,
         measureVal: dayMeasureVal,
         daysAgo,
-        status: `${dayMeasureVal} ${measureUnit} Logged (Completed)`
+        status: `${cellFormattedDate}: ${dayMeasureVal} ${measureUnit} Logged (Completed)`
       };
     });
   });
@@ -1539,7 +1653,7 @@ export default function TaskDedicatedPageView({
       {/* ========================================================================= */}
       {/* EVENT COUNT STACKED BAR CHART (SUBTASK CONTRIBUTIONS PER EVENT) */}
       {/* ========================================================================= */}
-      {(trackingMode === 'count_event' && directChildSubtasks.length > 0) && (
+      {(trackingMode === 'count_event') && (
         <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', borderLeft: '6px solid #2563EB', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
           <div style={{ marginBottom: '16px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1610,21 +1724,30 @@ export default function TaskDedicatedPageView({
             {/* SUBTASK CONTRIBUTIONS LEGEND */}
             <div style={{ background: '#F8FAFC', padding: '14px 16px', borderRadius: '14px', border: '1px solid #E2E8F0', width: '240px', flexShrink: 0 }}>
               <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block', marginBottom: '8px', borderBottom: '1px solid #CBD5E1', paddingBottom: '4px' }}>
-                Subtask Contribution Key
+                {directChildSubtasks.length > 0 ? 'Subtask Contribution Key' : 'Event Unit Key'}
               </span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {directChildSubtasks.map((st, i) => {
-                  const val = Number(st.measureTarget || st.currentEventWork || 0);
-                  const unitStr = val > 0 ? ` (${val} ${measureUnit})` : (st.isOptional ? ' (Optional)' : ' (Standard)');
-                  return (
-                    <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#1E293B' }}>
-                      <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: subtaskColors[i % subtaskColors.length], flexShrink: 0 }} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {st.title} <strong style={{ color: '#2563EB', fontWeight: 800 }}>{unitStr}</strong>
-                      </span>
-                    </div>
-                  );
-                })}
+                {directChildSubtasks.length > 0 ? (
+                  directChildSubtasks.map((st, i) => {
+                    const val = Number(st.measureTarget || st.currentEventWork || 0);
+                    const unitStr = val > 0 ? ` (${val} ${measureUnit})` : (st.isOptional ? ' (Optional)' : ' (Standard)');
+                    return (
+                      <div key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#1E293B' }}>
+                        <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: subtaskColors[i % subtaskColors.length], flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {st.title} <strong style={{ color: '#2563EB', fontWeight: 800 }}>{unitStr}</strong>
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 700, color: '#1E293B' }}>
+                    <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: '#2563EB', flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {currentTask.title} <strong style={{ color: '#2563EB', fontWeight: 800 }}>({measureTarget || 10} {measureUnit}/event)</strong>
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
         </div>
@@ -2269,7 +2392,7 @@ export default function TaskDedicatedPageView({
       {/* 15. MISSED DAYS HISTORY & MANDATORY SUBTASK BREAKDOWN */}
       {/* ========================================================================= */}
       {(() => {
-        const missedDaysRecords = getMissedDaysForTask(currentTask, directChildSubtasks, elapsedDays || totalWindowDays || 30);
+        const missedDaysRecords = getMissedDaysForTask(currentTask, directChildSubtasks, elapsedDays || totalWindowDays || 30, subtaskLogsByDate);
 
         return (
           <div style={{ padding: '24px', background: '#FFFFFF', borderRadius: '24px', border: '1px solid #E2E8F0', borderLeft: '6px solid #EF4444', boxShadow: '0 8px 24px rgba(239, 68, 68, 0.06)', marginTop: '24px' }}>

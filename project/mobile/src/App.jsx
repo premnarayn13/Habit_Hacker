@@ -2096,6 +2096,7 @@ export default function App() {
               allTasks={tasks}
               taskLogs={taskLogs}
               subtaskLogs={subtaskLogs}
+              eventLogs={eventLogs}
               onBack={() => setDedicatedTaskPageItem(null)}
               onEditTask={(t) => setSelectedEditItem(t)}
               onArchiveTask={handleArchiveTask}
