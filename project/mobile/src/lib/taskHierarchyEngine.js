@@ -3,21 +3,21 @@
  * 
  * Rules supported:
  * 1. Measurable subtasks contribute actual completed measure.
- * 2. Average measure is computed EXCLUSIVELY from measurable subtasks (excluding event-based and no-measure subtasks).
+ * 2. Non-event subhabits average: computed from non-event subtasks when an event subtask is present.
  * 3. Fallback average is 1 if no measurable subtasks exist (avoids division by 0).
- * 4. Event-based subtasks contribute (Event Count x Average Measure).
+ * 4. Event-based subtasks contribute: (peer average / target events) * completed events.
  * 5. No-measure subtasks contribute (1 x Average Measure) when completed.
  * 6. Parent with children has NO independent measure; parent measure is the sum of subtask contributions.
- * 7. Parent with children CANNOT be manually completed (except edge case: exactly 1 optional subtask).
- * 8. Parent is auto-completed ONLY when ALL mandatory (non-optional) subtasks are completed.
- * 9. Optional subtasks do NOT prevent parent completion and do NOT cause missed days.
+ * 7. FOR ALL PARENT HABITS: A habit with subhabits CANNOT be manually marked completed;
+ *    it can ONLY be marked completed by completing its subhabits.
+ * 8. Parent is auto-completed ONLY when ALL mandatory subtasks are completed.
+ * 9. Subhabits of deleted parents become standalone parent habits.
  * 10. Missed days are derived directly from mandatory subtask completion records.
  */
 
 /**
- * Checks if a parent task should be treated as a parent driven by child subtasks.
- * Edge Case 10: If a parent has exactly 1 subtask and that subtask is optional,
- * the parent behaves like a normal standalone task.
+ * Checks if a task should be treated as a parent habit driven by child subtasks.
+ * Rule: Any task with 1 or more child subtasks is a parent habit.
  */
 export function isParentTaskWithChildren(task, childSubtasks = []) {
   if (!childSubtasks || childSubtasks.length === 0) return false;
@@ -26,11 +26,12 @@ export function isParentTaskWithChildren(task, childSubtasks = []) {
 
 /**
  * Determines if a task can be manually toggled/completed by the user.
- * Rule: Any habit with subhabits CANNOT be manually marked completed;
+ * Rule: FOR ALL PARENT HABITS: A habit with subhabits CANNOT be manually marked completed;
  * it is completed exclusively by completing its subhabits.
  */
 export function canManuallyCompleteTask(task, childSubtasks = []) {
-  return !isParentTaskWithChildren(task, childSubtasks);
+  if (!childSubtasks || childSubtasks.length === 0) return true;
+  return false;
 }
 
 /**

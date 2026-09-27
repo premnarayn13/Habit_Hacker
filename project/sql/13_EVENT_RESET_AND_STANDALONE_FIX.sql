@@ -7,25 +7,48 @@
 -- STEP 1: CREATE EVENT LOGS TABLE FOR EVENT-COUNT TYPE 3 HABITS
 CREATE TABLE IF NOT EXISTS public.event_logs (
     id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    task_id VARCHAR(255) NOT NULL,
-    user_id VARCHAR(255) NOT NULL,
+    task_id VARCHAR(255),
+    parent_task_id VARCHAR(255),
+    user_id VARCHAR(255) NOT NULL DEFAULT 'default-user',
     event_number INT DEFAULT 1,
     completion_date DATE DEFAULT CURRENT_DATE,
     completion_timestamp TIMESTAMPTZ DEFAULT NOW(),
     total_work_accumulated NUMERIC DEFAULT 0,
     subtask_breakdown JSONB,
+    subtask_contributions_json TEXT DEFAULT '[]',
+    status VARCHAR(50) DEFAULT 'FINALIZED',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure columns exist in event_logs
+-- Ensure all columns exist on event_logs even if table already existed previously
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS task_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS parent_task_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS user_id VARCHAR(255) DEFAULT 'default-user';
 ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS event_number INT DEFAULT 1;
 ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS completion_date DATE DEFAULT CURRENT_DATE;
 ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS completion_timestamp TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS total_work_accumulated NUMERIC DEFAULT 0;
 ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS subtask_breakdown JSONB;
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS subtask_contributions_json TEXT DEFAULT '[]';
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'FINALIZED';
 
--- STEP 2: ENSURE SUBTASK COLUMNS FOR EVENT WORK PERSISTENCE ACROSS DAYS
+-- Synchronize task_id and parent_task_id on event_logs so both are always populated
+UPDATE public.event_logs SET task_id = parent_task_id WHERE task_id IS NULL AND parent_task_id IS NOT NULL;
+UPDATE public.event_logs SET parent_task_id = task_id WHERE parent_task_id IS NULL AND task_id IS NOT NULL;
+
+-- STEP 2: ENSURE TASKS & SUBTASKS COLUMNS EXIST
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS parent_task_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS parent_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS tracking_mode VARCHAR(50) DEFAULT 'end_date';
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS is_done_today BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS logged_measure_val NUMERIC DEFAULT 0;
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS current_event_work NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS parent_task_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS parent_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS is_done_today BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS logged_measure_val NUMERIC DEFAULT 0;
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS current_event_work NUMERIC DEFAULT 0;
 
 -- STEP 3: AUTOMATED TRIGGER — ON PARENT HABIT DELETION, SUBHABITS BECOME STANDALONE PARENT HABITS
@@ -68,7 +91,7 @@ BEGIN
       AND (parent_task_id IS NULL OR parent_task_id NOT IN (
           SELECT id FROM public.tasks WHERE tracking_mode = 'count_event'
       ))
-      AND (completed_at IS NULL OR completed_at::date < CURRENT_DATE);
+      AND (completed_at IS NULL OR completed_at::text::date < CURRENT_DATE);
 
     -- Reset subtasks of Type 1 and Type 2 parents
     UPDATE public.subtasks
@@ -82,6 +105,7 @@ $$ LANGUAGE plpgsql;
 
 -- STEP 5: CREATE PERFORMANCE INDEXES
 CREATE INDEX IF NOT EXISTS idx_event_logs_task_id ON public.event_logs(task_id);
+CREATE INDEX IF NOT EXISTS idx_event_logs_parent_task_id ON public.event_logs(parent_task_id);
 CREATE INDEX IF NOT EXISTS idx_event_logs_user_id ON public.event_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_parent_task_id ON public.tasks(parent_task_id);
 CREATE INDEX IF NOT EXISTS idx_subtasks_parent_task_id ON public.subtasks(parent_task_id);

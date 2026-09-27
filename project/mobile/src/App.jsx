@@ -1427,6 +1427,7 @@ export default function App() {
           try {
             await supabase.from('event_logs').insert([{
               task_id: completedEventParent.id,
+              parent_task_id: completedEventParent.id,
               user_id: currentUserId,
               event_number: completedEventParent.currentCount,
               completion_date: todayStr,
