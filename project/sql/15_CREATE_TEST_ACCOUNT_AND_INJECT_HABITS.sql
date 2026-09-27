@@ -380,7 +380,7 @@ BEGIN
         'sub-p3-s1-core-backend-api', v_user_id,
         '[S3.1] Backend Services & Migration (Type 1)',
         'End-date API development milestones', 'Projects', 'HIGH', 'end_date',
-        10, 2, TRUE, 'points', 20, 0, FALSE, 'parent-type3-project-milestones'
+        10, 3, TRUE, 'points', 20, 0, FALSE, 'parent-type3-project-milestones'
     );
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -390,7 +390,7 @@ BEGIN
         'sub-p3-s2-frontend-ui-views', v_user_id,
         '[S3.2] React UI Component Polishing (Type 2)',
         'Count-days design system implementation', 'Projects', 'HIGH', 'count_days',
-        10, 2, TRUE, 'points', 25, 0, FALSE, 'parent-type3-project-milestones'
+        10, 3, TRUE, 'points', 25, 0, FALSE, 'parent-type3-project-milestones'
     );
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -415,7 +415,8 @@ BEGIN
     FROM public.tasks
     WHERE parent_task_id IS NOT NULL AND user_id = v_user_id;
 
-    -- 5. HISTORICAL EXECUTION LOGS FOR THE PAST 3 DAY    -- [DAY -3] (3 Days Ago) LOGS
+    -- 5. HISTORICAL EXECUTION LOGS FOR THE PAST 3 DAY
+    -- [DAY -3] (3 Days Ago) LOGS
     INSERT INTO public.subtask_logs (id, subtask_id, parent_task_id, user_id, log_date, is_completed, measured_value, event_count, notes)
     VALUES 
         (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_day3, TRUE, 12, 1, '12 mins mobility flow'),
@@ -424,9 +425,9 @@ BEGIN
         (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_day3, TRUE, 20, 1, '20 pages architecture'),
         (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', 'parent-type2-coding-sprint', v_user_id, d_day3, TRUE, 18, 1, '18 problems solved'),
         (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', 'parent-type2-coding-sprint', v_user_id, d_day3, TRUE, 19, 2, '2 PR reviews merged'),
-        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_day3, TRUE, 20, 1, 'Auth service & DB pool (20 pts)'),
-        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', 'parent-type3-project-milestones', v_user_id, d_day3, TRUE, 25, 1, 'Kanban board & widgets (25 pts)'),
-        (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', 'parent-type3-project-milestones', v_user_id, d_day3, TRUE, 20, 2, '2 test cycles passed (20 pts) - Completes Event #1!');
+        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_day3, TRUE, 44, 1, 'Auth service & DB pool (44 pts)'),
+        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', 'parent-type3-project-milestones', v_user_id, d_day3, TRUE, 23, 1, 'Kanban board & widgets (23 pts)'),
+        (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', 'parent-type3-project-milestones', v_user_id, d_day3, TRUE, 12, 2, '2 test cycles passed (12 pts) - Completes Event #1!');
 
     INSERT INTO public.task_logs (id, task_id, user_id, logged_date, logged_at, increment_value, measured_value, is_successful)
     VALUES 
@@ -438,16 +439,16 @@ BEGIN
         (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', v_user_id, d_day3, (d_day3 + TIME '15:30:00')::timestamptz, 1, 18, TRUE),
         (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', v_user_id, d_day3, (d_day3 + TIME '19:00:00')::timestamptz, 2, 19, TRUE),
         (gen_random_uuid()::text, 'parent-type2-coding-sprint', v_user_id, d_day3, (d_day3 + TIME '19:05:00')::timestamptz, 1, 57, TRUE),
-        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', v_user_id, d_day3, (d_day3 + TIME '11:00:00')::timestamptz, 1, 20, TRUE),
-        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', v_user_id, d_day3, (d_day3 + TIME '16:00:00')::timestamptz, 1, 25, TRUE),
-        (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', v_user_id, d_day3, (d_day3 + TIME '20:00:00')::timestamptz, 2, 20, TRUE),
-        (gen_random_uuid()::text, 'parent-type3-project-milestones', v_user_id, d_day3, (d_day3 + TIME '20:05:00')::timestamptz, 1, 65, TRUE);
+        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', v_user_id, d_day3, (d_day3 + TIME '11:00:00')::timestamptz, 1, 44, TRUE),
+        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', v_user_id, d_day3, (d_day3 + TIME '16:00:00')::timestamptz, 1, 23, TRUE),
+        (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', v_user_id, d_day3, (d_day3 + TIME '20:00:00')::timestamptz, 2, 12, TRUE),
+        (gen_random_uuid()::text, 'parent-type3-project-milestones', v_user_id, d_day3, (d_day3 + TIME '20:05:00')::timestamptz, 1, 79, TRUE);
 
     INSERT INTO public.event_logs (id, task_id, parent_task_id, user_id, event_number, completion_date, completion_timestamp, total_work_accumulated, subtask_breakdown, status)
     VALUES (
         gen_random_uuid()::text,
         'parent-type3-project-milestones', 'parent-type3-project-milestones', v_user_id, 1, d_day3, (d_day3 + TIME '20:05:00')::timestamptz,
-        65, '{"sub_p3_s1": 20, "sub_p3_s2": 25, "sub_p3_s3": 20}'::jsonb, 'FINALIZED'
+        79, '{"sub_p3_s1": 44, "sub_p3_s2": 23, "sub_p3_s3": 12}'::jsonb, 'FINALIZED'
     );
 
     -- [DAY -2] (2 Days Ago — THE MISSED DAY)
@@ -459,8 +460,8 @@ BEGIN
         (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_day2, TRUE, 12, 1, '12 pages design patterns'),
         (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', 'parent-type2-coding-sprint', v_user_id, d_day2, FALSE, 0, 0, 'SKIPPED: LeetCode missed today'),
         (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', 'parent-type2-coding-sprint', v_user_id, d_day2, TRUE, 6, 1, '1 PR review completed'),
-        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_day2, TRUE, 20, 1, 'Night coding: Redis layer (20 pts)'),
-        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', 'parent-type3-project-milestones', v_user_id, d_day2, TRUE, 25, 1, 'Night coding: Modal views (25 pts)'),
+        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_day2, TRUE, 25, 1, 'Night coding: Redis layer (25 pts)'),
+        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', 'parent-type3-project-milestones', v_user_id, d_day2, TRUE, 20, 1, 'Night coding: Modal views (20 pts)'),
         (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', 'parent-type3-project-milestones', v_user_id, d_day2, FALSE, 0, 0, 'Carrying over into next day');
 
     INSERT INTO public.task_logs (id, task_id, user_id, logged_date, logged_at, increment_value, measured_value, is_successful)
@@ -470,7 +471,9 @@ BEGIN
         (gen_random_uuid()::text, 'parent-type1-wellness-routine', v_user_id, d_day2, (d_day2 + TIME '23:59:59')::timestamptz, 0, 7, FALSE),
         (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', v_user_id, d_day2, (d_day2 + TIME '11:00:00')::timestamptz, 1, 12, TRUE),
         (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', v_user_id, d_day2, (d_day2 + TIME '17:00:00')::timestamptz, 1, 6, TRUE),
-        (gen_random_uuid()::text, 'parent-type2-coding-sprint', v_user_id, d_day2, (d_day2 + TIME '23:59:59')::timestamptz, 0, 18, FALSE);
+        (gen_random_uuid()::text, 'parent-type2-coding-sprint', v_user_id, d_day2, (d_day2 + TIME '23:59:59')::timestamptz, 0, 18, FALSE),
+        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', v_user_id, d_day2, (d_day2 + TIME '21:00:00')::timestamptz, 1, 25, TRUE),
+        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', v_user_id, d_day2, (d_day2 + TIME '21:30:00')::timestamptz, 1, 20, TRUE);
 
     -- [DAY -1] (Yesterday) LOGS
     INSERT INTO public.subtask_logs (id, subtask_id, parent_task_id, user_id, log_date, is_completed, measured_value, event_count, notes)
@@ -481,7 +484,9 @@ BEGIN
         (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 14, 1, '14 pages clean code'),
         (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 16, 1, '16 algorithmic challenges'),
         (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 15, 2, '2 review PRs approved'),
-        (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', 'parent-type3-project-milestones', v_user_id, d_day1, TRUE, 20, 2, 'Completed test suites: finishes Event #2 with 20+25+20=65 points!');
+        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_day1, TRUE, 14, 1, 'Refactoring API endpoints (14 pts)'),
+        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', 'parent-type3-project-milestones', v_user_id, d_day1, TRUE, 16, 1, 'Component tests (16 pts)'),
+        (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', 'parent-type3-project-milestones', v_user_id, d_day1, TRUE, 20, 2, 'Completed test suites: finishes Event #2 with 25+20+20=65 points!');
 
     INSERT INTO public.task_logs (id, task_id, user_id, logged_date, logged_at, increment_value, measured_value, is_successful)
     VALUES 
@@ -493,6 +498,8 @@ BEGIN
         (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', v_user_id, d_day1, (d_day1 + TIME '16:00:00')::timestamptz, 1, 16, TRUE),
         (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', v_user_id, d_day1, (d_day1 + TIME '19:30:00')::timestamptz, 2, 15, TRUE),
         (gen_random_uuid()::text, 'parent-type2-coding-sprint', v_user_id, d_day1, (d_day1 + TIME '19:35:00')::timestamptz, 1, 45, TRUE),
+        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', v_user_id, d_day1, (d_day1 + TIME '11:00:00')::timestamptz, 1, 14, TRUE),
+        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', v_user_id, d_day1, (d_day1 + TIME '15:00:00')::timestamptz, 1, 16, TRUE),
         (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', v_user_id, d_day1, (d_day1 + TIME '17:00:00')::timestamptz, 2, 20, TRUE),
         (gen_random_uuid()::text, 'parent-type3-project-milestones', v_user_id, d_day1, (d_day1 + TIME '17:05:00')::timestamptz, 1, 65, TRUE);
 
@@ -500,7 +507,7 @@ BEGIN
     VALUES (
         gen_random_uuid()::text,
         'parent-type3-project-milestones', 'parent-type3-project-milestones', v_user_id, 2, d_day1, (d_day1 + TIME '17:05:00')::timestamptz,
-        65, '{"sub_p3_s1_day2": 20, "sub_p3_s2_day2": 25, "sub_p3_s3_day1": 20}'::jsonb, 'FINALIZED'
+        65, '{"sub_p3_s1_day2": 25, "sub_p3_s2_day2": 20, "sub_p3_s3_day1": 20}'::jsonb, 'FINALIZED'
     );
 
     -- Recreate AFTER DELETE trigger (guarantees safe trigger recreation even if only DO block is run)

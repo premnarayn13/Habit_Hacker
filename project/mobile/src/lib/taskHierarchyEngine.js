@@ -234,33 +234,24 @@ export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount 
   if (!task) return [];
 
   const elapsed = Math.max(1, Math.min(historyDaysCount, task.elapsedDays || historyDaysCount || 30));
-  const currentCount = Math.min(elapsed, task.currentCount || task.currentDayCount || 0);
-
-  // If today is uncompleted, today is in progress (NOT a missed past day)
   const isDoneToday = Boolean(task.isDoneToday);
   const pastElapsed = isDoneToday ? elapsed : Math.max(0, elapsed - 1);
-  const missedCount = Math.max(0, pastElapsed - currentCount);
 
-  if (missedCount === 0) return [];
+  if (pastElapsed === 0) return [];
 
   const mandatoryChildren = (childSubtasks || []).filter(c => !c.isOptional);
   const missedDaysList = [];
   const today = new Date();
 
-  // If active streak is >= 1 (yesterday completed), missed days start at daysAgo = activeStreak + 1
-  const activeStreak = Number(task.activeStreak || task.streakCount || (pastElapsed > currentCount && currentCount > 0 ? 1 : 0));
-  const startDaysAgo = activeStreak > 0 ? (activeStreak + 1) : 1;
-
-  // Generate exact missedCount separate dates with incomplete items
-  for (let m = 0; m < missedCount; m++) {
-    const daysAgo = startDaysAgo + m;
+  // Scan all past operational days from yesterday (daysAgo = 1) back to start
+  for (let daysAgo = 1; daysAgo <= pastElapsed; daysAgo++) {
     const d = new Date(today);
     d.setDate(today.getDate() - daysAgo);
     const dateStr = d.toISOString().split('T')[0];
     const dateFormatted = d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 
-    let missedSubtaskTitles = [];
     if (mandatoryChildren.length > 0) {
+      // Parent Task: check if any mandatory child was missed on this day
       const dayLogs = subtaskLogsByDate[dateStr] || {};
       const hasLogsForDate = Object.keys(dayLogs).length > 0;
       const actualMissed = mandatoryChildren.filter(child => {
@@ -272,22 +263,48 @@ export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount 
       });
 
       if (actualMissed.length > 0) {
-        missedSubtaskTitles = actualMissed.map(child => child.title || `Subtask`);
-      } else {
-        // Fallback if no logs exist: pick the last mandatory subtask or uncompleted
-        const uncompleted = mandatoryChildren.filter((_, idx) => (daysAgo + idx) % 2 === 0);
-        missedSubtaskTitles = (uncompleted.length > 0 ? uncompleted : [mandatoryChildren[mandatoryChildren.length - 1]]).map(c => c.title);
+        missedDaysList.push({
+          daysAgo,
+          date: dateStr,
+          dateFormatted,
+          missedSubtasks: actualMissed.map(child => child.title || `Subtask`)
+        });
       }
     } else {
-      missedSubtaskTitles.push(task.title ? `${task.title} (Daily Check-in Missed)` : 'Daily Target Incomplete');
-    }
+      // Subhabit / Standalone Task without children:
+      // Check if this specific subtask logged completion on dateStr
+      const dayLogs = subtaskLogsByDate[dateStr] || {};
+      let isTaskDoneOnDay = false;
 
-    missedDaysList.push({
-      daysAgo,
-      date: dateStr,
-      dateFormatted,
-      missedSubtasks: missedSubtaskTitles
-    });
+      if (dayLogs[task.id]) {
+        const dayLog = dayLogs[task.id];
+        isTaskDoneOnDay = Boolean(dayLog.isCompleted && Number(dayLog.measuredValue !== undefined ? dayLog.measuredValue : 1) > 0);
+      } else {
+        // Fuzzy key match (e.g. sub-p3-s1 vs sub_p3_s1)
+        const normTaskId = (task.id || '').toLowerCase().replace(/[-_]/g, '');
+        const matchKey = Object.keys(dayLogs).find(k => {
+          const normK = k.toLowerCase().replace(/[-_]/g, '');
+          return normK.includes(normTaskId) || normTaskId.includes(normK) || (task.title && normK.includes(task.title.toLowerCase().slice(0, 5)));
+        });
+        if (matchKey && dayLogs[matchKey]) {
+          const cLog = dayLogs[matchKey];
+          isTaskDoneOnDay = Boolean(cLog.isCompleted && Number(cLog.measuredValue !== undefined ? cLog.measuredValue : 1) > 0);
+        } else {
+          // If subtaskLogsByDate has entries for this date but not for this subtask, check currentCount fallback
+          const currentCount = Math.min(elapsed, task.currentCount || task.currentDayCount || 0);
+          isTaskDoneOnDay = (pastElapsed - daysAgo) < currentCount;
+        }
+      }
+
+      if (!isTaskDoneOnDay) {
+        missedDaysList.push({
+          daysAgo,
+          date: dateStr,
+          dateFormatted,
+          missedSubtasks: [task.title ? `${task.title} (Daily Check-in Missed)` : 'Daily Target Incomplete']
+        });
+      }
+    }
   }
 
   return missedDaysList.sort((a, b) => a.daysAgo - b.daysAgo);
