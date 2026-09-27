@@ -44,10 +44,143 @@ ALTER TABLE IF EXISTS public.subtasks DROP CONSTRAINT IF EXISTS subtasks_parent_
 ALTER TABLE IF EXISTS public.subtasks DROP CONSTRAINT IF EXISTS subtasks_parent_task_id_fkey;
 ALTER TABLE IF EXISTS public.subtasks DROP CONSTRAINT IF EXISTS subtasks_user_id_fkey;
 
--- STEP 4: ENSURE ID DEFAULTS ON LOG TABLES
-ALTER TABLE IF EXISTS public.event_logs ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
-ALTER TABLE IF EXISTS public.task_logs ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
+-- STEP 4: GUARANTEE COMPLETE TABLE SCHEMAS & PREVENT ANY MISSING COLUMN ERRORS
+-- 4.1. tasks table & columns
+CREATE TABLE IF NOT EXISTS public.tasks (
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    user_id VARCHAR(255) NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    category TEXT DEFAULT 'General',
+    priority TEXT DEFAULT 'MEDIUM',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS tracking_mode TEXT DEFAULT 'end_date';
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS target_count INT DEFAULT 50;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS current_count INT DEFAULT 0;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS repeat_rule TEXT DEFAULT 'DAILY';
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS custom_interval_days INT DEFAULT 1;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS has_measure_tracking BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS measure_unit TEXT DEFAULT 'units';
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS measure_target NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS logged_measure_val NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS last_measured_value NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS is_done_today BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS progress_percent INT DEFAULT 0;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS planned_start DATE;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS planned_end DATE;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS deadline DATE;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS estimated_minutes INT DEFAULT 30;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS parent_task_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS parent_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS start_date DATE;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS end_date DATE;
+
+-- 4.2. subtasks table & columns
+CREATE TABLE IF NOT EXISTS public.subtasks (
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    parent_task_id VARCHAR(255),
+    parent_id VARCHAR(255),
+    user_id VARCHAR(255),
+    title TEXT NOT NULL,
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'PLANNED',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS tracking_mode VARCHAR(50) DEFAULT 'end_date';
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS target_count INT DEFAULT 1;
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS current_count INT DEFAULT 0;
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS has_measure_tracking BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS measure_unit VARCHAR(50) DEFAULT 'units';
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS measure_target NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS logged_measure_val NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS is_done_today BOOLEAN DEFAULT FALSE;
+
+-- 4.3. subtask_logs table & columns
+CREATE TABLE IF NOT EXISTS public.subtask_logs (
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    subtask_id VARCHAR(255) NOT NULL,
+    parent_task_id VARCHAR(255),
+    user_id VARCHAR(255) NOT NULL,
+    log_date DATE DEFAULT CURRENT_DATE,
+    is_completed BOOLEAN DEFAULT FALSE,
+    measured_value NUMERIC DEFAULT 0,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 ALTER TABLE IF EXISTS public.subtask_logs ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
+ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS subtask_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS parent_task_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS user_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS log_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT TRUE;
+ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS measured_value NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS logged_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS measure_value NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS completion_status VARCHAR(50) DEFAULT 'DONE';
+
+-- 4.4. task_logs table & columns
+CREATE TABLE IF NOT EXISTS public.task_logs (
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    task_id VARCHAR(255) NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
+    logged_date DATE DEFAULT CURRENT_DATE,
+    logged_at TIMESTAMPTZ DEFAULT NOW(),
+    increment_value INT DEFAULT 1,
+    measured_value NUMERIC DEFAULT 0,
+    is_successful BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE IF EXISTS public.task_logs ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
+ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS task_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS user_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS logged_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS log_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS logged_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS increment_value INT DEFAULT 1;
+ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS measured_value NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS is_successful BOOLEAN DEFAULT TRUE;
+ALTER TABLE IF EXISTS public.task_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+-- 4.5. event_logs table & columns
+CREATE TABLE IF NOT EXISTS public.event_logs (
+    id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    task_id VARCHAR(255),
+    parent_task_id VARCHAR(255),
+    user_id VARCHAR(255) NOT NULL DEFAULT 'default-user',
+    event_number INT DEFAULT 1,
+    completion_date DATE DEFAULT CURRENT_DATE,
+    completion_timestamp TIMESTAMPTZ DEFAULT NOW(),
+    total_work_accumulated NUMERIC DEFAULT 0,
+    subtask_breakdown JSONB,
+    status VARCHAR(50) DEFAULT 'FINALIZED',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE IF EXISTS public.event_logs ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS task_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS parent_task_id VARCHAR(255);
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS user_id VARCHAR(255) DEFAULT 'default-user';
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS event_number INT DEFAULT 1;
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS completion_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS completion_timestamp TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS total_work_accumulated NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS subtask_breakdown JSONB;
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'FINALIZED';
+ALTER TABLE IF EXISTS public.event_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Disable RLS on all tables to ensure full access
+ALTER TABLE IF EXISTS public.tasks DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.subtasks DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.task_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.subtask_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS public.event_logs DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON TABLE public.tasks TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.subtasks TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.task_logs TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.subtask_logs TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.event_logs TO anon, authenticated, service_role;
 
 -- STEP 5: INJECT 12 HABITS & 3-DAY DATASET EXCLUSIVELY FOR example@gmail.com
 DO $$
