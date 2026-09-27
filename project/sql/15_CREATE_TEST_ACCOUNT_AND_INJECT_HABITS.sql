@@ -75,6 +75,10 @@ ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS parent_task_id VARCH
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS parent_id VARCHAR(255);
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS start_date DATE;
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS end_date DATE;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS streak_count INT DEFAULT 1;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS max_streak INT DEFAULT 1;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS missed_streak INT DEFAULT 0;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS active_streak INT DEFAULT 1;
 
 -- 4.2. subtasks table & columns
 CREATE TABLE IF NOT EXISTS public.subtasks (
@@ -120,6 +124,7 @@ ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS created_at TI
 ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS logged_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS measure_value NUMERIC DEFAULT 0;
 ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS completion_status VARCHAR(50) DEFAULT 'DONE';
+ALTER TABLE IF EXISTS public.subtask_logs ADD COLUMN IF NOT EXISTS event_count INT DEFAULT 1;
 
 -- 4.4. task_logs table & columns
 CREATE TABLE IF NOT EXISTS public.task_logs (
@@ -247,15 +252,17 @@ BEGIN
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, repeat_rule, custom_interval_days,
         has_measure_tracking, measure_unit, measure_target, logged_measure_val, last_measured_value,
-        is_done_today, progress_percent, planned_start, planned_end, deadline, estimated_minutes, parent_task_id
+        is_done_today, progress_percent, planned_start, planned_end, deadline, estimated_minutes, parent_task_id,
+        streak_count, max_streak, missed_streak, active_streak
     ) VALUES (
         'parent-type1-wellness-routine', v_user_id,
         '[P1] Daily Wellness Mastery (Type 1 - Date Range)',
         'Comprehensive health system: requires all 3 subhabits to complete each day',
         'Health', 'HIGH', 'end_date',
         30, 2, 'DAILY', 1,
-        TRUE, 'mins', 30, 0, 21.3,
-        FALSE, 7, d_day3, (d_today + 27), (d_today + 27), 45, NULL
+        TRUE, 'mins', 30, 0, 30,
+        FALSE, 7, d_day3, (d_today + 27), (d_today + 27), 45, NULL,
+        1, 1, 0, 1
     );
 
     -- [P2] Parent Habit 2: Type 2 (Day Count / count_days)
@@ -263,7 +270,8 @@ BEGIN
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, repeat_rule, custom_interval_days,
         has_measure_tracking, measure_unit, measure_target, logged_measure_val, last_measured_value,
-        is_done_today, progress_percent, planned_start, planned_end, deadline, estimated_minutes, parent_task_id
+        is_done_today, progress_percent, planned_start, planned_end, deadline, estimated_minutes, parent_task_id,
+        streak_count, max_streak, missed_streak, active_streak
     ) VALUES (
         'parent-type2-coding-sprint', v_user_id,
         '[P2] 60-Day Full-Stack Sprint (Type 2 - Day Count)',
@@ -271,7 +279,8 @@ BEGIN
         'Career', 'HIGH', 'count_days',
         60, 2, 'DAILY', 1,
         TRUE, 'pages', 40, 0, 45,
-        FALSE, 3, d_day3, (d_today + 57), (d_today + 57), 60, NULL
+        FALSE, 3, d_day3, (d_today + 57), (d_today + 57), 60, NULL,
+        1, 1, 0, 1
     );
 
     -- [P3] Parent Habit 3: Type 3 (Event Count / count_event)
@@ -279,7 +288,8 @@ BEGIN
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, repeat_rule, custom_interval_days,
         has_measure_tracking, measure_unit, measure_target, logged_measure_val, last_measured_value,
-        is_done_today, progress_percent, planned_start, planned_end, deadline, estimated_minutes, parent_task_id
+        is_done_today, progress_percent, planned_start, planned_end, deadline, estimated_minutes, parent_task_id,
+        streak_count, max_streak, missed_streak, active_streak
     ) VALUES (
         'parent-type3-project-milestones', v_user_id,
         '[P3] Production Feature Shipments (Type 3 - Event Count)',
@@ -287,7 +297,8 @@ BEGIN
         'Projects', 'HIGH', 'count_event',
         10, 2, 'DAILY', 1,
         TRUE, 'points', 60, 0, 75,
-        FALSE, 20, d_day3, (d_today + 30), (d_today + 30), 90, NULL
+        FALSE, 20, d_day3, (d_today + 30), (d_today + 30), 90, NULL,
+        1, 1, 0, 1
     );
 
     -- Sync start_date and end_date if columns exist
@@ -404,26 +415,25 @@ BEGIN
     FROM public.tasks
     WHERE parent_task_id IS NOT NULL AND user_id = v_user_id;
 
-    -- 5. HISTORICAL EXECUTION LOGS FOR THE PAST 3 DAYS
-    -- [DAY -3] (3 Days Ago) LOGS
-    INSERT INTO public.subtask_logs (id, subtask_id, parent_task_id, user_id, log_date, is_completed, measured_value, notes)
+    -- 5. HISTORICAL EXECUTION LOGS FOR THE PAST 3 DAY    -- [DAY -3] (3 Days Ago) LOGS
+    INSERT INTO public.subtask_logs (id, subtask_id, parent_task_id, user_id, log_date, is_completed, measured_value, event_count, notes)
     VALUES 
-        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_day3, TRUE, 14, 'Deep vinyasa flow (Exceeded target: 14/10 mins)'),
-        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', 'parent-type1-wellness-routine', v_user_id, d_day3, TRUE, 12, '12 glasses electrolytes logged'),
-        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', 'parent-type1-wellness-routine', v_user_id, d_day3, TRUE, 13, '2 Zen sessions completed (contribution: 13)'),
-        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_day3, TRUE, 20, '20 pages architecture'),
-        (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', 'parent-type2-coding-sprint', v_user_id, d_day3, TRUE, 18, '18 problems solved'),
-        (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', 'parent-type2-coding-sprint', v_user_id, d_day3, TRUE, 19, '2 PR reviews merged'),
-        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_day3, TRUE, 20, 'Auth service & DB pool'),
-        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', 'parent-type3-project-milestones', v_user_id, d_day3, TRUE, 30, 'Kanban board & widgets'),
-        (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', 'parent-type3-project-milestones', v_user_id, d_day3, TRUE, 25, '2 test cycles passed');
+        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_day3, TRUE, 12, 1, '12 mins mobility flow'),
+        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', 'parent-type1-wellness-routine', v_user_id, d_day3, TRUE, 14, 1, '14 glasses hydration logged'),
+        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', 'parent-type1-wellness-routine', v_user_id, d_day3, TRUE, 16, 2, '2 Zen sessions completed (contribution: 16)'),
+        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_day3, TRUE, 20, 1, '20 pages architecture'),
+        (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', 'parent-type2-coding-sprint', v_user_id, d_day3, TRUE, 18, 1, '18 problems solved'),
+        (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', 'parent-type2-coding-sprint', v_user_id, d_day3, TRUE, 19, 2, '2 PR reviews merged'),
+        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_day3, TRUE, 20, 1, 'Auth service & DB pool'),
+        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', 'parent-type3-project-milestones', v_user_id, d_day3, TRUE, 30, 1, 'Kanban board & widgets'),
+        (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', 'parent-type3-project-milestones', v_user_id, d_day3, TRUE, 25, 2, '2 test cycles passed');
 
     INSERT INTO public.task_logs (id, task_id, user_id, logged_date, logged_at, increment_value, measured_value, is_successful)
     VALUES 
-        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', v_user_id, d_day3, (d_day3 + TIME '08:30:00')::timestamptz, 1, 14, TRUE),
-        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', v_user_id, d_day3, (d_day3 + TIME '12:00:00')::timestamptz, 1, 12, TRUE),
-        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', v_user_id, d_day3, (d_day3 + TIME '18:00:00')::timestamptz, 2, 13, TRUE),
-        (gen_random_uuid()::text, 'parent-type1-wellness-routine', v_user_id, d_day3, (d_day3 + TIME '18:05:00')::timestamptz, 1, 39, TRUE),
+        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', v_user_id, d_day3, (d_day3 + TIME '08:30:00')::timestamptz, 1, 12, TRUE),
+        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', v_user_id, d_day3, (d_day3 + TIME '12:00:00')::timestamptz, 1, 14, TRUE),
+        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', v_user_id, d_day3, (d_day3 + TIME '18:00:00')::timestamptz, 2, 16, TRUE),
+        (gen_random_uuid()::text, 'parent-type1-wellness-routine', v_user_id, d_day3, (d_day3 + TIME '18:05:00')::timestamptz, 1, 42, TRUE),
         (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', v_user_id, d_day3, (d_day3 + TIME '10:00:00')::timestamptz, 1, 20, TRUE),
         (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', v_user_id, d_day3, (d_day3 + TIME '15:30:00')::timestamptz, 1, 18, TRUE),
         (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', v_user_id, d_day3, (d_day3 + TIME '19:00:00')::timestamptz, 2, 19, TRUE),
@@ -441,17 +451,17 @@ BEGIN
     );
 
     -- [DAY -2] (2 Days Ago — THE MISSED DAY)
-    INSERT INTO public.subtask_logs (id, subtask_id, parent_task_id, user_id, log_date, is_completed, measured_value, notes)
+    INSERT INTO public.subtask_logs (id, subtask_id, parent_task_id, user_id, log_date, is_completed, measured_value, event_count, notes)
     VALUES 
-        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_day2, TRUE, 4, 'Short 4 min stretch session (Below target)'),
-        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', 'parent-type1-wellness-routine', v_user_id, d_day2, TRUE, 3, 'Only 3 glasses water logged'),
-        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', 'parent-type1-wellness-routine', v_user_id, d_day2, FALSE, 0, 'SKIPPED: Zen session missed'),
-        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_day2, TRUE, 12, '12 pages design patterns'),
-        (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', 'parent-type2-coding-sprint', v_user_id, d_day2, FALSE, 0, 'SKIPPED: LeetCode missed today'),
-        (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', 'parent-type2-coding-sprint', v_user_id, d_day2, TRUE, 6, '1 PR review completed'),
-        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_day2, TRUE, 25, 'Night coding: Redis layer (25 pts)'),
-        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', 'parent-type3-project-milestones', v_user_id, d_day2, TRUE, 20, 'Night coding: Modal views (20 pts)'),
-        (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', 'parent-type3-project-milestones', v_user_id, d_day2, FALSE, 0, 'Carrying over into next day');
+        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_day2, TRUE, 4, 1, 'Short 4 min stretch session (Below target)'),
+        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', 'parent-type1-wellness-routine', v_user_id, d_day2, TRUE, 3, 1, 'Only 3 glasses water logged'),
+        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', 'parent-type1-wellness-routine', v_user_id, d_day2, FALSE, 0, 0, 'SKIPPED: Zen session missed'),
+        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_day2, TRUE, 12, 1, '12 pages design patterns'),
+        (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', 'parent-type2-coding-sprint', v_user_id, d_day2, FALSE, 0, 0, 'SKIPPED: LeetCode missed today'),
+        (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', 'parent-type2-coding-sprint', v_user_id, d_day2, TRUE, 6, 1, '1 PR review completed'),
+        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_day2, TRUE, 25, 1, 'Night coding: Redis layer (25 pts)'),
+        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', 'parent-type3-project-milestones', v_user_id, d_day2, TRUE, 20, 1, 'Night coding: Modal views (20 pts)'),
+        (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', 'parent-type3-project-milestones', v_user_id, d_day2, FALSE, 0, 0, 'Carrying over into next day');
 
     INSERT INTO public.task_logs (id, task_id, user_id, logged_date, logged_at, increment_value, measured_value, is_successful)
     VALUES 
@@ -463,22 +473,22 @@ BEGIN
         (gen_random_uuid()::text, 'parent-type2-coding-sprint', v_user_id, d_day2, (d_day2 + TIME '23:59:59')::timestamptz, 0, 18, FALSE);
 
     -- [DAY -1] (Yesterday) LOGS
-    INSERT INTO public.subtask_logs (id, subtask_id, parent_task_id, user_id, log_date, is_completed, measured_value, notes)
+    INSERT INTO public.subtask_logs (id, subtask_id, parent_task_id, user_id, log_date, is_completed, measured_value, event_count, notes)
     VALUES 
-        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_day1, TRUE, 8, '8 mins yoga flow'),
-        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', 'parent-type1-wellness-routine', v_user_id, d_day1, TRUE, 9, '9 glasses water'),
-        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', 'parent-type1-wellness-routine', v_user_id, d_day1, TRUE, 4.3, '1 zen session completed'),
-        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 14, '14 pages clean code'),
-        (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 16, '16 algorithmic challenges'),
-        (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 15, '2 review PRs approved'),
-        (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', 'parent-type3-project-milestones', v_user_id, d_day1, TRUE, 30, 'Completed test suites: finishes Event #2 with 25+20+30=75 points!');
+        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_day1, TRUE, 10, 1, '10 mins yoga flow'),
+        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', 'parent-type1-wellness-routine', v_user_id, d_day1, TRUE, 10, 1, '10 glasses water'),
+        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', 'parent-type1-wellness-routine', v_user_id, d_day1, TRUE, 10, 2, '2 zen sessions completed'),
+        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 14, 1, '14 pages clean code'),
+        (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 16, 1, '16 algorithmic challenges'),
+        (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 15, 2, '2 review PRs approved'),
+        (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', 'parent-type3-project-milestones', v_user_id, d_day1, TRUE, 30, 2, 'Completed test suites: finishes Event #2 with 25+20+30=75 points!');
 
     INSERT INTO public.task_logs (id, task_id, user_id, logged_date, logged_at, increment_value, measured_value, is_successful)
     VALUES 
-        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', v_user_id, d_day1, (d_day1 + TIME '08:15:00')::timestamptz, 1, 8, TRUE),
-        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', v_user_id, d_day1, (d_day1 + TIME '12:30:00')::timestamptz, 1, 9, TRUE),
-        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', v_user_id, d_day1, (d_day1 + TIME '18:45:00')::timestamptz, 1, 4.3, TRUE),
-        (gen_random_uuid()::text, 'parent-type1-wellness-routine', v_user_id, d_day1, (d_day1 + TIME '18:50:00')::timestamptz, 1, 21.3, TRUE),
+        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', v_user_id, d_day1, (d_day1 + TIME '08:15:00')::timestamptz, 1, 10, TRUE),
+        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', v_user_id, d_day1, (d_day1 + TIME '12:30:00')::timestamptz, 1, 10, TRUE),
+        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', v_user_id, d_day1, (d_day1 + TIME '18:45:00')::timestamptz, 2, 10, TRUE),
+        (gen_random_uuid()::text, 'parent-type1-wellness-routine', v_user_id, d_day1, (d_day1 + TIME '18:50:00')::timestamptz, 1, 30, TRUE),
         (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', v_user_id, d_day1, (d_day1 + TIME '10:30:00')::timestamptz, 1, 14, TRUE),
         (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', v_user_id, d_day1, (d_day1 + TIME '16:00:00')::timestamptz, 1, 16, TRUE),
         (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', v_user_id, d_day1, (d_day1 + TIME '19:30:00')::timestamptz, 2, 15, TRUE),

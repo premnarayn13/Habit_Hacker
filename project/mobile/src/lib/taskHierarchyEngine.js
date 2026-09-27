@@ -235,7 +235,11 @@ export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount 
 
   const elapsed = Math.max(1, Math.min(historyDaysCount, task.elapsedDays || historyDaysCount || 30));
   const currentCount = Math.min(elapsed, task.currentCount || task.currentDayCount || 0);
-  const missedCount = Math.max(0, elapsed - currentCount);
+
+  // If today is uncompleted, today is in progress (NOT a missed past day)
+  const isDoneToday = Boolean(task.isDoneToday);
+  const pastElapsed = isDoneToday ? elapsed : Math.max(0, elapsed - 1);
+  const missedCount = Math.max(0, pastElapsed - currentCount);
 
   if (missedCount === 0) return [];
 
@@ -243,9 +247,13 @@ export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount 
   const missedDaysList = [];
   const today = new Date();
 
+  // If active streak is >= 1 (yesterday completed), missed days start at daysAgo = activeStreak + 1
+  const activeStreak = Number(task.activeStreak || task.streakCount || (pastElapsed > currentCount && currentCount > 0 ? 1 : 0));
+  const startDaysAgo = activeStreak > 0 ? (activeStreak + 1) : 1;
+
   // Generate exact missedCount separate dates with incomplete items
   for (let m = 0; m < missedCount; m++) {
-    const daysAgo = m + 1;
+    const daysAgo = startDaysAgo + m;
     const d = new Date(today);
     d.setDate(today.getDate() - daysAgo);
     const dateStr = d.toISOString().split('T')[0];
