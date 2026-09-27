@@ -35,12 +35,21 @@ SET password_hash = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923ad
     display_name = 'Example User',
     updated_at = NOW();
 
--- STEP 3: ENSURE ID DEFAULTS ON LOG TABLES
+-- STEP 3: DROP OBSOLETE BEFORE DELETE TRIGGERS & CONSTRAINTS (PREVENTS TUPLE MODIFICATION CONFLICT)
+DROP TRIGGER IF EXISTS trg_tasks_unmap_children ON public.tasks CASCADE;
+ALTER TABLE IF EXISTS public.tasks DROP CONSTRAINT IF EXISTS tasks_parent_id_fkey;
+ALTER TABLE IF EXISTS public.tasks DROP CONSTRAINT IF EXISTS tasks_parent_task_id_fkey;
+ALTER TABLE IF EXISTS public.tasks DROP CONSTRAINT IF EXISTS tasks_user_id_fkey;
+ALTER TABLE IF EXISTS public.subtasks DROP CONSTRAINT IF EXISTS subtasks_parent_id_fkey;
+ALTER TABLE IF EXISTS public.subtasks DROP CONSTRAINT IF EXISTS subtasks_parent_task_id_fkey;
+ALTER TABLE IF EXISTS public.subtasks DROP CONSTRAINT IF EXISTS subtasks_user_id_fkey;
+
+-- STEP 4: ENSURE ID DEFAULTS ON LOG TABLES
 ALTER TABLE IF EXISTS public.event_logs ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
 ALTER TABLE IF EXISTS public.task_logs ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
 ALTER TABLE IF EXISTS public.subtask_logs ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
 
--- STEP 4: INJECT 12 HABITS & 3-DAY DATASET EXCLUSIVELY FOR example@gmail.com
+-- STEP 5: INJECT 12 HABITS & 3-DAY DATASET EXCLUSIVELY FOR example@gmail.com
 DO $$
 DECLARE
     v_user_id CONSTANT TEXT := 'example@gmail.com';
@@ -48,10 +57,22 @@ DECLARE
     d_day2 DATE := CURRENT_DATE - 2;
     d_day1 DATE := CURRENT_DATE - 1;
     d_today DATE := CURRENT_DATE;
+    r RECORD;
 BEGIN
     RAISE NOTICE 'Injecting 12 habits exclusively for %', v_user_id;
 
-    -- 1. UNCONDITIONAL CLEANUP OF THE 12 TEST IDS TO PREVENT ANY DUPLICATE KEY CONFLICT
+    -- Drop any unmap triggers dynamically to guarantee zero trigger conflicts during deletion/injection
+    FOR r IN (
+        SELECT trigger_name, event_object_table 
+        FROM information_schema.triggers 
+        WHERE event_object_table IN ('tasks', 'subtasks') 
+          AND trigger_schema = 'public'
+          AND trigger_name ILIKE '%unmap%'
+    ) LOOP
+        EXECUTE format('DROP TRIGGER IF EXISTS %I ON public.%I CASCADE', r.trigger_name, r.event_object_table);
+    END LOOP;
+
+    -- 1. CLEAN UP LOGS AND SUBTASKS FIRST
     DELETE FROM public.subtask_logs 
     WHERE parent_task_id IN ('parent-type1-wellness-routine', 'parent-type2-coding-sprint', 'parent-type3-project-milestones')
        OR subtask_id IN ('sub-p1-s1-morning-yoga', 'sub-p1-s2-hydration-focus', 'sub-p1-s3-mindfulness-sessions',
@@ -72,15 +93,22 @@ BEGIN
     WHERE id IN ('sub-p1-s1-morning-yoga', 'sub-p1-s2-hydration-focus', 'sub-p1-s3-mindfulness-sessions',
                  'sub-p2-s1-tech-reading', 'sub-p2-s2-leetcode-problems', 'sub-p2-s3-git-pull-requests',
                  'sub-p3-s1-core-backend-api', 'sub-p3-s2-frontend-ui-views', 'sub-p3-s3-integration-testing')
-       OR parent_task_id IN ('parent-type1-wellness-routine', 'parent-type2-coding-sprint', 'parent-type3-project-milestones');
+       OR parent_task_id IN ('parent-type1-wellness-routine', 'parent-type2-coding-sprint', 'parent-type3-project-milestones')
+       OR parent_id IN ('parent-type1-wellness-routine', 'parent-type2-coding-sprint', 'parent-type3-project-milestones');
 
+    -- 2. DELETE CHILD TASKS IN public.tasks FIRST (ONLY SUBTASK IDs, PREVENTS CONFLICT WITH PARENT TRIGGERS)
     DELETE FROM public.tasks 
-    WHERE id IN ('parent-type1-wellness-routine', 'parent-type2-coding-sprint', 'parent-type3-project-milestones', 
-                 'sub-p1-s1-morning-yoga', 'sub-p1-s2-hydration-focus', 'sub-p1-s3-mindfulness-sessions',
+    WHERE id IN ('sub-p1-s1-morning-yoga', 'sub-p1-s2-hydration-focus', 'sub-p1-s3-mindfulness-sessions',
                  'sub-p2-s1-tech-reading', 'sub-p2-s2-leetcode-problems', 'sub-p2-s3-git-pull-requests',
-                 'sub-p3-s1-core-backend-api', 'sub-p3-s2-frontend-ui-views', 'sub-p3-s3-integration-testing');
+                 'sub-p3-s1-core-backend-api', 'sub-p3-s2-frontend-ui-views', 'sub-p3-s3-integration-testing')
+       OR parent_task_id IN ('parent-type1-wellness-routine', 'parent-type2-coding-sprint', 'parent-type3-project-milestones')
+       OR parent_id IN ('parent-type1-wellness-routine', 'parent-type2-coding-sprint', 'parent-type3-project-milestones');
 
-    -- 2. INSERT THE 3 PARENT HABITS
+    -- 3. DELETE PARENT TASKS IN public.tasks (CHILDREN ARE GONE, ZERO RISK OF TUPLE CONFLICT)
+    DELETE FROM public.tasks 
+    WHERE id IN ('parent-type1-wellness-routine', 'parent-type2-coding-sprint', 'parent-type3-project-milestones');
+
+    -- 3. INSERT THE 3 PARENT HABITS
     -- [P1] Parent Habit 1: Type 1 (Date Range / end_date)
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -134,7 +162,7 @@ BEGIN
         EXECUTE 'UPDATE public.tasks SET start_date = planned_start, end_date = planned_end WHERE id IN (''parent-type1-wellness-routine'', ''parent-type2-coding-sprint'', ''parent-type3-project-milestones'')';
     END IF;
 
-    -- 3. INSERT THE 9 SUBHABITS (3 FOR EACH PARENT)
+    -- 4. INSERT THE 9 SUBHABITS (3 FOR EACH PARENT)
     -- --- SUBHABITS FOR PARENT 1 ---
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
@@ -243,7 +271,7 @@ BEGIN
     FROM public.tasks
     WHERE parent_task_id IS NOT NULL AND user_id = v_user_id;
 
-    -- 4. HISTORICAL EXECUTION LOGS FOR THE PAST 3 DAYS
+    -- 5. HISTORICAL EXECUTION LOGS FOR THE PAST 3 DAYS
     -- [DAY -3] (3 Days Ago) LOGS
     INSERT INTO public.subtask_logs (id, subtask_id, parent_task_id, user_id, log_date, is_completed, measured_value, notes)
     VALUES 
@@ -332,5 +360,49 @@ BEGIN
         75, '{"sub_p3_s1_day2": 25, "sub_p3_s2_day2": 20, "sub_p3_s3_day1": 30}'::jsonb, 'FINALIZED'
     );
 
+    -- Recreate AFTER DELETE trigger (guarantees safe trigger recreation even if only DO block is run)
+    EXECUTE 'CREATE OR REPLACE FUNCTION public.trg_unmap_subtasks_on_parent_delete()
+    RETURNS TRIGGER AS $trg$
+    BEGIN
+        UPDATE public.tasks 
+        SET parent_task_id = NULL, parent_id = NULL 
+        WHERE parent_task_id = OLD.id OR parent_id = OLD.id;
+
+        UPDATE public.subtasks 
+        SET parent_task_id = NULL, parent_id = NULL 
+        WHERE parent_task_id = OLD.id OR parent_id = OLD.id;
+
+        RETURN NULL;
+    END;
+    $trg$ LANGUAGE plpgsql';
+
+    EXECUTE 'DROP TRIGGER IF EXISTS trg_tasks_unmap_children ON public.tasks CASCADE';
+    EXECUTE 'CREATE TRIGGER trg_tasks_unmap_children
+    AFTER DELETE ON public.tasks
+    FOR EACH ROW
+    EXECUTE FUNCTION public.trg_unmap_subtasks_on_parent_delete()';
+
     RAISE NOTICE 'SUCCESS: Successfully created example@gmail.com (Password: 123456) with all 12 habits!';
 END $$;
+
+-- STEP 6: RECREATE trg_tasks_unmap_children AS AFTER DELETE
+CREATE OR REPLACE FUNCTION public.trg_unmap_subtasks_on_parent_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE public.tasks 
+    SET parent_task_id = NULL, parent_id = NULL 
+    WHERE parent_task_id = OLD.id OR parent_id = OLD.id;
+
+    UPDATE public.subtasks 
+    SET parent_task_id = NULL, parent_id = NULL 
+    WHERE parent_task_id = OLD.id OR parent_id = OLD.id;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_tasks_unmap_children ON public.tasks;
+CREATE TRIGGER trg_tasks_unmap_children
+AFTER DELETE ON public.tasks
+FOR EACH ROW
+EXECUTE FUNCTION public.trg_unmap_subtasks_on_parent_delete();

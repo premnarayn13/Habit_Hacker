@@ -73,7 +73,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_tasks_unmap_children ON public.tasks;
 CREATE TRIGGER trg_tasks_unmap_children
-BEFORE DELETE ON public.tasks
+AFTER DELETE ON public.tasks
 FOR EACH ROW
 EXECUTE FUNCTION public.trg_unmap_subtasks_on_parent_delete();
 
