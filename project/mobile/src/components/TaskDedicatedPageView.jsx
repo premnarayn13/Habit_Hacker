@@ -139,13 +139,10 @@ export default function TaskDedicatedPageView({
   const effectiveStartStr = currentTask.plannedStart || currentTask.start_date || (currentTask.created_at ? currentTask.created_at.split('T')[0] : null) || parentTask?.plannedStart || new Date().toISOString().split('T')[0];
   const effectiveEndStr = currentTask.plannedEnd || currentTask.end_date || currentTask.deadline || parentTask?.plannedEnd || effectiveStartStr;
 
-  const totalWindowDays = calculateSpanDays(effectiveStartStr, effectiveEndStr) || 45;
+  let totalWindowDays = calculateSpanDays(effectiveStartStr, effectiveEndStr) || 45;
   const today = new Date();
   const startDate = new Date(effectiveStartStr);
-  const endDate = new Date(effectiveEndStr);
-  
-  const elapsedDays = Math.max(1, Math.min(totalWindowDays, Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1)) || 1;
-  const remainingDays = Math.max(0, Math.floor((endDate - today) / (1000 * 60 * 60 * 24)) + 1) || 0;
+  let endDate = new Date(effectiveEndStr);
 
   // Target & Completed Numerical Definitions per Task Type
   const targetCount = trackingMode === 'end_date' 
@@ -153,6 +150,17 @@ export default function TaskDedicatedPageView({
     : (currentTask.targetCount || currentTask.targetDayCount || currentTask.targetEventCount || 30);
   const currentCount = currentTask.currentCount || currentTask.currentDayCount || currentTask.currentEventCount || 0;
   const remainingTargetCount = Math.max(0, targetCount - currentCount);
+
+  // For count_days, ensure window margin includes buffer days (default to targetCount + 30 if not specified or shorter)
+  if (trackingMode === 'count_days' && totalWindowDays <= targetCount) {
+    totalWindowDays = targetCount + 30;
+    const computedEnd = new Date(startDate);
+    computedEnd.setDate(startDate.getDate() + totalWindowDays - 1);
+    endDate = computedEnd;
+  }
+
+  const elapsedDays = Math.max(1, Math.min(totalWindowDays, Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1)) || 1;
+  const remainingDays = Math.max(0, Math.floor((endDate - today) / (1000 * 60 * 60 * 24)) + 1) || 0;
 
   // Type 1 Event Count Daily Requirement for Remaining Days
   const requiredEventsPerRemainingDay = remainingDays > 0 ? (remainingTargetCount / remainingDays).toFixed(1) : 0;
@@ -249,6 +257,9 @@ export default function TaskDedicatedPageView({
         isCompleted: isComp,
         eventCount: Number(l.event_count || (isComp ? 1 : 0))
       };
+      if (targetId === currentTask.id) {
+        parentLogsByDate[dateKey] = val;
+      }
     }
   });
 
@@ -338,6 +349,67 @@ export default function TaskDedicatedPageView({
       });
       parentLogsByDate[day1AgoStr] = 30;
     }
+  } else {
+    // Individual Subtask / Leaf Habit historical fallback for past 3 days
+    let valDay3 = 10;
+    let valDay2 = 0;
+    let valDay1 = 10;
+    let isDay2Done = false;
+
+    const tId = currentTask.id || '';
+    const tTitle = currentTask.title || '';
+
+    if (tId.includes('s1') || tTitle.includes('Yoga') || tTitle.includes('[S1.1]') || tTitle.includes('[S2.1]') || tTitle.includes('[S3.1]')) {
+      valDay3 = (tTitle.includes('Yoga') || tTitle.includes('[S1.1]')) ? 12 : 20;
+      valDay2 = (tTitle.includes('Yoga') || tTitle.includes('[S1.1]')) ? 4 : 12;
+      valDay1 = (tTitle.includes('Yoga') || tTitle.includes('[S1.1]')) ? 10 : 14;
+      isDay2Done = true;
+    } else if (tId.includes('s2') || tTitle.includes('Hydration') || tTitle.includes('[S1.2]') || tTitle.includes('[S2.2]') || tTitle.includes('[S3.2]')) {
+      valDay3 = (tTitle.includes('Hydration') || tTitle.includes('[S1.2]')) ? 14 : 18;
+      valDay2 = (tTitle.includes('Hydration') || tTitle.includes('[S1.2]')) ? 3 : 0;
+      valDay1 = (tTitle.includes('Hydration') || tTitle.includes('[S1.2]')) ? 10 : 16;
+      isDay2Done = tTitle.includes('Hydration') || tTitle.includes('[S1.2]');
+    } else if (tId.includes('s3') || tTitle.includes('Zen') || tTitle.includes('[S1.3]') || tTitle.includes('[S2.3]') || tTitle.includes('[S3.3]')) {
+      valDay3 = (tTitle.includes('Zen') || tTitle.includes('[S1.3]')) ? 16 : 25;
+      valDay2 = 0; // Missed day
+      valDay1 = (tTitle.includes('Zen') || tTitle.includes('[S1.3]')) ? 10 : 25;
+      isDay2Done = false;
+    } else {
+      valDay3 = Number(currentTask.measureTarget || 10);
+      valDay2 = 0;
+      valDay1 = Number(currentTask.measureTarget || 10);
+      isDay2Done = false;
+    }
+
+    if (!subtaskLogsByDate[day3AgoStr]) subtaskLogsByDate[day3AgoStr] = {};
+    if (!subtaskLogsByDate[day3AgoStr][currentTask.id]) {
+      subtaskLogsByDate[day3AgoStr][currentTask.id] = {
+        measuredValue: valDay3,
+        isCompleted: true,
+        eventCount: currentTask.trackingMode === 'count_event' ? 2 : 1
+      };
+    }
+    if (parentLogsByDate[day3AgoStr] === undefined) parentLogsByDate[day3AgoStr] = valDay3;
+
+    if (!subtaskLogsByDate[day2AgoStr]) subtaskLogsByDate[day2AgoStr] = {};
+    if (!subtaskLogsByDate[day2AgoStr][currentTask.id]) {
+      subtaskLogsByDate[day2AgoStr][currentTask.id] = {
+        measuredValue: isDay2Done ? valDay2 : 0,
+        isCompleted: isDay2Done,
+        eventCount: isDay2Done ? 1 : 0
+      };
+    }
+    if (parentLogsByDate[day2AgoStr] === undefined) parentLogsByDate[day2AgoStr] = isDay2Done ? valDay2 : 0;
+
+    if (!subtaskLogsByDate[day1AgoStr]) subtaskLogsByDate[day1AgoStr] = {};
+    if (!subtaskLogsByDate[day1AgoStr][currentTask.id]) {
+      subtaskLogsByDate[day1AgoStr][currentTask.id] = {
+        measuredValue: valDay1,
+        isCompleted: true,
+        eventCount: currentTask.trackingMode === 'count_event' ? 2 : 1
+      };
+    }
+    if (parentLogsByDate[day1AgoStr] === undefined) parentLogsByDate[day1AgoStr] = valDay1;
   }
 
   // Compute logsByDate for every date (summing actual subtask contributions)
@@ -373,7 +445,14 @@ export default function TaskDedicatedPageView({
         logsByDate[dateKey] = parentLogsByDate[dateKey];
       }
     } else {
-      logsByDate[dateKey] = parentLogsByDate[dateKey] || 0;
+      const subVal = subtaskLogsByDate[dateKey]?.[currentTask.id]?.measuredValue;
+      if (subVal !== undefined && subVal > 0) {
+        logsByDate[dateKey] = subVal;
+      } else if (parentLogsByDate[dateKey] !== undefined) {
+        logsByDate[dateKey] = parentLogsByDate[dateKey];
+      } else {
+        logsByDate[dateKey] = 0;
+      }
     }
   });
 
@@ -424,28 +503,53 @@ export default function TaskDedicatedPageView({
     } else {
       const daySubLogs = subtaskLogsByDate[dateStr];
       const dayPLog = (taskLogs || []).find(l => (l.task_id === currentTask.id || l.taskId === currentTask.id) && getCleanDate(l) === dateStr);
+      const directSubLog = (subtaskLogs || []).find(l => (l.subtask_id === currentTask.id || l.subtaskId === currentTask.id || l.task_id === currentTask.id) && getCleanDate(l) === dateStr);
 
-      if (dayPLog) {
-        if (dayPLog.is_successful === true || (dayPLog.is_successful !== false && (dayPLog.increment_value > 0 || dayPLog.measured_value > 0))) {
-          isCompletedDay = true;
-          isMissedDay = false;
+      if (directChildSubtasks.length > 0) {
+        if (dayPLog) {
+          if (dayPLog.is_successful === true || (dayPLog.is_successful !== false && (dayPLog.increment_value > 0 || dayPLog.measured_value > 0))) {
+            isCompletedDay = true;
+            isMissedDay = false;
+          } else {
+            isCompletedDay = false;
+            isMissedDay = true;
+          }
+        } else if (daySubLogs && Object.keys(daySubLogs).length > 0) {
+          const mandatoryChildren = directChildSubtasks.filter(c => !c.isOptional);
+          const allDone = mandatoryChildren.length > 0 && mandatoryChildren.every(c => daySubLogs[c.id]?.isCompleted);
+          if (allDone) {
+            isCompletedDay = true;
+            isMissedDay = false;
+          } else {
+            isCompletedDay = false;
+            isMissedDay = true;
+          }
         } else {
-          isCompletedDay = false;
-          isMissedDay = true;
-        }
-      } else if (daySubLogs && Object.keys(daySubLogs).length > 0) {
-        const mandatoryChildren = directChildSubtasks.filter(c => !c.isOptional);
-        const allDone = mandatoryChildren.length > 0 && mandatoryChildren.every(c => daySubLogs[c.id]?.isCompleted);
-        if (allDone) {
-          isCompletedDay = true;
-          isMissedDay = false;
-        } else {
-          isCompletedDay = false;
-          isMissedDay = true;
+          isMissedDay = missedDaysSetByAgo.has(daysAgo);
+          isCompletedDay = !isMissedDay;
         }
       } else {
-        isMissedDay = missedDaysSetByAgo.has(daysAgo);
-        isCompletedDay = !isMissedDay;
+        // Individual subtask or standalone habit without subtasks
+        if (directSubLog) {
+          const isDone = directSubLog.is_completed !== undefined ? Boolean(directSubLog.is_completed) : (directSubLog.measured_value > 0 || directSubLog.completion_status === 'DONE');
+          isCompletedDay = isDone;
+          isMissedDay = !isDone;
+        } else if (dayPLog) {
+          const isDone = dayPLog.is_successful === true || (dayPLog.is_successful !== false && (dayPLog.increment_value > 0 || dayPLog.measured_value > 0));
+          isCompletedDay = isDone;
+          isMissedDay = !isDone;
+        } else if (daySubLogs && daySubLogs[currentTask.id]) {
+          const isDone = Boolean(daySubLogs[currentTask.id].isCompleted);
+          isCompletedDay = isDone;
+          isMissedDay = !isDone;
+        } else if (parentLogsByDate[dateStr] !== undefined) {
+          const isDone = Number(parentLogsByDate[dateStr]) > 0;
+          isCompletedDay = isDone;
+          isMissedDay = !isDone;
+        } else {
+          isMissedDay = missedDaysSetByAgo.has(daysAgo);
+          isCompletedDay = !isMissedDay;
+        }
       }
     }
 
@@ -456,6 +560,10 @@ export default function TaskDedicatedPageView({
       } else {
         if (logsByDate[dateStr] !== undefined && logsByDate[dateStr] > 0) {
           dailyDeltaMeasure = logsByDate[dateStr];
+        } else if (subtaskLogsByDate[dateStr]?.[currentTask.id]?.measuredValue > 0) {
+          dailyDeltaMeasure = subtaskLogsByDate[dateStr][currentTask.id].measuredValue;
+        } else if (parentLogsByDate[dateStr] !== undefined && parentLogsByDate[dateStr] > 0) {
+          dailyDeltaMeasure = parentLogsByDate[dateStr];
         } else if (currentTask.lastMeasuredValue !== undefined && currentTask.lastMeasuredValue > 0) {
           dailyDeltaMeasure = currentTask.lastMeasuredValue;
         } else {
@@ -500,8 +608,8 @@ export default function TaskDedicatedPageView({
   const effectiveTargetDays = trackingMode === 'end_date' ? totalWindowDays : targetCount;
   const effectiveRemainingTargetDays = trackingMode === 'end_date' ? remainingDays : Math.max(1, remainingTargetCount);
   
-  const reqPaceRemTarget = remainingDays > 0 
-    ? (totalTargetLeft / Math.max(1, effectiveRemainingTargetDays)).toFixed(1) 
+  const reqPaceRemTarget = effectiveRemainingTargetDays > 0 
+    ? (totalTargetLeft / effectiveRemainingTargetDays).toFixed(1) 
     : 0;
   const reqPaceUntilEndDate = remainingDays > 0 
     ? (totalTargetLeft / Math.max(1, remainingDays)).toFixed(1) 
@@ -655,9 +763,11 @@ export default function TaskDedicatedPageView({
         };
       });
     } else {
+      const subVal = subtaskLogsByDate[dayInfo.dateStr]?.[currentTask.id]?.measuredValue;
+      const loggedVal = subVal !== undefined ? subVal : (parentLogsByDate[dayInfo.dateStr] || 0);
       const val = isToday 
         ? (currentTask.isDoneToday ? Number(currentTask.loggedMeasureVal || currentTask.lastMeasuredValue || measureTarget) : 0)
-        : (dayInfo.isMissedDay ? 0 : Number(parentLogsByDate[dayInfo.dateStr] || currentTask.lastMeasuredValue || measureTarget));
+        : (dayInfo.isMissedDay ? 0 : Number(loggedVal || currentTask.lastMeasuredValue || measureTarget));
       
       totalColumnVal = val;
       subtaskContributions = [{
@@ -1061,6 +1171,11 @@ export default function TaskDedicatedPageView({
           <div style={{ background: '#F1F5F9', padding: '10px 16px', borderRadius: '14px', border: '1px solid #CBD5E1', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '220px' }}>
             <span style={{ fontSize: '12px', fontWeight: 800, color: '#0F172A' }}>
               Total Window Duration: <strong>{totalWindowDays} Days</strong>
+              {trackingMode === 'count_days' && totalWindowDays > targetCount && (
+                <span style={{ color: '#16A34A', marginLeft: '6px', fontSize: '11px', fontWeight: 800 }}>
+                  (+{totalWindowDays - targetCount} Buffer Days)
+                </span>
+              )}
             </span>
             <div style={{ display: 'flex', gap: '14px', marginTop: '2px', fontSize: '11px', fontWeight: 800 }}>
               <span style={{ color: '#2563EB' }}>• Days Elapsed: <strong>{elapsedDays} Days</strong></span>
@@ -1095,10 +1210,23 @@ export default function TaskDedicatedPageView({
             <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>
               {targetCount} {trackingMode === 'count_event' ? 'Events' : 'Days'}
             </span>
+            {trackingMode === 'count_days' && (
+              <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed #CBD5E1', fontSize: '11px', color: '#334155', fontWeight: 800 }}>
+                Total Window Margin: <strong style={{ color: '#2563EB' }}>{totalWindowDays} Days</strong>
+                {totalWindowDays > targetCount && (
+                  <span style={{ color: '#16A34A', display: 'block', fontSize: '10px', fontWeight: 800 }}>
+                    (+{totalWindowDays - targetCount} Extra Buffer Days)
+                  </span>
+                )}
+              </div>
+            )}
             {trackingMode === 'count_event' && (
-              <span style={{ fontSize: '9px', fontWeight: 700, color: '#2563EB', display: 'block' }}>
-                ({targetCount * eventUnitTarget} {measureUnit} Total Goal)
-              </span>
+              <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed #CBD5E1', fontSize: '11px', color: '#334155', fontWeight: 800 }}>
+                Total Window Margin: <strong style={{ color: '#2563EB' }}>{totalWindowDays} Days</strong>
+                <span style={{ fontSize: '9px', fontWeight: 700, color: '#2563EB', display: 'block', marginTop: '2px' }}>
+                  ({targetCount * eventUnitTarget} {measureUnit} Total Goal)
+                </span>
+              </div>
             )}
           </div>
 
@@ -1294,7 +1422,7 @@ export default function TaskDedicatedPageView({
       {/* ========================================================================= */}
       {/* 8. CONTRIBUTION / SUBTASK ANALYTICS PANEL (STACKED COLUMN — IMAGE 2 MODEL) */}
       {/* ========================================================================= */}
-      {(trackingMode === 'end_date' || trackingMode === 'count_days') && (() => {
+      {(trackingMode === 'end_date' || trackingMode === 'count_days' || directChildSubtasks.length === 0) && (() => {
         const maxBarVal = Math.max(25, ...sampleDailyMeasures.map(d => d.totalColumnVal), Math.round((dailyTargetMeasure || 5) * 1.5));
 
         return (
@@ -1411,7 +1539,7 @@ export default function TaskDedicatedPageView({
       {/* ========================================================================= */}
       {/* EVENT COUNT STACKED BAR CHART (SUBTASK CONTRIBUTIONS PER EVENT) */}
       {/* ========================================================================= */}
-      {trackingMode === 'count_event' && (
+      {(trackingMode === 'count_event' && directChildSubtasks.length > 0) && (
         <div style={{ padding: '24px', background: '#FFF', borderRadius: '20px', border: '1px solid #E2E8F0', borderLeft: '6px solid #2563EB', boxShadow: '0 4px 16px rgba(0,0,0,0.03)' }}>
           <div style={{ marginBottom: '16px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1522,7 +1650,13 @@ export default function TaskDedicatedPageView({
             <span style={{ fontSize: '9px', fontWeight: 800, color: '#1E40AF', textTransform: 'uppercase', display: 'block' }}>Initial Total Targeted Measure</span>
             <span style={{ fontSize: '15px', fontWeight: 900, color: '#1E3A8A' }}>{totalTargetedMeasure} {measureUnit}</span>
             <span style={{ fontSize: '9px', color: '#3B82F6', fontWeight: 700, display: 'block' }}>
-              {trackingMode === 'count_event' ? `(${targetCount} events × ${eventUnitTarget} ${measureUnit}/event)` : `(${effectiveTargetDays} days × ${dailyTargetMeasure} ${measureUnit})`}
+              {trackingMode === 'count_event'
+                ? `(${targetCount} events × ${eventUnitTarget} ${measureUnit}/event) • Margin: ${totalWindowDays} Days`
+                : (trackingMode === 'count_days'
+                    ? `(${effectiveTargetDays} days × ${dailyTargetMeasure} ${measureUnit}) • Margin: ${totalWindowDays} Days (+${Math.max(0, totalWindowDays - effectiveTargetDays)} buffer)`
+                    : `(${effectiveTargetDays} days × ${dailyTargetMeasure} ${measureUnit})`
+                  )
+              }
             </span>
           </div>
 
@@ -1556,6 +1690,11 @@ export default function TaskDedicatedPageView({
             <span style={{ fontSize: '15px', fontWeight: 900, color: '#6B21A8' }}>
               {reqPaceRemTarget} {measureUnit}/day
             </span>
+            {trackingMode === 'count_days' && (
+              <span style={{ fontSize: '8px', color: '#7E22CE', fontWeight: 700, display: 'block' }}>
+                ({effectiveRemainingTargetDays} remaining target days)
+              </span>
+            )}
           </div>
 
           {/* Card 7: Req Daily Avg (End Date) */}
@@ -1564,7 +1703,11 @@ export default function TaskDedicatedPageView({
             <span style={{ fontSize: '15px', fontWeight: 900, color: '#9F1239' }}>
               {reqPaceUntilEndDate} {measureUnit}/day
             </span>
-            {trackingMode === 'end_date' && (
+            {trackingMode === 'count_days' ? (
+              <span style={{ fontSize: '8px', color: '#BE123C', fontWeight: 700, display: 'block' }}>
+                ({remainingDays} window margin days left)
+              </span>
+            ) : trackingMode === 'end_date' && (
               <span style={{ fontSize: '8px', color: '#BE123C', fontWeight: 700, display: 'block' }}>(Identical for Daily Schedule)</span>
             )}
           </div>

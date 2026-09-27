@@ -279,7 +279,7 @@ BEGIN
         'Career', 'HIGH', 'count_days',
         60, 2, 'DAILY', 1,
         TRUE, 'pages', 40, 0, 45,
-        FALSE, 3, d_day3, (d_today + 57), (d_today + 57), 60, NULL,
+        FALSE, 3, d_day3, (d_day3 + 90), (d_day3 + 90), 60, NULL,
         1, 1, 0, 1
     );
 
@@ -297,7 +297,7 @@ BEGIN
         'Projects', 'HIGH', 'count_event',
         10, 2, 'DAILY', 1,
         TRUE, 'points', 60, 0, 75,
-        FALSE, 20, d_day3, (d_today + 30), (d_today + 30), 90, NULL,
+        FALSE, 20, d_day3, (d_day3 + 45), (d_day3 + 45), 90, NULL,
         1, 1, 0, 1
     );
 
