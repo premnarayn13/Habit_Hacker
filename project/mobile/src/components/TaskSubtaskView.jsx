@@ -29,6 +29,8 @@ import { isParentTaskWithChildren, canManuallyCompleteTask, calculateParentDaily
 export default function TaskSubtaskView({ 
   tasks, 
   subtasks, 
+  taskLogs = [],
+  subtaskLogs = [],
   onToggleTask, 
   onUndoTask,
   onLogEventCount,
@@ -421,8 +423,79 @@ export default function TaskSubtaskView({
                 : 'Click + Add Habit to create a new habit.'}
             </div>
           </div>
-        ) : (
-          displayedTasks.map(task => {
+        ) : (() => {
+          const get7DayHeatmapTiles = (item, children = []) => {
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            const isItemDoneToday = item.isDoneToday || item.progressPercent >= 100;
+
+            const tiles = [];
+            for (let offset = -6; offset <= 0; offset++) {
+              const d = new Date(today);
+              d.setDate(today.getDate() + offset);
+              const dStr = d.toISOString().split('T')[0];
+              const dayLabel = offset === 0 ? 'Today' : `${offset}d`;
+
+              let isComplete = false;
+              let logValue = 0;
+
+              // 1. Direct match in taskLogs
+              const tLog = (taskLogs || []).find(l => {
+                const lDate = l.log_date || l.logged_date || l.entry_date;
+                return (l.task_id === item.id || l.taskId === item.id) && lDate === dStr;
+              });
+              if (tLog && (tLog.is_successful || tLog.is_completed || tLog.isCompleted || Number(tLog.measured_value) > 0)) {
+                isComplete = true;
+                logValue = Number(tLog.measured_value || 1);
+              }
+
+              // 2. Direct match in subtaskLogs
+              if (!isComplete) {
+                const sLog = (subtaskLogs || []).find(l => {
+                  const lDate = l.log_date || l.logged_date || l.entry_date;
+                  return (l.subtask_id === item.id || l.subtaskId === item.id) && lDate === dStr;
+                });
+                if (sLog && (sLog.is_completed || sLog.isCompleted || Number(sLog.measured_value) > 0)) {
+                  isComplete = true;
+                  logValue = Number(sLog.measured_value || 1);
+                }
+              }
+
+              // 3. For parent task with children: check if children were completed on dStr
+              if (!isComplete && children.length > 0) {
+                const mandatoryChildren = children.filter(c => !c.isOptional);
+                const targetChildren = mandatoryChildren.length > 0 ? mandatoryChildren : children;
+                const allChildrenDone = targetChildren.length > 0 && targetChildren.every(child => {
+                  return (subtaskLogs || []).some(l => {
+                    const lDate = l.log_date || l.logged_date || l.entry_date;
+                    return (l.subtask_id === child.id || l.subtaskId === child.id) && lDate === dStr && (l.is_completed || l.isCompleted || Number(l.measured_value) > 0);
+                  }) || (taskLogs || []).some(l => {
+                    const lDate = l.log_date || l.logged_date || l.entry_date;
+                    return (l.task_id === child.id || l.taskId === child.id) && lDate === dStr && (l.is_successful || l.is_completed || l.isCompleted || Number(l.measured_value) > 0);
+                  });
+                });
+                if (allChildrenDone) {
+                  isComplete = true;
+                }
+              }
+
+              // 4. Fallback for Today (offset === 0)
+              if (offset === 0 && !isComplete && isItemDoneToday) {
+                isComplete = true;
+              }
+
+              tiles.push({
+                label: dayLabel,
+                date: dStr,
+                isComplete,
+                logValue
+              });
+            }
+
+            return tiles;
+          };
+
+          return displayedTasks.map(task => {
             const isExpanded = expandedTasks[task.id] !== false;
             const childTasks = tasks.filter(t => t.parentTaskId === task.id);
             const isSubtaskEntity = !!task.parentTaskId;
@@ -446,16 +519,8 @@ export default function TaskSubtaskView({
             const subtaskRatioStr = `${subtaskCompletedCount}:${subtaskTotalCount} Completed`;
             const subtaskProgPercent = subtaskTotalCount > 0 ? Math.round((subtaskCompletedCount / subtaskTotalCount) * 100) : 0;
 
-            // DYNAMIC REAL-TIME FULL 7-TILE HEATMAP LOG (-6, -5, -4, -3, -2, -1, Today)
-            const heatmapTiles = [
-              { label: '-6', isComplete: false },
-              { label: '-5', isComplete: false },
-              { label: '-4', isComplete: false },
-              { label: '-3', isComplete: false },
-              { label: '-2', isComplete: false },
-              { label: '-1', isComplete: false },
-              { label: 'Today', isComplete: isTaskDone }
-            ];
+            // DYNAMIC REAL-TIME FULL 7-TILE HEATMAP LOG (Driven by real database logs)
+            const heatmapTiles = get7DayHeatmapTiles(task, childTasks);
 
             return (
               <div 
@@ -678,7 +743,7 @@ export default function TaskSubtaskView({
                               boxShadow: tile.isComplete ? '0 0 6px rgba(34, 197, 94, 0.4)' : 'none',
                               transition: 'all 0.2s ease'
                             }}
-                            title={tile.label === 'Today' ? (tile.isComplete ? 'Today: Completed' : 'Today: Unscheduled') : `Past Day ${tile.label}`}
+                            title={tile.isComplete ? `${tile.date} (${tile.label}): Completed${tile.logValue > 1 ? ` (${tile.logValue} ${task.measureUnit || 'units'})` : ''}` : `${tile.date} (${tile.label}): Missed`}
                           />
                         ))}
                       </div>
@@ -775,6 +840,7 @@ export default function TaskSubtaskView({
                             const childTarget = child.targetCount || child.targetDayCount || parentTarget;
                             const childDone = (child.currentCount !== undefined && child.currentCount !== null) ? child.currentCount : (child.isDoneToday ? childTarget : 0);
                             const childProg = (child.progressPercent !== undefined && child.progressPercent !== null) ? child.progressPercent : (childTarget > 0 ? Math.round((childDone / childTarget) * 100) : 0);
+                            const childHeatmapTiles = get7DayHeatmapTiles(child, []);
 
                             return (
                               <div 
@@ -817,7 +883,24 @@ export default function TaskSubtaskView({
                                   </div>
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  {/* Child 7-Day Mini Heatmap Log */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                    {childHeatmapTiles.map((cTile, cIdx) => (
+                                      <div
+                                        key={cIdx}
+                                        style={{
+                                          width: '9px',
+                                          height: '9px',
+                                          borderRadius: '2px',
+                                          background: cTile.isComplete ? '#22C55E' : '#E2E8F0',
+                                          boxShadow: cTile.isComplete ? '0 0 4px rgba(34, 197, 94, 0.4)' : 'none',
+                                          transition: 'all 0.2s ease'
+                                        }}
+                                        title={cTile.isComplete ? `${cTile.date} (${cTile.label}): Completed${cTile.logValue > 1 ? ` (${cTile.logValue} ${child.measureUnit || ''})` : ''}` : `${cTile.date} (${cTile.label}): Missed`}
+                                      />
+                                    ))}
+                                  </div>
                                   <span style={{ fontSize: '12px', fontWeight: 800, color: '#D97706' }}>
                                     {childProg}% ({childDone}/{childTarget})
                                   </span>
@@ -834,8 +917,8 @@ export default function TaskSubtaskView({
 
               </div>
             );
-          })
-        )}
+          });
+        })()}
       </div>
 
       {/* FIXED 5-ACTION BOTTOM DOCK INCLUDING OPEN BUTTON (SLIGHTLY INCREASED SIZE, STAYS 100% INSIDE SCREEN BOUNDS - ZERO SCROLL) */}

@@ -2166,6 +2166,8 @@ export default function App() {
                 <TaskSubtaskView 
                   tasks={tasks}
                   subtasks={subtasks}
+                  taskLogs={taskLogs}
+                  subtaskLogs={subtaskLogs}
                   onToggleTask={handleToggleTask}
                   onUndoTask={handleUndoTask}
                   onLogEventCount={handleLogEventCount}
