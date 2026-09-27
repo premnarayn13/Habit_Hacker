@@ -114,6 +114,12 @@ public class TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new IllegalArgumentException("Task not found with id: " + taskId));
 
+        // Guard: Parent habits with subhabits CANNOT be manually marked completed!
+        List<Task> children = taskRepository.findByParentTaskId(taskId);
+        if (!children.isEmpty()) {
+            throw new IllegalStateException("Parent habit completion is driven automatically by completing its subhabits.");
+        }
+
         int target = task.getTargetCount() != null ? task.getTargetCount() : 50;
         int nextCount = Math.min(target, (task.getCurrentCount() != null ? task.getCurrentCount() : 0) + 1);
         int nextProg = (int) Math.round(((double) nextCount / target) * 100);
@@ -284,5 +290,16 @@ public class TaskService {
         }
 
         return rawTasks;
+    }
+
+    // 13. DELETE TASK AND UNMAP ALL SUBTASKS SO THEY BECOME STANDALONE HABITS
+    @Transactional
+    public void deleteTask(String taskId) {
+        List<Task> children = taskRepository.findByParentTaskId(taskId);
+        for (Task child : children) {
+            child.setParentTaskId("");
+            taskRepository.save(child);
+        }
+        taskRepository.deleteById(taskId);
     }
 }

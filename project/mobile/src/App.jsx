@@ -951,6 +951,47 @@ export default function App() {
         });
       }
 
+      // -------------------------------------------------------------
+      // AUTOMATIC DAILY RESET FOR TYPE 1 & 2 TASKS COMPLETED ON PREVIOUS DAYS
+      // Type 3 event-count parent tasks and their subhabits DO NOT reset at midnight (they span across days until the event completes).
+      // -------------------------------------------------------------
+      const todayDateStr = new Date().toISOString().split('T')[0];
+      const previousDayTasksToReset = [];
+
+      fetchedItems = fetchedItems.map(item => {
+        // Check if item is an event-based task or subhabit of an event-based parent
+        const parent = item.parentTaskId ? fetchedItems.find(p => p.id === item.parentTaskId) : null;
+        const isEventTask = item.trackingMode === 'count_event' || (parent && parent.trackingMode === 'count_event');
+
+        // Type 3 event count parent & subhabits persist beyond the calendar day until event finishes
+        if (isEventTask) {
+          return item;
+        }
+
+        // For Type 1 and Type 2 tasks:
+        // If marked completed, check if completed_at was on a previous date
+        const compDate = item.completedAt ? item.completedAt.split('T')[0] : null;
+        
+        // If completed on a previous day, reset to 0 for today
+        if (item.isDoneToday && compDate && compDate < todayDateStr) {
+          previousDayTasksToReset.push(item.id);
+          return {
+            ...item,
+            isDoneToday: false,
+            loggedMeasureVal: 0
+          };
+        }
+        return item;
+      });
+
+      // Sync auto-reset tasks back to Supabase in background
+      if (previousDayTasksToReset.length > 0) {
+        for (const rId of previousDayTasksToReset) {
+          supabase.from('tasks').update({ is_done_today: false, logged_measure_val: 0, status: 'INBOX' }).eq('id', rId).then(() => {});
+          supabase.from('subtasks').update({ is_done_today: false, logged_measure_val: 0, status: 'PLANNED' }).eq('id', rId).then(() => {});
+        }
+      }
+
       // Database is the SINGLE SOURCE OF TRUTH for logged-in users.
       // Update state directly with the fetched records from the database.
       if (dbTasks !== null && !taskError) {
@@ -1026,6 +1067,36 @@ export default function App() {
     };
   }, [currentUser]);
 
+  // Live 12:00 AM Midnight Day Transition Reset Engine
+  useEffect(() => {
+    const scheduleMidnightReset = () => {
+      const now = new Date();
+      const tomorrowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
+      const msUntilMidnight = Math.max(1000, tomorrowMidnight.getTime() - now.getTime());
+
+      const timerId = setTimeout(() => {
+        console.log("🕛 12:00 AM Midnight reached! Executing daily reset for Type 1 & 2 tasks...");
+        if (currentUser && currentUser.email) {
+          fetchUserData(currentUser.id, currentUser.email);
+        } else {
+          // Reset local guest tasks
+          setTasks(prev => prev.map(t => {
+            const parent = t.parentTaskId ? prev.find(p => p.id === t.parentTaskId) : null;
+            const isType3 = t.trackingMode === 'count_event' || (parent && parent.trackingMode === 'count_event');
+            if (isType3) return t; // Event tasks survive midnight
+            return { ...t, isDoneToday: false, loggedMeasureVal: 0 };
+          }));
+        }
+        scheduleMidnightReset();
+      }, msUntilMidnight);
+
+      return timerId;
+    };
+
+    const timer = scheduleMidnightReset();
+    return () => clearTimeout(timer);
+  }, [currentUser]);
+
   const handleTabSwitch = (newTab) => {
     if (newTab === activeTab) return;
     setIsLoadingView(true);
@@ -1095,11 +1166,34 @@ export default function App() {
   };
 
   const handleDeleteTask = async (taskId) => {
-    const newTasks = tasks.filter(t => t.id !== taskId);
+    // 1. Any subhabits of this parent become standalone parent habits (parentTaskId: '')
+    const newTasks = tasks
+      .filter(t => t.id !== taskId)
+      .map(t => (t.parentTaskId === taskId || t.parent_task_id === taskId || t.parent_id === taskId) 
+        ? { ...t, parentTaskId: '', parent_task_id: '', parent_id: '' } 
+        : t
+      );
     updateTasksState(newTasks);
-    setSubtasks(prev => prev.filter(s => s.parentTaskId !== taskId));
+    setSubtasks(prev => prev.map(s => (s.parentTaskId === taskId || s.parent_task_id === taskId || s.parent_id === taskId) 
+      ? { ...s, parentTaskId: '', parent_task_id: '', parent_id: '' } 
+      : s
+    ));
 
     if (currentUser) {
+      // 2. In database, unmap children first so they become standalone
+      try {
+        await supabase.from('tasks')
+          .update({ parent_task_id: null, parent_id: null })
+          .or(`parent_task_id.eq.${taskId},parent_id.eq.${taskId}`);
+      } catch (e) {}
+
+      try {
+        await supabase.from('subtasks')
+          .update({ parent_task_id: null, parent_id: null })
+          .or(`parent_task_id.eq.${taskId},parent_id.eq.${taskId}`);
+      } catch (e) {}
+
+      // 3. Delete parent task
       await supabase.from('tasks').delete().eq('id', taskId);
     }
   };
@@ -1170,7 +1264,16 @@ export default function App() {
   };
 
   const handleToggleTask = async (taskId, customMeasureValue = null) => {
+    // 1. Guard: Parent habits with subhabits CANNOT be manually marked completed!
+    // Completion is driven exclusively by completing its subhabits.
+    const childSubtasks = tasks.filter(t => t.parentTaskId === taskId);
+    if (childSubtasks.length > 0) {
+      alert("Parent habit completion is driven automatically by completing its subhabits.");
+      return;
+    }
+
     let updatedTask = null;
+    let eventTotalMeasure = 0;
     const currentUserId = (currentUser?.email || currentUser?.id || 'demo-user-123').toLowerCase().trim();
 
     let newTasks = tasks.map(t => {
@@ -1243,16 +1346,31 @@ export default function App() {
           const targetEventMax = parent.targetCount || parent.targetEventCount || 10;
           const parentProg = Math.min(100, Math.round((nextParentEventCount / Math.max(1, targetEventMax)) * 100));
 
+          // Calculate total measure accumulated for THIS event cycle across all subtasks
+          // User specification: h1 = 20, h2 = 30, h3 = 25 -> total = 20 + 30 + 25 = 75
+          siblings.forEach(s => {
+            const val = (s.id === updatedTask.id && customMeasureValue !== null)
+              ? Number(customMeasureValue)
+              : Number(s.loggedMeasureVal || s.lastMeasuredValue || s.measureTarget || 0);
+            eventTotalMeasure += val;
+          });
+          eventTotalMeasure = Math.round(eventTotalMeasure * 10) / 10;
+
+          const updatedParentMeasure = Math.round(((parent.loggedMeasureVal || 0) + eventTotalMeasure) * 10) / 10;
+
           completedEventParent = {
             ...parent,
             currentCount: nextParentEventCount,
             currentEventCount: nextParentEventCount,
             progressPercent: parentProg,
+            loggedMeasureVal: updatedParentMeasure,
+            lastMeasuredValue: eventTotalMeasure,
             isDoneToday: nextParentEventCount >= targetEventMax
           };
 
           resetSiblings = siblings;
 
+          // Immediately reset all subtasks under this Type-3 parent for the next event cycle!
           newTasks = newTasks.map(item => {
             if (item.id === parent.id) {
               return completedEventParent;
@@ -1265,6 +1383,7 @@ export default function App() {
                 progressPercent: 0,
                 loggedMeasureVal: 0,
                 lastMeasuredValue: 0,
+                currentEventWork: 0,
                 status: 'PLANNED'
               };
             }
@@ -1291,6 +1410,8 @@ export default function App() {
             current_count: completedEventParent.currentCount,
             progress_percent: completedEventParent.progressPercent,
             is_done_today: completedEventParent.isDoneToday,
+            logged_measure_val: completedEventParent.loggedMeasureVal,
+            last_measured_value: completedEventParent.lastMeasuredValue,
             status: completedEventParent.isDoneToday ? 'COMPLETED' : 'INBOX'
           }).eq('id', completedEventParent.id);
 
@@ -1300,13 +1421,24 @@ export default function App() {
             logged_date: todayStr,
             logged_at: nowIso,
             increment_value: 1,
-            measured_value: completedEventParent.currentCount
+            measured_value: eventTotalMeasure
           }]);
+
+          try {
+            await supabase.from('event_logs').insert([{
+              task_id: completedEventParent.id,
+              user_id: currentUserId,
+              event_number: completedEventParent.currentCount,
+              completion_date: todayStr,
+              completion_timestamp: nowIso,
+              total_work_accumulated: eventTotalMeasure
+            }]);
+          } catch (e) {}
         } catch (e) {
           console.warn('Event parent sync notice:', e);
         }
 
-        // Reset child subtasks in database for next event cycle
+        // Reset child subtasks in database immediately for next event cycle
         for (const st of resetSiblings) {
           try {
             await supabase.from('tasks').update({

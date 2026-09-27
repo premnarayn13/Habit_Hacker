@@ -77,4 +77,11 @@ public class TaskController {
         List<TaskLog> history = taskService.getTaskMeasureHistory(id);
         return ResponseEntity.ok(history);
     }
+
+    // DELETE /api/tasks/{id}
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTask(@PathVariable String id) {
+        taskService.deleteTask(id);
+        return ResponseEntity.noContent().build();
+    }
 }

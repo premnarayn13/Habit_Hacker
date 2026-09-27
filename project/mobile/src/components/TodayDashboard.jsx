@@ -707,6 +707,7 @@ export default function TodayDashboard({
                         <button
                           onClick={(e) => { e.stopPropagation(); toggleParentExpand(task.id); }}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                          title="Parent habit auto-completes when subhabits are finished (Click to expand/collapse)"
                         >
                           {statusObj.isCompleted ? (
                             <CheckCircle2 size={20} color="#16A34A" />
