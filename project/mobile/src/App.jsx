@@ -25,6 +25,7 @@ import DateDurationPickerModal from './components/DateDurationPickerModal';
 import AuthLandingPage from './components/AuthLandingPage';
 import { supabase } from './lib/supabaseClient';
 import { collaborationService } from './lib/collaborationService';
+import { habitHistoryService } from './lib/habitHistoryService';
 import { getApiBaseUrl } from './lib/apiConfig';
 import { 
   isParentTaskWithChildren, 
@@ -828,13 +829,57 @@ export default function App() {
         } catch (profErr) {}
       }
 
-      const res = await supabase.from('tasks').select('*').eq('user_id', queryEmail);
-      dbTasks = res.data;
+      // 1. Fetch tasks owned by user OR where user is listed in collab
+      const res = await supabase.from('tasks').select('*').or(`user_id.eq.${queryEmail},collab.ilike.%${queryEmail}%`);
+      dbTasks = res.data ? [...res.data] : [];
       taskError = res.error;
 
+      // 2. Also check accepted collaborative tasks from task_collaborations
+      try {
+        const { data: acceptedCollabs } = await supabase.from('task_collaborations')
+          .select('task_id')
+          .eq('receiver_email', queryEmail)
+          .eq('status', 'ACCEPTED');
+        if (acceptedCollabs && acceptedCollabs.length > 0) {
+          const collabTaskIds = acceptedCollabs.map(c => c.task_id).filter(Boolean);
+          if (collabTaskIds.length > 0) {
+            const { data: collabTasks } = await supabase.from('tasks').select('*').in('id', collabTaskIds);
+            if (collabTasks && collabTasks.length > 0) {
+              const existingIds = new Set(dbTasks.map(t => t.id));
+              collabTasks.forEach(ct => {
+                if (!existingIds.has(ct.id)) dbTasks.push(ct);
+              });
+            }
+          }
+        }
+      } catch (collabErr) {}
+
+      // 3. Collect all accessible parent task IDs to pull in any shared subtasks
+      const accessibleParentIds = dbTasks.map(t => t.id).filter(Boolean);
+
+      // 4. Fetch any child subtasks in the tasks table whose parent_task_id is in accessibleParentIds
+      if (accessibleParentIds.length > 0) {
+        try {
+          const { data: sharedChildTasks } = await supabase.from('tasks').select('*').in('parent_task_id', accessibleParentIds);
+          if (sharedChildTasks && sharedChildTasks.length > 0) {
+            const existingIds = new Set(dbTasks.map(t => t.id));
+            sharedChildTasks.forEach(c => {
+              if (!existingIds.has(c.id)) dbTasks.push(c);
+            });
+          }
+        } catch (e) {}
+      }
+
+      // 5. Fetch subtasks from the subtasks table (both owned and belonging to any accessible parent habit)
       let dbSubtasks = null;
       try {
-        const subRes = await supabase.from('subtasks').select('*').eq('user_id', queryEmail);
+        let subQuery = supabase.from('subtasks').select('*');
+        if (accessibleParentIds.length > 0) {
+          subQuery = subQuery.or(`user_id.eq.${queryEmail},parent_task_id.in.(${accessibleParentIds.join(',')})`);
+        } else {
+          subQuery = subQuery.eq('user_id', queryEmail);
+        }
+        const subRes = await subQuery;
         dbSubtasks = subRes.data;
       } catch (e) {}
 
@@ -1276,13 +1321,18 @@ export default function App() {
       : null
   };
 
+  const calculatedTaskRate = activeTasks.length > 0 
+    ? Math.round((activeTasks.filter(t => t.isDoneToday || t.progressPercent === 100 || (t.targetCount > 0 && t.currentCount >= t.targetCount)).length / activeTasks.length) * 100) 
+    : 0;
+  const calculatedGrade = calculatedTaskRate >= 90 ? 'A+' : calculatedTaskRate >= 80 ? 'A' : calculatedTaskRate >= 70 ? 'B' : calculatedTaskRate >= 50 ? 'C' : 'Needs Focus';
+
   const disciplineScore = {
-    disciplineScore: activeTasks.length > 0 ? Math.round((activeTasks.filter(t => t.progressPercent === 100).length / activeTasks.length) * 100) : 100,
-    grade: 'EXCELLENT',
-    taskCompletionRate: activeTasks.length > 0 ? Math.round((activeTasks.filter(t => t.progressPercent === 100).length / activeTasks.length) * 100) : 100,
-    onTimeRate: 100,
-    habitConsistencyRate: 100,
-    planAdherenceRate: 100
+    disciplineScore: calculatedTaskRate,
+    grade: calculatedGrade,
+    taskCompletionRate: calculatedTaskRate,
+    onTimeRate: calculatedTaskRate,
+    habitConsistencyRate: calculatedTaskRate,
+    planAdherenceRate: calculatedTaskRate
   };
 
   const handleToggleTask = async (taskId, customMeasureValue = null) => {
@@ -1456,6 +1506,18 @@ export default function App() {
               completion_timestamp: nowIso,
               total_work_accumulated: eventTotalMeasure
             }]);
+
+            habitHistoryService.logCompletion({
+              taskId: completedEventParent.id,
+              parentTaskId: null,
+              taskTitle: completedEventParent.title,
+              userId: currentUserId,
+              userName: currentUser?.user_metadata?.full_name || currentUser?.displayName || currentUserId.split('@')[0],
+              measuredValue: eventTotalMeasure || 0,
+              measureUnit: completedEventParent.measureUnit || 'events',
+              eventCount: 1,
+              notes: `Completed Event Cycle #${completedEventParent.currentCount}`
+            });
           } catch (e) {}
         } catch (e) {
           console.warn('Event parent sync notice:', e);
@@ -1604,6 +1666,19 @@ export default function App() {
               });
             }
           } catch (e) {}
+
+          // Record to persistent habit completion history audit trail
+          habitHistoryService.logCompletion({
+            taskId: taskId,
+            parentTaskId: updatedTask.parentTaskId || null,
+            taskTitle: updatedTask.title,
+            userId: currentUserId,
+            userName: currentUser?.user_metadata?.full_name || currentUser?.displayName || currentUserId.split('@')[0],
+            measuredValue: updatedTask.loggedMeasureVal || 0,
+            measureUnit: updatedTask.measureUnit || 'units',
+            eventCount: 1,
+            notes: `Completed habit on ${todayStr}`
+          });
         } else {
           // TOGGLED OFF (UNDO): Delete today's log & call backend undo
           try {
@@ -1794,6 +1869,18 @@ export default function App() {
         logged_at: new Date().toISOString(),
         increment_value: 1
       }]);
+
+      habitHistoryService.logCompletion({
+        taskId: taskId,
+        parentTaskId: updatedTask.parentTaskId || null,
+        taskTitle: updatedTask.title,
+        userId: (currentUser?.email || currentUser?.id || 'user').toLowerCase(),
+        userName: currentUser?.user_metadata?.full_name || currentUser?.displayName || 'User',
+        measuredValue: 1,
+        measureUnit: updatedTask.measureUnit || 'event',
+        eventCount: 1,
+        notes: `Event logged (+1)`
+      });
     }
   };
 
@@ -1825,12 +1912,21 @@ export default function App() {
     // user_id = email address (consistent cross-device identity)
     const currentUserId = (currentUser?.email || currentUser?.id || 'demo-user-123').toLowerCase().trim();
 
+    // Check if adding subtask under a shared parent habit to inherit collaboration
+    let initialCollab = newTaskData.collab || '';
+    if (newTaskData.parentTaskId) {
+      const parentHabit = tasks.find(t => t.id === newTaskData.parentTaskId);
+      if (parentHabit && parentHabit.collab && !initialCollab) {
+        initialCollab = parentHabit.collab;
+      }
+    }
+
     const newTask = {
       id: parentId,
       user_id: currentUserId,
       title: newTaskData.title,
       description: newTaskData.description || '',
-      collab: newTaskData.collab || '',
+      collab: initialCollab,
       priority: newTaskData.priority || 'MEDIUM',
       isOptional: newTaskData.isOptional || false,
       hasMeasureTracking: newTaskData.hasMeasureTracking || false,
@@ -1939,6 +2035,24 @@ export default function App() {
           updateTasksState(newTasks.map(t => t.id === parentId ? { ...t, id: dbId } : t));
         }
       }
+
+      // Record to habit audit history if this is a subhabit added to a parent habit
+      if (newTask.parentTaskId) {
+        const parentHabit = tasks.find(t => t.id === newTask.parentTaskId);
+        if (parentHabit) {
+          habitHistoryService.logUpdate({
+            taskId: parentHabit.id,
+            parentTaskId: null,
+            taskTitle: parentHabit.title,
+            userId: currentUserId,
+            userName: currentUser?.user_metadata?.full_name || currentUser?.displayName || currentUserId.split('@')[0],
+            updateType: 'ADD_SUBHABIT',
+            fieldName: 'subtasks',
+            newValue: newTask.title,
+            changeSummary: `Added new sub-habit: "${newTask.title}"`
+          });
+        }
+      }
     }
   };
 
@@ -2011,6 +2125,18 @@ export default function App() {
           });
         }
       } catch (e) {}
+
+      // Log habit update to audit history
+      habitHistoryService.logUpdate({
+        taskId: taskId,
+        parentTaskId: updatedData.parentTaskId || null,
+        taskTitle: updatedData.title || 'Habit',
+        userId: (currentUser?.email || currentUser?.id || 'user').toLowerCase(),
+        userName: currentUser?.user_metadata?.full_name || currentUser?.displayName || 'User',
+        updateType: 'HABIT_EDITED',
+        fieldName: 'details',
+        changeSummary: `Updated habit settings: "${updatedData.title || 'Habit'}"`
+      });
     }
   };
 

@@ -73,17 +73,24 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         {/* Brand Header */}
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '14px',
-            background: 'linear-gradient(135deg, #DC2626, #B91C1C)',
+            width: '56px',
+            height: '56px',
+            borderRadius: '16px',
+            background: '#FFFFFF',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto 10px auto',
-            boxShadow: 'var(--shadow-red)'
+            boxShadow: '0 4px 16px rgba(220, 38, 38, 0.2)',
+            border: '2px solid rgba(220, 38, 38, 0.15)',
+            overflow: 'hidden',
+            padding: '3px'
           }}>
-            <Flame size={26} color="#FFF" />
+            <img 
+              src="/HabitHackerImage.png" 
+              alt="Habit Hacker Logo" 
+              style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '12px' }} 
+            />
           </div>
           <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A' }}>
             {authMode === 'LOGIN' ? 'Welcome Back to Habit Hacker' : 'Create Your Account'}

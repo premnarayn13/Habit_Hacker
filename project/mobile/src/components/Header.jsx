@@ -56,19 +56,18 @@ export default function Header({
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{
-                width: '30px',
-                height: '30px',
-                borderRadius: '8px',
-                background: 'linear-gradient(135deg, #DC2626, #B91C1C)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: 'var(--shadow-red)',
-                flexShrink: 0
-              }}>
-                <Flame size={18} color="#FFF" />
-              </div>
+              <img 
+                src="/HabitHackerImage.png" 
+                alt="Habit Hacker Logo" 
+                style={{
+                  width: '30px',
+                  height: '30px',
+                  borderRadius: '8px',
+                  objectFit: 'contain',
+                  boxShadow: 'var(--shadow-red)',
+                  flexShrink: 0
+                }}
+              />
               <div style={{ lineHeight: 1.1 }}>
                 <h1 style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap', margin: 0 }}>HABIT HACKER</h1>
                 <p className="desktop-only-sub" style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, margin: 0 }}>Habit System</p>

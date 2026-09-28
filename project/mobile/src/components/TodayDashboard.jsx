@@ -134,7 +134,7 @@ export default function TodayDashboard({
   capacityData, 
   tasks = [], 
   habits = [], 
-  disciplineScore = { disciplineScore: 85, grade: 'A', taskCompletionRate: 70 }, 
+  disciplineScore = null, 
   taskLogs = [],
   onToggleTask, 
   onUndoTask,
@@ -284,6 +284,51 @@ export default function TodayDashboard({
       totalEstimatedMinutes
     };
   }, [parentTasks, subtasksMap]);
+
+  // Dynamic Discipline Score derived strictly from live database completions
+  const effectiveDisciplineScore = useMemo(() => {
+    if (disciplineScore && typeof disciplineScore === 'object' && disciplineScore.disciplineScore !== undefined && disciplineScore.disciplineScore !== 85) {
+      return disciplineScore;
+    }
+    const scoreVal = stats.completionRate || 0;
+    const gradeVal = scoreVal >= 90 ? 'A+' : scoreVal >= 80 ? 'A' : scoreVal >= 70 ? 'B' : scoreVal >= 50 ? 'C' : 'Needs Focus';
+    return {
+      disciplineScore: scoreVal,
+      grade: gradeVal,
+      taskCompletionRate: scoreVal
+    };
+  }, [disciplineScore, stats.completionRate]);
+
+  // Live Daily Streak calculated strictly from real database logs and today completions
+  const todayStreak = useMemo(() => {
+    const datesSet = new Set();
+    (taskLogs || []).forEach(l => {
+      const d = l.logged_at ? l.logged_at.split('T')[0] : (l.logged_date || l.entry_date);
+      if (d) datesSet.add(d);
+    });
+    (tasks || []).forEach(t => {
+      if (t && (t.isDoneToday || t.progressPercent >= 100)) {
+        datesSet.add(new Date().toISOString().split('T')[0]);
+      }
+    });
+    if (datesSet.size === 0) return 0;
+    let streak = 0;
+    const checkDate = new Date();
+    const todayStr = checkDate.toISOString().split('T')[0];
+    if (!datesSet.has(todayStr)) {
+      checkDate.setDate(checkDate.getDate() - 1);
+    }
+    while (true) {
+      const s = checkDate.toISOString().split('T')[0];
+      if (datesSet.has(s)) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }, [taskLogs, tasks]);
 
   // Compute Task Type Breakdown (Type-1, Type-2, Type-3)
   const typeBreakdown = useMemo(() => {
@@ -1289,14 +1334,14 @@ export default function TodayDashboard({
           <div>
             <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Daily Discipline Score</span>
             <div style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', marginTop: '2px' }}>
-              Grade: <span style={{ color: '#EA580C' }}>{disciplineScore.grade || 'A'}</span> ({disciplineScore.disciplineScore || 85}/100)
+              Grade: <span style={{ color: '#EA580C' }}>{effectiveDisciplineScore.grade || 'A'}</span> ({effectiveDisciplineScore.disciplineScore || 0}/100)
             </div>
           </div>
           <div style={{ background: '#FFF7ED', padding: '8px 12px', borderRadius: '10px', border: '1px solid #FFEDD5', textAlign: 'center' }}>
             <span style={{ fontSize: '10px', fontWeight: 900, color: '#EA580C', display: 'flex', alignItems: 'center', gap: '3px' }}>
               <Flame size={12} color="#EA580C" /> Daily Streak
             </span>
-            <span style={{ fontSize: '14px', fontWeight: 900, color: '#C2410C' }}>12 Days</span>
+            <span style={{ fontSize: '14px', fontWeight: 900, color: '#C2410C' }}>{todayStreak} {todayStreak === 1 ? 'Day' : 'Days'}</span>
           </div>
         </div>
 

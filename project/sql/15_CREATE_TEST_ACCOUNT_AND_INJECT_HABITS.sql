@@ -377,16 +377,16 @@ BEGIN
         d_day3, CURRENT_DATE + 87, CURRENT_DATE + 87
     );
 
-    -- --- SUBHABITS FOR PARENT 3 ---
+    -- --- SUBHABITS FOR PARENT 3 (ALL MUST BE TYPE-3 COUNT_EVENT) ---
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
         logged_measure_val, is_done_today, parent_task_id, planned_start, planned_end, deadline
     ) VALUES (
         'sub-p3-s1-core-backend-api', v_user_id,
-        '[S3.1] Backend Services & Migration (Type 1)',
-        'End-date API development milestones', 'Projects', 'HIGH', 'end_date',
-        10, 3, TRUE, 'points', 20, 0, FALSE, 'parent-type3-project-milestones',
+        '[S3.1] Backend Services & Migration (Type 3 - Event Count)',
+        'Event-count API development milestones', 'Projects', 'HIGH', 'count_event',
+        2, 2, TRUE, 'points', 20, 0, FALSE, 'parent-type3-project-milestones',
         d_day3, CURRENT_DATE + 42, CURRENT_DATE + 42
     );
     INSERT INTO public.tasks (
@@ -395,9 +395,9 @@ BEGIN
         logged_measure_val, is_done_today, parent_task_id, planned_start, planned_end, deadline
     ) VALUES (
         'sub-p3-s2-frontend-ui-views', v_user_id,
-        '[S3.2] React UI Component Polishing (Type 2)',
-        'Count-days design system implementation', 'Projects', 'HIGH', 'count_days',
-        10, 3, TRUE, 'points', 25, 0, FALSE, 'parent-type3-project-milestones',
+        '[S3.2] React UI Component Polishing (Type 3 - Event Count)',
+        'Event-count design system implementation', 'Projects', 'HIGH', 'count_event',
+        2, 2, TRUE, 'points', 25, 0, FALSE, 'parent-type3-project-milestones',
         d_day3, CURRENT_DATE + 42, CURRENT_DATE + 42
     );
     INSERT INTO public.tasks (
@@ -406,7 +406,7 @@ BEGIN
         logged_measure_val, is_done_today, parent_task_id, planned_start, planned_end, deadline
     ) VALUES (
         'sub-p3-s3-integration-testing', v_user_id,
-        '[S3.3] E2E Integration Cycles (Type 3 - 2 Events)',
+        '[S3.3] E2E Integration Cycles (Type 3 - Event Count)',
         'Event-count test deployment suite', 'Projects', 'HIGH', 'count_event',
         2, 2, TRUE, 'points', 20, 0, FALSE, 'parent-type3-project-milestones',
         d_day3, CURRENT_DATE + 42, CURRENT_DATE + 42

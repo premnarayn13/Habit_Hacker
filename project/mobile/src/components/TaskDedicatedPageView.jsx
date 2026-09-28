@@ -74,6 +74,7 @@ import {
   getSegmentedBarMetrics,
   DEFAULT_SUBTASK_COLORS 
 } from '../lib/eventEngine';
+import { habitHistoryService } from '../lib/habitHistoryService';
 
 export default function TaskDedicatedPageView({ 
   task, 
@@ -195,6 +196,28 @@ export default function TaskDedicatedPageView({
   const directChildSubtasks = (childSubtasks && childSubtasks.length > 0)
     ? childSubtasks
     : (allTasks ? allTasks.filter(t => t && currentTask && t.parentTaskId === currentTask.id) : []);
+
+  // Habit History States (Who Completed & Who Updated What Changes)
+  const [completionHistory, setCompletionHistory] = useState([]);
+  const [updateHistory, setUpdateHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  React.useEffect(() => {
+    if (!currentTask?.id) return;
+    setHistoryLoading(true);
+    const childIds = directChildSubtasks.map(s => s.id);
+    Promise.all([
+      habitHistoryService.getCompletionHistory(currentTask.id, childIds),
+      habitHistoryService.getUpdateHistory(currentTask.id, childIds)
+    ]).then(([compHist, updHist]) => {
+      setCompletionHistory(compHist || []);
+      setUpdateHistory(updHist || []);
+    }).catch((err) => {
+      console.warn('History fetch notice:', err);
+    }).finally(() => {
+      setHistoryLoading(false);
+    });
+  }, [currentTask?.id, directChildSubtasks.length]);
 
   // Subtask Contribution Palette
   const subtaskColors = ['#4338CA', '#F59E0B', '#10B981', '#EF4444', '#06B6D4', '#8B5CF6', '#EC4899'];
@@ -2513,7 +2536,294 @@ export default function TaskDedicatedPageView({
       })()}
 
       {/* ========================================================================= */}
-      {/* 16. SELECTED DATE ANALYSIS DRAWER */}
+      {/* 16. WHO COMPLETED THE HABIT — COMPLETION HISTORY SECTION */}
+      {/* ========================================================================= */}
+      <div style={{
+        padding: '24px',
+        background: '#FFFFFF',
+        borderRadius: '24px',
+        border: '1px solid #E2E8F0',
+        borderLeft: '6px solid #16A34A',
+        boxShadow: '0 8px 24px rgba(22, 163, 74, 0.06)',
+        marginTop: '24px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h3 style={{ fontSize: '17px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckCircle2 size={20} color="#16A34A" /> Who Completed This Habit (Completion History)
+            </h3>
+            <p style={{ fontSize: '11px', color: '#64748B', margin: '4px 0 0 0' }}>
+              Verified historical completions logged by members and subhabits with timestamps and measured output.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              background: '#F0FDF4',
+              border: '1px solid #BBF7D0',
+              padding: '6px 14px',
+              borderRadius: '10px',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: '#15803D'
+            }}>
+              {completionHistory.length} Verified Log{completionHistory.length === 1 ? '' : 's'}
+            </span>
+          </div>
+        </div>
+
+        {historyLoading ? (
+          <div style={{ padding: '20px', textAlign: 'center', color: '#64748B', fontSize: '12px' }}>
+            Loading completion history...
+          </div>
+        ) : completionHistory.length === 0 ? (
+          <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0', color: '#64748B', fontSize: '12px', textAlign: 'center' }}>
+            No completion events recorded yet for this habit. Completions by any collaborator will appear here in real-time.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {completionHistory.map((item, idx) => {
+              const compDate = item.completed_at ? new Date(item.completed_at).toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }) : 'Recently';
+
+              const initials = (item.user_name || item.user_id || 'U')
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2) || 'U';
+
+              return (
+                <div 
+                  key={item.id || idx}
+                  style={{
+                    background: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '10px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #16A34A, #15803D)',
+                      color: '#FFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12px',
+                      fontWeight: 900,
+                      boxShadow: '0 2px 8px rgba(22, 163, 74, 0.25)'
+                    }}>
+                      {initials}
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>
+                          {item.user_name || item.user_id?.split('@')[0] || 'Member'}
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#64748B' }}>({item.user_id})</span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#475569', fontWeight: 600, marginTop: '2px' }}>
+                        Target: <strong style={{ color: '#0F172A' }}>{item.task_title || currentTask.title}</strong>
+                        {item.notes ? ` • ${item.notes}` : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {Number(item.measured_value) > 0 && (
+                      <span style={{
+                        background: '#DCFCE7',
+                        color: '#166534',
+                        border: '1px solid #86EFAC',
+                        padding: '4px 10px',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        fontWeight: 900
+                      }}>
+                        +{item.measured_value} {item.measure_unit || 'units'}
+                      </span>
+                    )}
+
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B' }}>
+                      {compDate}
+                    </span>
+
+                    <span style={{
+                      background: '#16A34A',
+                      color: '#FFF',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      fontSize: '10px',
+                      fontWeight: 800,
+                      letterSpacing: '0.04em'
+                    }}>
+                      VERIFIED
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 17. WHO UPDATED WHAT CHANGES — AUDIT LOG SECTION */}
+      {/* ========================================================================= */}
+      <div style={{
+        padding: '24px',
+        background: '#FFFFFF',
+        borderRadius: '24px',
+        border: '1px solid #E2E8F0',
+        borderLeft: '6px solid #2563EB',
+        boxShadow: '0 8px 24px rgba(37, 99, 235, 0.06)',
+        marginTop: '24px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h3 style={{ fontSize: '17px', fontWeight: 900, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <History size={20} color="#2563EB" /> Who Updated What Changes (Audit Trail)
+            </h3>
+            <p style={{ fontSize: '11px', color: '#64748B', margin: '4px 0 0 0' }}>
+              Full chronological audit log of subhabit additions, parameter modifications, target updates, and collaborator activities.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              background: '#EFF6FF',
+              border: '1px solid #BFDBFE',
+              padding: '6px 14px',
+              borderRadius: '10px',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: '#1D4ED8'
+            }}>
+              {updateHistory.length} Modification{updateHistory.length === 1 ? '' : 's'} Logged
+            </span>
+          </div>
+        </div>
+
+        {historyLoading ? (
+          <div style={{ padding: '20px', textAlign: 'center', color: '#64748B', fontSize: '12px' }}>
+            Loading change history...
+          </div>
+        ) : updateHistory.length === 0 ? (
+          <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0', color: '#64748B', fontSize: '12px', textAlign: 'center' }}>
+            No updates recorded yet. Modifications made to this habit or its subhabits will be automatically logged here.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {updateHistory.map((item, idx) => {
+              const updDate = item.created_at ? new Date(item.created_at).toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }) : 'Recently';
+
+              const initials = (item.user_name || item.user_id || 'U')
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2) || 'U';
+
+              const isSubhabitAdded = item.update_type === 'SUBHABIT_ADDED';
+
+              return (
+                <div 
+                  key={item.id || idx}
+                  style={{
+                    background: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '12px',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '10px'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '50%',
+                      background: isSubhabitAdded ? 'linear-gradient(135deg, #7C3AED, #6D28D9)' : 'linear-gradient(135deg, #2563EB, #1D4ED8)',
+                      color: '#FFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12px',
+                      fontWeight: 900,
+                      boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)'
+                    }}>
+                      {initials}
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>
+                          {item.user_name || item.user_id?.split('@')[0] || 'Member'}
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#64748B' }}>({item.user_id})</span>
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#1E293B', fontWeight: 700, marginTop: '2px' }}>
+                        {item.change_summary}
+                      </div>
+                      {item.old_value && item.new_value && (
+                        <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>
+                          Changed: <span style={{ textDecoration: 'line-through', color: '#EF4444' }}>{item.old_value}</span> → <strong style={{ color: '#16A34A' }}>{item.new_value}</strong>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{
+                      background: isSubhabitAdded ? '#F3E8FF' : '#EFF6FF',
+                      color: isSubhabitAdded ? '#6D28D9' : '#1D4ED8',
+                      border: isSubhabitAdded ? '1px solid #D8B4FE' : '1px solid #BFDBFE',
+                      padding: '4px 10px',
+                      borderRadius: '8px',
+                      fontSize: '10px',
+                      fontWeight: 900,
+                      letterSpacing: '0.04em'
+                    }}>
+                      {item.update_type || 'MODIFIED'}
+                    </span>
+
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B' }}>
+                      {updDate}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 18. SELECTED DATE ANALYSIS DRAWER */}
       {/* ========================================================================= */}
       {selectedCalendarDate && (
         <div style={{

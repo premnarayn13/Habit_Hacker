@@ -97,12 +97,24 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
     }
   };
 
+  const [typeRestrictionError, setTypeRestrictionError] = useState('');
+
   const parentTask = existingTasks.find(t => t.id === formData.parentTaskId);
-  const isParentNonMeasure = parentTask && !parentTask.hasMeasureTracking && (!parentTask.measureTarget || Number(parentTask.measureTarget) <= 0);
+  const isParentType3 = Boolean(parentTask && (parentTask.trackingMode === 'count_event' || parentTask.tracking_mode === 'count_event'));
+  const isParentNonMeasure = Boolean(parentTask && !parentTask.hasMeasureTracking && (!parentTask.measureTarget || Number(parentTask.measureTarget) <= 0));
+
+  // Auto-enforce Type-3 tracking mode if parent is Type-3
+  useEffect(() => {
+    if (isParentType3 && formData.trackingMode !== 'count_event') {
+      setFormData(prev => ({ ...prev, trackingMode: 'count_event' }));
+    }
+  }, [isParentType3]);
 
   let validationError = '';
   if (totalSpanDays <= 0) {
     validationError = 'End Date must be greater than or equal to Start Date.';
+  } else if (isParentType3 && formData.trackingMode !== 'count_event') {
+    validationError = 'Unable to create subtask of this type for this parent';
   } else if (isParentNonMeasure && (formData.hasMeasureTracking || Number(formData.measureTarget) > 0)) {
     validationError = 'Parent habit does not track quantitative measure. Subhabits under a non-measured habit cannot track measures.';
   } else if (formData.trackingMode === 'count_days') {
@@ -280,6 +292,22 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
             </span>
           </div>
 
+          {/* PARENT TYPE RESTRICTION NOTICE IF PARENT IS TYPE-3 (EVENT COUNT) */}
+          {isParentType3 && (
+            <div style={{ background: '#FEF2F2', border: '1.5px solid #F87171', padding: '10px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: 800, color: '#DC2626', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle size={16} color="#DC2626" />
+              <span>Parent is a Type-3 Event-Count habit: Type-3 parent habits can ONLY have Type-3 (Event Count) subhabits.</span>
+            </div>
+          )}
+
+          {/* DYNAMIC ERROR IF USER ATTEMPTS INVALID SUBTASK TYPE */}
+          {typeRestrictionError && (
+            <div style={{ background: '#FFF1F2', border: '1.5px solid #E11D48', padding: '10px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: 900, color: '#BE123C', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle size={16} color="#BE123C" />
+              <span>{typeRestrictionError}</span>
+            </div>
+          )}
+
           {/* PARENT TYPE RESTRICTION NOTICE IF PARENT IS NON-MEASURABLE */}
           {isParentNonMeasure && (
             <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', padding: '10px 14px', borderRadius: '10px', fontSize: '11px', fontWeight: 700, color: '#B45309', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -301,13 +329,13 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
                   label: 'Type 1: Scheduled Habit', 
                   val: 'end_date', 
                   desc: 'Frequency & Date (Daily Measure)',
-                  disabled: false 
+                  disabled: Boolean(isParentType3) 
                 },
                 { 
                   label: 'Type 2: Target Days Habit', 
                   val: 'count_days', 
                   desc: 'Target Days Count (Daily Measure)',
-                  disabled: Boolean(isParentNonMeasure) 
+                  disabled: Boolean(isParentType3 || isParentNonMeasure) 
                 },
                 { 
                   label: 'Type 3: Event Count Habit', 
@@ -321,9 +349,13 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
                   <button
                     key={m.val}
                     type="button"
-                    disabled={m.disabled}
                     onClick={() => {
+                      if (isParentType3 && m.val !== 'count_event') {
+                        setTypeRestrictionError('Unable to create subtask of this type for this parent');
+                        return;
+                      }
                       if (m.disabled) return;
+                      setTypeRestrictionError('');
                       setFormData(prev => ({ 
                         ...prev, 
                         trackingMode: m.val
@@ -332,7 +364,7 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
                     style={{
                       padding: '10px 8px',
                       borderRadius: '12px',
-                      border: isSelected ? '2px solid #DC2626' : '1px solid #CBD5E1',
+                      border: isSelected ? '2px solid #DC2626' : (m.disabled ? '1px solid #E2E8F0' : '1px solid #CBD5E1'),
                       background: m.disabled ? '#F1F5F9' : (isSelected ? 'rgba(220, 38, 38, 0.08)' : '#FFF'),
                       color: m.disabled ? '#94A3B8' : (isSelected ? '#DC2626' : '#475569'),
                       textAlign: 'center',
@@ -342,6 +374,9 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
                   >
                     <div style={{ fontSize: '11px', fontWeight: 800 }}>{m.label}</div>
                     <div style={{ fontSize: '9px', color: '#64748B', marginTop: '2px' }}>{m.desc}</div>
+                    {isParentType3 && m.val !== 'count_event' && (
+                      <div style={{ fontSize: '8px', color: '#DC2626', fontWeight: 800, marginTop: '3px' }}>Blocked for Parent</div>
+                    )}
                   </button>
                 );
               })}

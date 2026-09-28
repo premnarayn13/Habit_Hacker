@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   User, 
   Settings, 
@@ -62,6 +62,16 @@ export default function SettingsProfileView({
     todoNotifications: true,
     ringtoneName: 'Default Bell'
   });
+
+  // Calculate dynamic initials from profile display name or email
+  const userInitials = useMemo(() => {
+    const name = (profileData.displayName || profileData.email || 'User').trim();
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }, [profileData.displayName, profileData.email]);
 
   // UI Flow States
   const [activeTabSection, setActiveTabSection] = useState('profile');
@@ -269,55 +279,61 @@ export default function SettingsProfileView({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '840px', margin: '0 auto', width: '100%', padding: '0 4px', boxSizing: 'border-box' }}>
       
       {/* Top Banner & Control Center Header */}
-      <div className="glass-panel" style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', borderRadius: '18px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ padding: '8px', background: '#FEE2E2', borderRadius: '12px' }}>
-              <Settings size={24} color="#DC2626" />
-            </div>
-            <div>
-              <h2 style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A', margin: 0 }}>Profile & System Settings</h2>
-              <p style={{ fontSize: '13px', color: '#64748B', margin: '2px 0 0 0' }}>
-                Control center for account, capacity quotas, notifications, privacy boundaries, and offline sync.
-              </p>
-            </div>
+      <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderRadius: '16px', background: '#FFFFFF', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '200px' }}>
+          <div style={{ padding: '8px', background: '#FEE2E2', borderRadius: '10px' }}>
+            <Settings size={20} color="#DC2626" />
+          </div>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A', margin: 0 }}>Profile & System Settings</h2>
+            <p style={{ fontSize: '11px', color: '#64748B', margin: '2px 0 0 0' }}>
+              Account quotas, notifications, collaborators, privacy, and sync.
+            </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <button 
             onClick={handleManualSync}
             disabled={syncingState}
             className="btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '8px 14px' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '6px 12px' }}
           >
-            <RefreshCw size={14} className={syncingState ? 'spin-animation' : ''} />
+            <RefreshCw size={13} className={syncingState ? 'spin-animation' : ''} />
             {syncingState ? 'Syncing...' : 'Sync Now'}
           </button>
 
           {currentUser ? (
-            <button className="btn-secondary" onClick={onLogout} style={{ color: '#DC2626', borderColor: '#FCA5A5' }}>
-              <LogOut size={16} /> Sign Out
+            <button className="btn-secondary" onClick={onLogout} style={{ color: '#DC2626', borderColor: '#FCA5A5', fontSize: '12px', padding: '6px 12px' }}>
+              <LogOut size={14} /> Sign Out
             </button>
           ) : (
-            <button className="btn-primary" onClick={onOpenAuth}>
-              <User size={16} /> Sign In
+            <button className="btn-primary" onClick={onOpenAuth} style={{ fontSize: '12px', padding: '6px 14px' }}>
+              <User size={14} /> Sign In
             </button>
           )}
         </div>
       </div>
 
       {savedSuccess && (
-        <div style={{ background: '#ECFDF5', border: '1px solid #6EE7B7', color: '#047857', padding: '14px 18px', borderRadius: '14px', fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Check size={18} /> Settings updated successfully across app & local storage!
+        <div style={{ background: '#ECFDF5', border: '1px solid #6EE7B7', color: '#047857', padding: '12px 16px', borderRadius: '12px', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Check size={16} /> Settings updated successfully across app & local storage!
         </div>
       )}
 
-      {/* Navigation Sub-Tabs */}
-      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+      {/* Navigation Sub-Tabs (Smooth Mobile Touch Scroll) */}
+      <div style={{
+        display: 'flex',
+        gap: '6px',
+        overflowX: 'auto',
+        padding: '2px 2px 6px 2px',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none'
+      }}>
         {[
           { id: 'profile', label: 'Profile', icon: User },
           { id: 'collaborations', label: 'Collaborations & Invites', icon: Users, badge: receivedInvitations.filter(i => i.status === 'PENDING').length },
@@ -338,22 +354,23 @@ export default function SettingsProfileView({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                padding: '10px 16px',
-                borderRadius: '12px',
-                fontSize: '13px',
+                gap: '6px',
+                padding: '8px 14px',
+                borderRadius: '10px',
+                fontSize: '12px',
                 fontWeight: isActive ? 800 : 600,
                 border: isActive ? '1px solid #DC2626' : '1px solid #E2E8F0',
                 background: isActive ? '#DC2626' : '#FFFFFF',
                 color: isActive ? '#FFFFFF' : '#475569',
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
-                transition: 'all 0.2s ease'
+                flexShrink: 0,
+                transition: 'all 0.15s ease'
               }}
             >
-              <IconComp size={15} /> {tab.label}
+              <IconComp size={14} /> {tab.label}
               {!!tab.badge && (
-                <span style={{ background: isActive ? '#FFFFFF' : '#EF4444', color: isActive ? '#DC2626' : '#FFFFFF', borderRadius: '10px', padding: '2px 7px', fontSize: '11px', fontWeight: 900 }}>
+                <span style={{ background: isActive ? '#FFFFFF' : '#EF4444', color: isActive ? '#DC2626' : '#FFFFFF', borderRadius: '10px', padding: '1px 6px', fontSize: '10px', fontWeight: 900 }}>
                   {tab.badge}
                 </span>
               )}
@@ -364,12 +381,13 @@ export default function SettingsProfileView({
 
       {/* SECTION 1: PROFILE */}
       {activeTabSection === 'profile' && (
-        <div className="glass-panel" style={{ padding: '24px', borderRadius: '18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ background: '#FFFFFF', padding: '18px 16px', borderRadius: '16px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '220px' }}>
               <div style={{
-                width: '72px',
-                height: '72px',
+                width: '60px',
+                height: '60px',
+                minWidth: '60px',
                 borderRadius: '50%',
                 background: 'linear-gradient(135deg, #DC2626, #991B1B)',
                 display: 'flex',
@@ -377,85 +395,85 @@ export default function SettingsProfileView({
                 justifyContent: 'center',
                 color: '#FFF',
                 fontWeight: 900,
-                fontSize: '24px',
+                fontSize: '20px',
                 position: 'relative',
-                boxShadow: '0 4px 14px rgba(220, 38, 38, 0.3)'
+                boxShadow: '0 4px 14px rgba(220, 38, 38, 0.25)'
               }}>
-                PN
-                <span style={{ position: 'absolute', bottom: '0', right: '0', background: '#D97706', borderRadius: '50%', padding: '4px', border: '2px solid #FFF' }}>
-                  <Crown size={12} color="#FFF" />
+                {userInitials}
+                <span style={{ position: 'absolute', bottom: '-2px', right: '-2px', background: '#D97706', borderRadius: '50%', padding: '3px', border: '2px solid #FFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Crown size={11} color="#FFF" />
                 </span>
               </div>
 
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <h3 style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A', margin: 0 }}>{profileData.displayName}</h3>
-                  <span className="badge badge-high" style={{ background: '#FEE2E2', color: '#991B1B', border: '1px solid #FCA5A5' }}>PRO MEMBER</span>
+              <div style={{ overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <h3 style={{ fontSize: '17px', fontWeight: 900, color: '#0F172A', margin: 0 }}>{profileData.displayName}</h3>
+                  <span className="badge badge-high" style={{ background: '#FEE2E2', color: '#991B1B', border: '1px solid #FCA5A5', fontSize: '10px', padding: '1px 6px' }}>PRO MEMBER</span>
                 </div>
-                <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 0 0' }}>{profileData.email} • @{profileData.username}</p>
-                <p style={{ fontSize: '11px', color: '#94A3B8', margin: '2px 0 0 0' }}>Account Created: August 2026</p>
+                <p style={{ fontSize: '12px', color: '#64748B', margin: '3px 0 0 0', wordBreak: 'break-all' }}>{profileData.email}</p>
+                <p style={{ fontSize: '11px', color: '#94A3B8', margin: '1px 0 0 0' }}>@{profileData.username}</p>
               </div>
             </div>
 
             <button 
               onClick={() => setIsEditingProfile(!isEditingProfile)}
               className="btn-secondary"
-              style={{ fontSize: '13px', padding: '8px 16px' }}
+              style={{ fontSize: '12px', padding: '6px 14px' }}
             >
-              {isEditingProfile ? 'Cancel Editing' : 'Edit Profile'}
+              {isEditingProfile ? 'Cancel' : 'Edit Profile'}
             </button>
           </div>
 
           {/* Edit Profile Form */}
           {isEditingProfile && (
-            <form onSubmit={handleSaveSettings} style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '20px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
-              <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>Edit Account Information</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+            <form onSubmit={handleSaveSettings} style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '14px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '16px' }}>
+              <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: '#0F172A' }}>Edit Account Information</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '12px', color: '#475569', fontWeight: 700, display: 'block', marginBottom: '6px' }}>FULL DISPLAY NAME</label>
+                  <label style={{ fontSize: '11px', color: '#475569', fontWeight: 700, display: 'block', marginBottom: '4px' }}>FULL DISPLAY NAME</label>
                   <input 
                     type="text" 
                     value={profileData.displayName}
                     onChange={(e) => setProfileData(prev => ({ ...prev, displayName: e.target.value }))}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #CBD5E1' }}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '13px' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '12px', color: '#475569', fontWeight: 700, display: 'block', marginBottom: '6px' }}>EMAIL ADDRESS</label>
+                  <label style={{ fontSize: '11px', color: '#475569', fontWeight: 700, display: 'block', marginBottom: '4px' }}>EMAIL ADDRESS</label>
                   <input 
                     type="email" 
                     value={profileData.email}
                     onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #CBD5E1' }}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '13px' }}
                   />
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button type="submit" className="btn-primary" style={{ padding: '8px 18px', fontSize: '13px' }}>
-                  <Save size={14} /> Save Profile Updates
+                <button type="submit" className="btn-primary" style={{ padding: '8px 16px', fontSize: '12px' }}>
+                  <Save size={13} /> Save Updates
                 </button>
               </div>
             </form>
           )}
 
           {/* Account Summary Metrics */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '16px', borderRadius: '14px' }}>
-              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 700 }}>AUTHENTICATION STATUS</span>
-              <p style={{ fontSize: '15px', fontWeight: 800, color: '#047857', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Shield size={16} /> JWT Session Active
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '12px 14px', borderRadius: '12px' }}>
+              <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, letterSpacing: '0.04em' }}>AUTHENTICATION STATUS</span>
+              <p style={{ fontSize: '13px', fontWeight: 800, color: '#047857', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Shield size={14} /> JWT Active
               </p>
             </div>
-            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '16px', borderRadius: '14px' }}>
-              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 700 }}>DAILY CAPACITY QUOTA</span>
-              <p style={{ fontSize: '15px', fontWeight: 800, color: '#DC2626', margin: '4px 0 0 0' }}>
-                {profileData.capacityHours} Hours / Day ({profileData.capacityHours * 60} mins)
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '12px 14px', borderRadius: '12px' }}>
+              <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, letterSpacing: '0.04em' }}>DAILY CAPACITY QUOTA</span>
+              <p style={{ fontSize: '13px', fontWeight: 800, color: '#DC2626', margin: '4px 0 0 0' }}>
+                {profileData.capacityHours}h / Day ({profileData.capacityHours * 60}m)
               </p>
             </div>
-            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '16px', borderRadius: '14px' }}>
-              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 700 }}>OFFLINE DISCIPLINE VAULT</span>
-              <p style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A', margin: '4px 0 0 0' }}>
-                IndexedDB Private Storage
+            <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '12px 14px', borderRadius: '12px' }}>
+              <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, letterSpacing: '0.04em' }}>DISCIPLINE VAULT</span>
+              <p style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', margin: '4px 0 0 0' }}>
+                IndexedDB Private
               </p>
             </div>
           </div>
@@ -464,7 +482,7 @@ export default function SettingsProfileView({
 
       {/* SECTION: COLLABORATIONS & INVITES */}
       {activeTabSection === 'collaborations' && (
-        <div className="glass-panel" style={{ padding: '24px', borderRadius: '18px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ background: '#FFFFFF', padding: '18px 16px', borderRadius: '16px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>

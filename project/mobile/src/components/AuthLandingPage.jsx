@@ -149,17 +149,24 @@ export default function AuthLandingPage({ onAuthSuccess }) {
         {/* Brand Icon & Heading */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '16px',
-            background: 'linear-gradient(135deg, #DC2626, #B91C1C)',
+            width: '64px',
+            height: '64px',
+            borderRadius: '18px',
+            background: '#FFFFFF',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            margin: '0 auto 12px auto',
-            boxShadow: '0 8px 20px rgba(220, 38, 38, 0.3)'
+            margin: '0 auto 14px auto',
+            boxShadow: '0 8px 24px rgba(220, 38, 38, 0.2)',
+            border: '2px solid rgba(220, 38, 38, 0.15)',
+            overflow: 'hidden',
+            padding: '4px'
           }}>
-            <Flame size={32} color="#FFF" />
+            <img 
+              src="/HabitHackerImage.png" 
+              alt="Habit Hacker Logo" 
+              style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '14px' }} 
+            />
           </div>
           <h2 style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A', letterSpacing: '-0.02em' }}>
             HABIT HACKER

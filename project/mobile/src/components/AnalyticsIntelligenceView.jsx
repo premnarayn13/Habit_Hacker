@@ -78,61 +78,6 @@ export default function AnalyticsIntelligenceView({
 
   const [activeInsightModal, setActiveInsightModal] = useState(null); // Selected insight object for "Why?" popup
 
-  // AI Productivity Coach State & Offline Cache
-  const [aiState, setAiState] = useState({
-    loading: false,
-    data: null,
-    error: null,
-    isOfflineCached: false,
-    cachedTime: null
-  });
-
-  const fetchAiInsights = async () => {
-    setAiState(prev => ({ ...prev, loading: true, error: null }));
-    const baseUrl = getApiBaseUrl();
-    try {
-      const currentUserId = (currentUser?.email || currentUser?.id || 'user').toLowerCase();
-      const url = `${baseUrl}/api/v1/analytics/ai-insights?userId=${encodeURIComponent(currentUserId)}&totalTasks=${tasks.length}&completedTasks=${intel.completedTasksCount ?? 0}&missedTasks=${intel.missedTasksCount ?? 0}&completionRate=${intel.overallCompletionRate ?? 0}&maxStreak=${intel.maxActiveStreak ?? 0}&plannedMinutes=${intel.totalPlannedWorkloadMinutes ?? 0}`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setAiState({ loading: false, data, error: null, isOfflineCached: false, cachedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-        try {
-          localStorage.setItem('habit_hacker_cached_ai_insight', JSON.stringify({ data, cachedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
-        } catch (e) {}
-        return;
-      }
-    } catch (err) {}
-
-    // Instant local AI Productivity Engine fallback when network API is unavailable or spinning up
-    const localCompletion = intel.overallCompletionRate ?? 0;
-    const localCompletedCount = intel.completedTasksCount ?? 0;
-    const localData = {
-      provider: 'Habit Hacker AI Intelligence Engine',
-      insightContent: localCompletedCount > 0
-        ? `AI Productivity Engine calculated an overall completion rate of ${localCompletion}% across your active tasks. Execution momentum is on track.`
-        : `AI Productivity Engine detected 0 completed tasks currently. Focus on completing your first active habit today to build momentum.`,
-      disciplineScore: localCompletion,
-      recommendations: [
-        'Focus Peak: Schedule complex habits during your morning high-energy window.',
-        'Capacity Guardrail: Keep daily workload within capacity sweet-spot range.',
-        'Subtask Decomposition: Break heavy goals into smaller subtasks for consistent daily execution.'
-      ],
-      sectionTakeaways: {
-        todTakeaway: `Circadian focus peak identified. Morning focus blocks show highest completion rate.`,
-        capacityGaugeTakeaway: `Operating at ${intel.capacityUtilizationPercent}% utilization. Keep planned workload under ${intel.dailyCapacityMinutes} mins.`,
-        streakSurvivalTakeaway: `Streak retention is at ${intel.maxActiveStreak} days. Surviving past Day 7 increases long-term retention.`,
-        pulseTakeaway: `Baseline completion rate is currently ${localCompletion}%.`
-      }
-    };
-
-    setAiState({ loading: false, data: localData, error: null, isOfflineCached: true, cachedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-  };
-
-  useEffect(() => {
-    fetchAiInsights();
-  }, []);
-
   // Dynamic User Categories List
   const userCategories = Array.from(new Set(tasks.map(t => t.category).filter(Boolean)));
   const categoryOptions = ['ALL', ...userCategories];
@@ -166,6 +111,69 @@ export default function AnalyticsIntelligenceView({
   ]);
 
   const scorecard = intel.executiveScorecard || {};
+
+  // AI Productivity Coach State & Offline Cache
+  const [aiState, setAiState] = useState({
+    loading: false,
+    data: null,
+    error: null,
+    isOfflineCached: false,
+    cachedTime: null
+  });
+
+  const fetchAiInsights = async () => {
+    setAiState(prev => ({ ...prev, loading: true, error: null }));
+    const baseUrl = getApiBaseUrl();
+    try {
+      const currentUserId = (currentUser?.email || currentUser?.id || 'example@gmail.com').toLowerCase();
+      const compTasks = intel.completedTaskLogsCount || intel.completedTasksCount || tasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
+      const compRate = intel.overallCompletionRate ?? 0;
+      const maxStrk = intel.maxActiveStreak ?? 1;
+      const plannedMins = intel.totalPlannedWorkloadMinutes ?? 360;
+      const missedCount = intel.totalParentMissedDaysCount || Math.max(0, tasks.length - compTasks);
+
+      const url = `${baseUrl}/api/v1/analytics/ai-insights?userId=${encodeURIComponent(currentUserId)}&totalTasks=${tasks.length}&completedTasks=${compTasks}&missedTasks=${missedCount}&completionRate=${compRate}&maxStreak=${maxStrk}&plannedMinutes=${plannedMins}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setAiState({ loading: false, data, error: null, isOfflineCached: false, cachedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+        try {
+          localStorage.setItem('habit_hacker_cached_ai_insight', JSON.stringify({ data, cachedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
+        } catch (e) {}
+        return;
+      }
+    } catch (err) {
+      console.warn("AI insights API call notice:", err);
+    }
+
+    // Instant local AI Productivity Engine fallback when network API is unavailable or spinning up
+    const localCompletion = intel.overallCompletionRate ?? 0;
+    const localCompletedCount = intel.completedTaskLogsCount || tasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
+    const localData = {
+      provider: 'Habit Hacker AI Intelligence Engine (Live Database Analytics)',
+      insightContent: localCompletedCount > 0
+        ? `AI Productivity Engine calculated an overall completion rate of ${localCompletion}% across your ${tasks.length} active database habits. Execution momentum is on track.`
+        : `AI Productivity Engine detected ${tasks.length} active habits in your database. Focus on completing your first active habit today to build momentum.`,
+      disciplineScore: Math.max(10, localCompletion),
+      recommendations: [
+        'Focus Peak: Schedule complex habits during your morning high-energy window.',
+        'Capacity Guardrail: Keep daily workload within capacity sweet-spot range.',
+        'Subtask Decomposition: Break heavy goals into smaller subtasks for consistent daily execution.'
+      ],
+      sectionTakeaways: {
+        todTakeaway: `Circadian focus peak identified. Morning focus blocks show highest completion rate.`,
+        capacityGaugeTakeaway: `Operating at ${intel.capacityUtilizationPercent}% utilization. Keep planned workload under ${intel.dailyCapacityMinutes} mins.`,
+        streakSurvivalTakeaway: `Streak retention is at ${intel.maxActiveStreak} days. Surviving past Day 7 increases long-term retention.`,
+        pulseTakeaway: `Baseline completion rate is currently ${localCompletion}%.`
+      }
+    };
+
+    setAiState({ loading: false, data: localData, error: null, isOfflineCached: true, cachedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+  };
+
+  useEffect(() => {
+    fetchAiInsights();
+  }, [tasks.length, currentUser?.email, intel.overallCompletionRate]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '90px', background: '#F8FAFC', padding: '12px', borderRadius: '24px' }}>
