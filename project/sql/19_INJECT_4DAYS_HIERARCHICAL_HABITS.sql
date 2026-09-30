@@ -1,29 +1,29 @@
 -- =============================================================================
 -- HABIT HACKER: SQL SCRIPT 2
--- INJECT COMPLETE 12-HABIT HIERARCHY WITH 4 DAYS OF DATA (PAST 3 DAYS + TODAY)
+-- INJECT COMPLETE 12-HABIT HIERARCHY WITH DYNAMIC MEASURE DATA (4-DAY TIMELINE)
 --
--- Account: example@gmail.com
+-- Account:  example@gmail.com
 -- Password: 123456
 --
--- Hierarchy Injected:
+-- Hierarchy:
 -- 1. Type-1 Parent Habit (Date Range)
---    - Subhabit 1.1: Type 1 (Date Range / end_date)
---    - Subhabit 1.2: Type 2 (Day Count / count_days)
---    - Subhabit 1.3: Type 3 (Event Count / count_event)
+--    - Subhabit 1.1: Type 1 (Date Range / end_date)       -> Dynamic Measure: 15 mins
+--    - Subhabit 1.2: Type 2 (Day Count / count_days)       -> Dynamic Measure: 8 glasses
+--    - Subhabit 1.3: Type 3 (Event Count / count_event)    -> Dynamic Measure: 12 mins
 -- 2. Type-2 Parent Habit (Day Count)
---    - Subhabit 2.1: Type 1 (Date Range / end_date)
---    - Subhabit 2.2: Type 2 (Day Count / count_days)
---    - Subhabit 2.3: Type 3 (Event Count / count_event)
+--    - Subhabit 2.1: Type 1 (Date Range / end_date)       -> Dynamic Measure: 20 pages
+--    - Subhabit 2.2: Type 2 (Day Count / count_days)       -> Dynamic Measure: 5 problems
+--    - Subhabit 2.3: Type 3 (Event Count / count_event)    -> Dynamic Measure: 3 reviews
 -- 3. Type-3 Parent Habit (Event Count)
---    - Subhabit 3.1: Type 3 (Event Count / count_event)
---    - Subhabit 3.2: Type 3 (Event Count / count_event)
---    - Subhabit 3.3: Type 3 (Event Count / count_event)
+--    - Subhabit 3.1: Type 3 (Event Count / count_event)    -> Dynamic Measure: 20 points
+--    - Subhabit 3.2: Type 3 (Event Count / count_event)    -> Dynamic Measure: 25 points
+--    - Subhabit 3.3: Type 3 (Event Count / count_event)    -> Dynamic Measure: 20 points
 --
--- 4-Day Historical Execution Data:
---    - Day 1: CURRENT_DATE - 3 (Full completion & Event #1)
---    - Day 2: CURRENT_DATE - 2 (Analytical variance / partial progress)
---    - Day 3: CURRENT_DATE - 1 (Full completion & Event #2)
---    - Day 4: CURRENT_DATE     (Today active live execution & logs)
+-- 4-Day Dynamic Timeline:
+--    - Day 1: CURRENT_DATE - 3 (Historical Day 1 - Full completion, Event #1 complete, 65 pts)
+--    - Day 2: CURRENT_DATE - 2 (Historical Day 2 - Analytical variance, partial logs)
+--    - Day 3: CURRENT_DATE - 1 (Historical Day 3 - Full completion, Event #2 complete, 65 pts)
+--    - Day 4: CURRENT_DATE     (Today - Live active status with 3 completed, 6 pending)
 --
 -- Instructions: Run this script directly in Supabase SQL Editor.
 -- =============================================================================
@@ -57,7 +57,7 @@ SET password_hash = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923ad
     display_name = 'Example User',
     updated_at = NOW();
 
--- STEP 2: ENSURE ALL TABLES & COLUMNS EXIST
+-- STEP 2: ENSURE ALL TABLES & DYNAMIC MEASURE COLUMNS EXIST
 -- 2.1 tasks table
 CREATE TABLE IF NOT EXISTS public.tasks (
     id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -73,7 +73,7 @@ ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS target_count INT DEF
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS current_count INT DEFAULT 0;
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS repeat_rule TEXT DEFAULT 'DAILY';
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS custom_interval_days INT DEFAULT 1;
-ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS has_measure_tracking BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS has_measure_tracking BOOLEAN DEFAULT TRUE;
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS measure_unit TEXT DEFAULT 'units';
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS measure_target NUMERIC DEFAULT 0;
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS logged_measure_val NUMERIC DEFAULT 0;
@@ -108,10 +108,11 @@ CREATE TABLE IF NOT EXISTS public.subtasks (
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS tracking_mode VARCHAR(50) DEFAULT 'end_date';
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS target_count INT DEFAULT 1;
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS current_count INT DEFAULT 0;
-ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS has_measure_tracking BOOLEAN DEFAULT FALSE;
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS has_measure_tracking BOOLEAN DEFAULT TRUE;
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS measure_unit VARCHAR(50) DEFAULT 'units';
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS measure_target NUMERIC DEFAULT 0;
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS logged_measure_val NUMERIC DEFAULT 0;
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS last_measured_value NUMERIC DEFAULT 0;
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS is_done_today BOOLEAN DEFAULT FALSE;
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS planned_start DATE;
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS planned_end DATE;
@@ -248,8 +249,12 @@ BEGIN
     DELETE FROM public.tasks WHERE user_id = v_user_id AND (parent_task_id IS NOT NULL OR parent_id IS NOT NULL);
     DELETE FROM public.tasks WHERE user_id = v_user_id;
 
+    -- =========================================================================
     -- 2. INSERT 3 PARENT HABITS
+    -- =========================================================================
+
     -- [P1] Parent 1: Type 1 (Date Range / end_date)
+    -- Dynamic Measure: Daily cumulative workout time in minutes (target 30 mins)
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, repeat_rule, custom_interval_days,
@@ -262,12 +267,13 @@ BEGIN
         'Comprehensive health regimen with 3 subhabits: Type 1 (date range), Type 2 (day count), and Type 3 (event count)',
         'Health', 'HIGH', 'end_date',
         30, 3, 'DAILY', 1,
-        TRUE, 'mins', 30, 15, 30,
+        TRUE, 'mins', 30, 16, 35,
         FALSE, 10, d_day3, (d_today + 26), (d_today + 26), 45, NULL,
         3, 3, 0, 3
     );
 
     -- [P2] Parent 2: Type 2 (Day Count / count_days)
+    -- Dynamic Measure: Sprint pages / output points (target 40 pages/day)
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, repeat_rule, custom_interval_days,
@@ -280,13 +286,13 @@ BEGIN
         'Software mastery sprint with 3 subhabits: Type 1 (reading), Type 2 (algorithms), and Type 3 (code reviews)',
         'Career', 'HIGH', 'count_days',
         60, 3, 'DAILY', 1,
-        TRUE, 'pages', 40, 20, 45,
+        TRUE, 'pages', 40, 22, 40,
         FALSE, 5, d_day3, (d_day3 + 90), (d_day3 + 90), 60, NULL,
         3, 3, 0, 3
     );
 
     -- [P3] Parent 3: Type 3 (Event Count / count_event)
-    -- All 3 subhabits are strictly Type 3 (Event Count)
+    -- Dynamic Measure: Release milestone points (target 65 points per full cycle)
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, repeat_rule, custom_interval_days,
@@ -299,13 +305,17 @@ BEGIN
         'Production release milestone parent: completes 1 event when all 3 event subtasks finish. All subhabits are Type 3.',
         'Projects', 'HIGH', 'count_event',
         10, 2, 'DAILY', 1,
-        TRUE, 'points', 65, 20, 65,
+        TRUE, 'points', 65, 21, 65,
         FALSE, 20, d_day3, (d_day3 + 45), (d_day3 + 45), 90, NULL,
         3, 3, 0, 3
     );
 
+    -- =========================================================================
     -- 3. INSERT SUBHABITS FOR PARENT 1 (THREE SUBHABITS OF ALL 3 TYPES)
+    -- =========================================================================
+
     -- Subhabit 1.1: Type 1 (end_date)
+    -- Dynamic Measure: 15 mins target, logged 16 mins today
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
@@ -314,11 +324,12 @@ BEGIN
         'sub-p1-s1-morning-yoga', v_user_id,
         '[S1.1] Morning Yoga & Mobility (Type 1)',
         'End-date tracked physical mobility session', 'Health', 'MEDIUM', 'end_date',
-        30, 3, TRUE, 'mins', 15, 15, TRUE, 'parent-type1-wellness-routine',
-        d_day3, CURRENT_DATE + 26, CURRENT_DATE + 26
+        30, 3, TRUE, 'mins', 15,
+        16, 16, TRUE, 'parent-type1-wellness-routine', d_day3, (d_today + 26), (d_today + 26)
     );
 
     -- Subhabit 1.2: Type 2 (count_days)
+    -- Dynamic Measure: 8 glasses target, logged 10 glasses yesterday, pending today
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
@@ -327,11 +338,12 @@ BEGIN
         'sub-p1-s2-hydration-focus', v_user_id,
         '[S1.2] Hydration & Clean Diet (Type 2)',
         'Count-days tracked hydration intake (target 8 glasses/day)', 'Health', 'MEDIUM', 'count_days',
-        30, 2, TRUE, 'glasses', 8, 0, FALSE, 'parent-type1-wellness-routine',
-        d_day3, CURRENT_DATE + 26, CURRENT_DATE + 26
+        30, 2, TRUE, 'glasses', 8,
+        0, 10, FALSE, 'parent-type1-wellness-routine', d_day3, (d_today + 26), (d_today + 26)
     );
 
     -- Subhabit 1.3: Type 3 (count_event)
+    -- Dynamic Measure: 12 mins target, logged 15 mins in last session, pending today
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
@@ -340,12 +352,16 @@ BEGIN
         'sub-p1-s3-mindfulness-sessions', v_user_id,
         '[S1.3] Guided Zen Sessions (Type 3)',
         'Event count subhabit: 2 zen sessions per cycle', 'Health', 'MEDIUM', 'count_event',
-        2, 2, TRUE, 'mins', 12, 0, FALSE, 'parent-type1-wellness-routine',
-        d_day3, CURRENT_DATE + 26, CURRENT_DATE + 26
+        2, 2, TRUE, 'mins', 12,
+        0, 15, FALSE, 'parent-type1-wellness-routine', d_day3, (d_today + 26), (d_today + 26)
     );
 
+    -- =========================================================================
     -- 4. INSERT SUBHABITS FOR PARENT 2 (THREE SUBHABITS OF ALL 3 TYPES)
+    -- =========================================================================
+
     -- Subhabit 2.1: Type 1 (end_date)
+    -- Dynamic Measure: 20 pages target, logged 22 pages today
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
@@ -354,11 +370,12 @@ BEGIN
         'sub-p2-s1-tech-reading', v_user_id,
         '[S2.1] Architectural Literature Study (Type 1)',
         'End-date technical literature reading', 'Career', 'MEDIUM', 'end_date',
-        60, 3, TRUE, 'pages', 20, 20, TRUE, 'parent-type2-coding-sprint',
-        d_day3, CURRENT_DATE + 87, CURRENT_DATE + 87
+        60, 3, TRUE, 'pages', 20,
+        22, 22, TRUE, 'parent-type2-coding-sprint', d_day3, (d_today + 87), (d_today + 87)
     );
 
     -- Subhabit 2.2: Type 2 (count_days)
+    -- Dynamic Measure: 5 problems target, logged 6 yesterday, pending today
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
@@ -367,11 +384,12 @@ BEGIN
         'sub-p2-s2-leetcode-problems', v_user_id,
         '[S2.2] Algorithm Challenges (Type 2)',
         'Count-days code challenge solving (target 5 problems/day)', 'Career', 'HIGH', 'count_days',
-        60, 2, TRUE, 'problems', 5, 0, FALSE, 'parent-type2-coding-sprint',
-        d_day3, CURRENT_DATE + 87, CURRENT_DATE + 87
+        60, 2, TRUE, 'problems', 5,
+        0, 6, FALSE, 'parent-type2-coding-sprint', d_day3, (d_today + 87), (d_today + 87)
     );
 
     -- Subhabit 2.3: Type 3 (count_event)
+    -- Dynamic Measure: 3 reviews target, logged 4 reviews in last session, pending today
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
@@ -380,12 +398,16 @@ BEGIN
         'sub-p2-s3-git-pull-requests', v_user_id,
         '[S2.3] PR Code Reviews (Type 3)',
         'Event-count code review commits (target 3 reviews/event)', 'Career', 'MEDIUM', 'count_event',
-        2, 2, TRUE, 'reviews', 3, 0, FALSE, 'parent-type2-coding-sprint',
-        d_day3, CURRENT_DATE + 87, CURRENT_DATE + 87
+        2, 2, TRUE, 'reviews', 3,
+        0, 4, FALSE, 'parent-type2-coding-sprint', d_day3, (d_today + 87), (d_today + 87)
     );
 
+    -- =========================================================================
     -- 5. INSERT SUBHABITS FOR PARENT 3 (ALL THREE ARE TYPE 3 COUNT_EVENT)
+    -- =========================================================================
+
     -- Subhabit 3.1: Type 3 (count_event)
+    -- Dynamic Measure: 20 points target, logged 21 points today
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
@@ -394,11 +416,12 @@ BEGIN
         'sub-p3-s1-core-backend-api', v_user_id,
         '[S3.1] Backend Services & APIs (Type 3)',
         'Event-count API development milestones', 'Projects', 'HIGH', 'count_event',
-        2, 2, TRUE, 'points', 20, 20, TRUE, 'parent-type3-project-milestones',
-        d_day3, CURRENT_DATE + 42, CURRENT_DATE + 42
+        2, 2, TRUE, 'points', 20,
+        21, 21, TRUE, 'parent-type3-project-milestones', d_day3, (d_today + 42), (d_today + 42)
     );
 
     -- Subhabit 3.2: Type 3 (count_event)
+    -- Dynamic Measure: 25 points target, logged 25 points in last session, pending today
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
@@ -407,11 +430,12 @@ BEGIN
         'sub-p3-s2-frontend-ui-views', v_user_id,
         '[S3.2] React UI Polish & Views (Type 3)',
         'Event-count design system implementation', 'Projects', 'HIGH', 'count_event',
-        2, 2, TRUE, 'points', 25, 0, FALSE, 'parent-type3-project-milestones',
-        d_day3, CURRENT_DATE + 42, CURRENT_DATE + 42
+        2, 2, TRUE, 'points', 25,
+        0, 25, FALSE, 'parent-type3-project-milestones', d_day3, (d_today + 42), (d_today + 42)
     );
 
     -- Subhabit 3.3: Type 3 (count_event)
+    -- Dynamic Measure: 20 points target, logged 20 points in last session, pending today
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
@@ -420,35 +444,37 @@ BEGIN
         'sub-p3-s3-integration-testing', v_user_id,
         '[S3.3] E2E Integration Cycles (Type 3)',
         'Event-count test deployment suite', 'Projects', 'HIGH', 'count_event',
-        2, 2, TRUE, 'points', 20, 0, FALSE, 'parent-type3-project-milestones',
-        d_day3, CURRENT_DATE + 42, CURRENT_DATE + 42
+        2, 2, TRUE, 'points', 20,
+        0, 20, FALSE, 'parent-type3-project-milestones', d_day3, (d_today + 42), (d_today + 42)
     );
 
+    -- =========================================================================
     -- 6. POPULATE subtasks TABLE TO MIRROR CHILD TASKS
+    -- =========================================================================
     INSERT INTO public.subtasks (
         id, parent_task_id, user_id, title, description, status,
-        has_measure_tracking, measure_target, measure_unit, logged_measure_val, is_done_today,
+        has_measure_tracking, measure_target, measure_unit, logged_measure_val, last_measured_value, is_done_today,
         tracking_mode, target_count, current_count, planned_start, planned_end
     )
     SELECT id, parent_task_id, user_id, title, description, CASE WHEN is_done_today THEN 'COMPLETED' ELSE 'PLANNED' END,
-           has_measure_tracking, measure_target, measure_unit, logged_measure_val, is_done_today,
+           has_measure_tracking, measure_target, measure_unit, logged_measure_val, last_measured_value, is_done_today,
            tracking_mode, target_count, current_count, planned_start, planned_end
     FROM public.tasks
     WHERE parent_task_id IS NOT NULL AND user_id = v_user_id;
 
     -- =========================================================================
-    -- 7. 4-DAY HISTORICAL LOGS (DAY -3, DAY -2, DAY -1, AND TODAY DAY 0)
+    -- 7. 4-DAY HISTORICAL LOGS (DYNAMIC MEASURES ACROSS 4 CONSECUTIVE DAYS)
     -- =========================================================================
 
     -- ─── [DAY 1: 3 DAYS AGO (CURRENT_DATE - 3)] ──────────────────────────────
-    -- Full execution day: All 9 subtasks completed + Event #1 achieved
+    -- Baseline execution: All 9 subtasks completed, Event #1 complete (65 points)
     INSERT INTO public.subtask_logs (id, subtask_id, parent_task_id, user_id, log_date, is_completed, measured_value, event_count, notes)
     VALUES 
         (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_day3, TRUE, 15, 1, '15 mins morning mobility completed'),
         (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', 'parent-type1-wellness-routine', v_user_id, d_day3, TRUE, 8, 1, '8 glasses clean water logged'),
-        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', 'parent-type1-wellness-routine', v_user_id, d_day3, TRUE, 12, 2, '2 Zen sessions completed'),
+        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', 'parent-type1-wellness-routine', v_user_id, d_day3, TRUE, 12, 2, '2 Zen sessions completed (12 mins)'),
         (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_day3, TRUE, 20, 1, '20 pages software architecture'),
-        (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', 'parent-type2-coding-sprint', v_user_id, d_day3, TRUE, 5, 1, '5 algorithmic problem sets'),
+        (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', 'parent-type2-coding-sprint', v_user_id, d_day3, TRUE, 5, 1, '5 algorithmic problem sets solved'),
         (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', 'parent-type2-coding-sprint', v_user_id, d_day3, TRUE, 3, 2, '3 PR code reviews merged'),
         (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_day3, TRUE, 20, 1, 'Core auth and DB services (20 pts)'),
         (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', 'parent-type3-project-milestones', v_user_id, d_day3, TRUE, 25, 1, 'Frontend UI components polished (25 pts)'),
@@ -483,52 +509,52 @@ BEGIN
         (gen_random_uuid()::text, 'parent-type3-project-milestones', NULL, '[P3] Production Feature Shipments (Type 3 - Event Count)', v_user_id, 'Example User', (d_day3 + TIME '20:05:00')::timestamptz, 65, 'points', 1, 'Completed Event Cycle #1 (Backend + UI + Tests)');
 
     -- ─── [DAY 2: 2 DAYS AGO (CURRENT_DATE - 2)] ──────────────────────────────
-    -- Analytical Variance Day: Realistic partial execution
+    -- Dynamic Measure Variance: Higher yoga (18 mins), partial hydration (6), exceeded reading (25 pages)
     INSERT INTO public.subtask_logs (id, subtask_id, parent_task_id, user_id, log_date, is_completed, measured_value, event_count, notes)
     VALUES 
-        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_day2, TRUE, 10, 1, '10 min quick yoga flow'),
-        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', 'parent-type1-wellness-routine', v_user_id, d_day2, TRUE, 6, 1, '6 glasses water logged'),
+        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_day2, TRUE, 18, 1, '18 mins extended yoga flow (exceeded target!)'),
+        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', 'parent-type1-wellness-routine', v_user_id, d_day2, TRUE, 6, 1, '6 glasses clean water logged'),
         (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', 'parent-type1-wellness-routine', v_user_id, d_day2, FALSE, 0, 0, 'SKIPPED: Zen session missed'),
-        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_day2, TRUE, 15, 1, '15 pages system design'),
+        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_day2, TRUE, 25, 1, '25 pages high-scale system design (exceeded target!)'),
         (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', 'parent-type2-coding-sprint', v_user_id, d_day2, FALSE, 0, 0, 'SKIPPED: Algorithms missed today'),
         (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', 'parent-type2-coding-sprint', v_user_id, d_day2, TRUE, 2, 1, '2 PR reviews completed'),
-        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_day2, TRUE, 20, 1, 'Event 2 progress: Redis caching layer (20 pts)'),
-        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', 'parent-type3-project-milestones', v_user_id, d_day2, TRUE, 25, 1, 'Event 2 progress: Modal views & state (25 pts)'),
+        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_day2, TRUE, 22, 1, 'Event 2 progress: Redis caching layer (22 pts)'),
+        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', 'parent-type3-project-milestones', v_user_id, d_day2, TRUE, 28, 1, 'Event 2 progress: Modal views & state (28 pts)'),
         (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', 'parent-type3-project-milestones', v_user_id, d_day2, FALSE, 0, 0, 'Carrying over to next day');
 
     INSERT INTO public.task_logs (id, task_id, user_id, logged_date, logged_at, increment_value, measured_value, is_successful)
     VALUES 
-        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', v_user_id, d_day2, (d_day2 + TIME '09:00:00')::timestamptz, 1, 10, TRUE),
+        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', v_user_id, d_day2, (d_day2 + TIME '09:00:00')::timestamptz, 1, 18, TRUE),
         (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', v_user_id, d_day2, (d_day2 + TIME '13:00:00')::timestamptz, 1, 6, TRUE),
-        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', v_user_id, d_day2, (d_day2 + TIME '11:00:00')::timestamptz, 1, 15, TRUE),
+        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', v_user_id, d_day2, (d_day2 + TIME '11:00:00')::timestamptz, 1, 25, TRUE),
         (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', v_user_id, d_day2, (d_day2 + TIME '17:00:00')::timestamptz, 1, 2, TRUE),
-        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', v_user_id, d_day2, (d_day2 + TIME '21:00:00')::timestamptz, 1, 20, TRUE),
-        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', v_user_id, d_day2, (d_day2 + TIME '21:30:00')::timestamptz, 1, 25, TRUE);
+        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', v_user_id, d_day2, (d_day2 + TIME '21:00:00')::timestamptz, 1, 22, TRUE),
+        (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', v_user_id, d_day2, (d_day2 + TIME '21:30:00')::timestamptz, 1, 28, TRUE);
 
     -- ─── [DAY 3: YESTERDAY (CURRENT_DATE - 1)] ───────────────────────────────
-    -- Full execution day: Finishes Event #2 + Full completion of P1 and P2
+    -- Peak Performance Day: 20 mins yoga, 10 glasses water, 30 pages reading, 6 leetcode, Event #2 finished!
     INSERT INTO public.subtask_logs (id, subtask_id, parent_task_id, user_id, log_date, is_completed, measured_value, event_count, notes)
     VALUES 
-        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_day1, TRUE, 15, 1, '15 mins morning flow'),
-        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', 'parent-type1-wellness-routine', v_user_id, d_day1, TRUE, 8, 1, '8 glasses hydration achieved'),
-        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', 'parent-type1-wellness-routine', v_user_id, d_day1, TRUE, 12, 2, '2 zen sessions completed'),
-        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 20, 1, '20 pages clean architecture'),
-        (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 5, 1, '5 algorithmic problem sets solved'),
-        (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 3, 2, '3 PR review rounds approved'),
+        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_day1, TRUE, 20, 1, '20 mins power yoga (exceeded target!)'),
+        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', 'parent-type1-wellness-routine', v_user_id, d_day1, TRUE, 10, 1, '10 glasses hydration (exceeded target!)'),
+        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', 'parent-type1-wellness-routine', v_user_id, d_day1, TRUE, 15, 2, '15 mins guided zen meditation'),
+        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 30, 1, '30 pages deep architectural patterns'),
+        (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 6, 1, '6 algorithmic challenges completed'),
+        (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', 'parent-type2-coding-sprint', v_user_id, d_day1, TRUE, 4, 2, '4 pull request code reviews completed'),
         (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_day1, TRUE, 20, 1, 'Endpoint security & JWT filters (20 pts)'),
         (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', 'parent-type3-project-milestones', v_user_id, d_day1, TRUE, 25, 1, 'Analytics intelligence views (25 pts)'),
         (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', 'parent-type3-project-milestones', v_user_id, d_day1, TRUE, 20, 2, 'Integration suite passes: finishes Event #2 with 65 points!');
 
     INSERT INTO public.task_logs (id, task_id, user_id, logged_date, logged_at, increment_value, measured_value, is_successful)
     VALUES 
-        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', v_user_id, d_day1, (d_day1 + TIME '08:15:00')::timestamptz, 1, 15, TRUE),
-        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', v_user_id, d_day1, (d_day1 + TIME '12:30:00')::timestamptz, 1, 8, TRUE),
-        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', v_user_id, d_day1, (d_day1 + TIME '18:45:00')::timestamptz, 2, 12, TRUE),
-        (gen_random_uuid()::text, 'parent-type1-wellness-routine', v_user_id, d_day1, (d_day1 + TIME '18:50:00')::timestamptz, 1, 35, TRUE),
-        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', v_user_id, d_day1, (d_day1 + TIME '10:30:00')::timestamptz, 1, 20, TRUE),
-        (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', v_user_id, d_day1, (d_day1 + TIME '16:00:00')::timestamptz, 1, 5, TRUE),
-        (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', v_user_id, d_day1, (d_day1 + TIME '19:30:00')::timestamptz, 2, 3, TRUE),
-        (gen_random_uuid()::text, 'parent-type2-coding-sprint', v_user_id, d_day1, (d_day1 + TIME '19:35:00')::timestamptz, 1, 28, TRUE),
+        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', v_user_id, d_day1, (d_day1 + TIME '08:15:00')::timestamptz, 1, 20, TRUE),
+        (gen_random_uuid()::text, 'sub-p1-s2-hydration-focus', v_user_id, d_day1, (d_day1 + TIME '12:30:00')::timestamptz, 1, 10, TRUE),
+        (gen_random_uuid()::text, 'sub-p1-s3-mindfulness-sessions', v_user_id, d_day1, (d_day1 + TIME '18:45:00')::timestamptz, 2, 15, TRUE),
+        (gen_random_uuid()::text, 'parent-type1-wellness-routine', v_user_id, d_day1, (d_day1 + TIME '18:50:00')::timestamptz, 1, 45, TRUE),
+        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', v_user_id, d_day1, (d_day1 + TIME '10:30:00')::timestamptz, 1, 30, TRUE),
+        (gen_random_uuid()::text, 'sub-p2-s2-leetcode-problems', v_user_id, d_day1, (d_day1 + TIME '16:00:00')::timestamptz, 1, 6, TRUE),
+        (gen_random_uuid()::text, 'sub-p2-s3-git-pull-requests', v_user_id, d_day1, (d_day1 + TIME '19:30:00')::timestamptz, 2, 4, TRUE),
+        (gen_random_uuid()::text, 'parent-type2-coding-sprint', v_user_id, d_day1, (d_day1 + TIME '19:35:00')::timestamptz, 1, 40, TRUE),
         (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', v_user_id, d_day1, (d_day1 + TIME '11:00:00')::timestamptz, 1, 20, TRUE),
         (gen_random_uuid()::text, 'sub-p3-s2-frontend-ui-views', v_user_id, d_day1, (d_day1 + TIME '15:00:00')::timestamptz, 1, 25, TRUE),
         (gen_random_uuid()::text, 'sub-p3-s3-integration-testing', v_user_id, d_day1, (d_day1 + TIME '17:00:00')::timestamptz, 2, 20, TRUE),
@@ -543,29 +569,30 @@ BEGIN
 
     INSERT INTO public.habit_completion_history (id, task_id, parent_task_id, task_title, user_id, user_name, completed_at, measured_value, measure_unit, event_count, notes)
     VALUES 
-        (gen_random_uuid()::text, 'parent-type1-wellness-routine', NULL, '[P1] Daily Wellness Mastery (Type 1 - Date Range)', v_user_id, 'Example User', (d_day1 + TIME '18:50:00')::timestamptz, 35, 'mins', 1, 'Completed all wellness subtasks on Day 3'),
-        (gen_random_uuid()::text, 'parent-type2-coding-sprint', NULL, '[P2] 60-Day Full-Stack Sprint (Type 2 - Day Count)', v_user_id, 'Example User', (d_day1 + TIME '19:35:00')::timestamptz, 28, 'points', 1, 'All sprint items checked off on Day 3'),
+        (gen_random_uuid()::text, 'parent-type1-wellness-routine', NULL, '[P1] Daily Wellness Mastery (Type 1 - Date Range)', v_user_id, 'Example User', (d_day1 + TIME '18:50:00')::timestamptz, 45, 'mins', 1, 'Completed all wellness subtasks on Day 3'),
+        (gen_random_uuid()::text, 'parent-type2-coding-sprint', NULL, '[P2] 60-Day Full-Stack Sprint (Type 2 - Day Count)', v_user_id, 'Example User', (d_day1 + TIME '19:35:00')::timestamptz, 40, 'points', 1, 'All sprint items checked off on Day 3'),
         (gen_random_uuid()::text, 'parent-type3-project-milestones', NULL, '[P3] Production Feature Shipments (Type 3 - Event Count)', v_user_id, 'Example User', (d_day1 + TIME '17:05:00')::timestamptz, 65, 'points', 1, 'Completed Event Cycle #2 (Full Test Suite Passed)');
 
     -- ─── [DAY 4: TODAY (CURRENT_DATE)] ───────────────────────────────────────
-    -- Today is the 4th active day: Live executions already underway!
-    -- Morning Yoga (S1.1), Architecture Reading (S2.1), and Core Backend (S3.1) completed today!
+    -- Active Live Day: Morning Yoga (16 mins), Architecture Reading (22 pages), Core Backend API (21 pts) logged!
+    -- Remaining 6 subtasks are pending for today with dynamic measure inputs ready!
     INSERT INTO public.subtask_logs (id, subtask_id, parent_task_id, user_id, log_date, is_completed, measured_value, event_count, notes)
     VALUES 
-        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_today, TRUE, 15, 1, 'Morning yoga done today!'),
-        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_today, TRUE, 20, 1, 'Architecture study completed today'),
-        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_today, TRUE, 20, 1, 'Event 3 kickoff: API endpoints built today');
+        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_today, TRUE, 16, 1, 'Morning yoga done today (16 mins logged)'),
+        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', v_user_id, d_today, TRUE, 22, 1, 'Architecture study completed today (22 pages logged)'),
+        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', v_user_id, d_today, TRUE, 21, 1, 'Event 3 kickoff: API endpoints built today (21 pts logged)');
 
     INSERT INTO public.task_logs (id, task_id, user_id, logged_date, logged_at, increment_value, measured_value, is_successful)
     VALUES 
-        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', v_user_id, d_today, (d_today + TIME '08:30:00')::timestamptz, 1, 15, TRUE),
-        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', v_user_id, d_today, (d_today + TIME '10:00:00')::timestamptz, 1, 20, TRUE),
-        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', v_user_id, d_today, (d_today + TIME '14:00:00')::timestamptz, 1, 20, TRUE);
+        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', v_user_id, d_today, (d_today + TIME '08:30:00')::timestamptz, 1, 16, TRUE),
+        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', v_user_id, d_today, (d_today + TIME '10:00:00')::timestamptz, 1, 22, TRUE),
+        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', v_user_id, d_today, (d_today + TIME '14:00:00')::timestamptz, 1, 21, TRUE);
 
     INSERT INTO public.habit_completion_history (id, task_id, parent_task_id, task_title, user_id, user_name, completed_at, measured_value, measure_unit, event_count, notes)
     VALUES 
-        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', '[S1.1] Morning Yoga & Mobility (Type 1)', v_user_id, 'Example User', (d_today + TIME '08:30:00')::timestamptz, 15, 'mins', 1, 'Completed morning yoga session on Day 4 (Today)'),
-        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', '[S2.1] Architectural Literature Study (Type 1)', v_user_id, 'Example User', (d_today + TIME '10:00:00')::timestamptz, 20, 'pages', 1, 'Completed 20 pages reading on Day 4 (Today)');
+        (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', '[S1.1] Morning Yoga & Mobility (Type 1)', v_user_id, 'Example User', (d_today + TIME '08:30:00')::timestamptz, 16, 'mins', 1, 'Completed morning yoga session on Day 4 (Today)'),
+        (gen_random_uuid()::text, 'sub-p2-s1-tech-reading', 'parent-type2-coding-sprint', '[S2.1] Architectural Literature Study (Type 1)', v_user_id, 'Example User', (d_today + TIME '10:00:00')::timestamptz, 22, 'pages', 1, 'Completed 22 pages reading on Day 4 (Today)'),
+        (gen_random_uuid()::text, 'sub-p3-s1-core-backend-api', 'parent-type3-project-milestones', '[S3.1] Backend Services & APIs (Type 3)', v_user_id, 'Example User', (d_today + TIME '14:00:00')::timestamptz, 21, 'points', 1, 'Completed Backend API milestone on Day 4 (Today)');
 
     INSERT INTO public.habit_update_history (id, task_id, parent_task_id, task_title, user_id, user_name, update_type, field_name, old_value, new_value, change_summary, created_at)
     VALUES 
@@ -573,27 +600,27 @@ BEGIN
         (gen_random_uuid()::text, 'parent-type2-coding-sprint', NULL, '[P2] 60-Day Full-Stack Sprint (Type 2 - Day Count)', v_user_id, 'Example User', 'TARGET_CHANGED', 'target_count', '45', '60', 'Updated target day count to 60 days', (d_day2 + TIME '09:00:00')::timestamptz),
         (gen_random_uuid()::text, 'parent-type1-wellness-routine', NULL, '[P1] Daily Wellness Mastery (Type 1 - Date Range)', v_user_id, 'Example User', 'COLLABORATOR_INVITED', 'collab', NULL, 'partner@gmail.com', 'Invited partner@gmail.com to shared habit', (d_day1 + TIME '10:00:00')::timestamptz);
 
-    -- Recreate AFTER DELETE unmap trigger
-    EXECUTE 'CREATE OR REPLACE FUNCTION public.trg_unmap_subtasks_on_parent_delete()
-    RETURNS TRIGGER AS $trg$
-    BEGIN
-        UPDATE public.tasks 
-        SET parent_task_id = NULL, parent_id = NULL 
-        WHERE parent_task_id = OLD.id OR parent_id = OLD.id;
-
-        UPDATE public.subtasks 
-        SET parent_task_id = NULL, parent_id = NULL 
-        WHERE parent_task_id = OLD.id OR parent_id = OLD.id;
-
-        RETURN NULL;
-    END;
-    $trg$ LANGUAGE plpgsql';
-
-    EXECUTE 'DROP TRIGGER IF EXISTS trg_tasks_unmap_children ON public.tasks CASCADE';
-    EXECUTE 'CREATE TRIGGER trg_tasks_unmap_children
-    AFTER DELETE ON public.tasks
-    FOR EACH ROW
-    EXECUTE FUNCTION public.trg_unmap_subtasks_on_parent_delete()';
-
-    RAISE NOTICE 'SUCCESS: Injected all 12 habits with 4 days of execution data for % (Password: 123456)', v_user_id;
+    RAISE NOTICE 'SUCCESS: Injected all 12 habits with dynamic measures across 4 days for % (Password: 123456)', v_user_id;
 END $$;
+
+-- Recreate AFTER DELETE unmap trigger cleanly outside DO block
+CREATE OR REPLACE FUNCTION public.trg_unmap_subtasks_on_parent_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE public.tasks 
+    SET parent_task_id = NULL, parent_id = NULL 
+    WHERE parent_task_id = OLD.id OR parent_id = OLD.id;
+
+    UPDATE public.subtasks 
+    SET parent_task_id = NULL, parent_id = NULL 
+    WHERE parent_task_id = OLD.id OR parent_id = OLD.id;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_tasks_unmap_children ON public.tasks CASCADE;
+CREATE TRIGGER trg_tasks_unmap_children
+AFTER DELETE ON public.tasks
+FOR EACH ROW
+EXECUTE FUNCTION public.trg_unmap_subtasks_on_parent_delete();

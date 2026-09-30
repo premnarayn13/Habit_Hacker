@@ -102,30 +102,30 @@ BEGIN
         DELETE FROM public.reminders WHERE user_id = v_user_id;
     END IF;
 
-    -- Recreate AFTER DELETE unmap trigger cleanly
-    EXECUTE 'CREATE OR REPLACE FUNCTION public.trg_unmap_subtasks_on_parent_delete()
-    RETURNS TRIGGER AS $trg$
-    BEGIN
-        UPDATE public.tasks 
-        SET parent_task_id = NULL, parent_id = NULL 
-        WHERE parent_task_id = OLD.id OR parent_id = OLD.id;
-
-        UPDATE public.subtasks 
-        SET parent_task_id = NULL, parent_id = NULL 
-        WHERE parent_task_id = OLD.id OR parent_id = OLD.id;
-
-        RETURN NULL;
-    END;
-    $trg$ LANGUAGE plpgsql';
-
-    EXECUTE 'DROP TRIGGER IF EXISTS trg_tasks_unmap_children ON public.tasks CASCADE';
-    EXECUTE 'CREATE TRIGGER trg_tasks_unmap_children
-    AFTER DELETE ON public.tasks
-    FOR EACH ROW
-    EXECUTE FUNCTION public.trg_unmap_subtasks_on_parent_delete()';
-
     RAISE NOTICE 'SUCCESS: All records for % have been completely purged. Table schemas and all other accounts are 100%% intact.', v_user_id;
 END $$;
+
+-- Recreate AFTER DELETE unmap trigger cleanly
+CREATE OR REPLACE FUNCTION public.trg_unmap_subtasks_on_parent_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE public.tasks 
+    SET parent_task_id = NULL, parent_id = NULL 
+    WHERE parent_task_id = OLD.id OR parent_id = OLD.id;
+
+    UPDATE public.subtasks 
+    SET parent_task_id = NULL, parent_id = NULL 
+    WHERE parent_task_id = OLD.id OR parent_id = OLD.id;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_tasks_unmap_children ON public.tasks CASCADE;
+CREATE TRIGGER trg_tasks_unmap_children
+AFTER DELETE ON public.tasks
+FOR EACH ROW
+EXECUTE FUNCTION public.trg_unmap_subtasks_on_parent_delete();
 
 -- =============================================================================
 -- OPTIONAL: FULL DATABASE TRUNCATE (WIPES ALL DATA FOR ALL USERS, KEEPS SCHEMA)
