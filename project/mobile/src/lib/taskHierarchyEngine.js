@@ -103,23 +103,39 @@ export function calculateMeasurableAverage(subtasks = [], parentMeasureTarget = 
  * Event-based subtasks with peer subhabits:
  * peer non-event average = 6, 2 target events -> 6/2 = 3 per event -> 2 completed events = 3 + 3 = 6.
  */
-export function calculateSubtaskContribution(subtask, isCompleted = false, eventCount = 0, avgMeasure = 1, allPeerSubtasks = []) {
+export function calculateSubtaskContribution(subtask, isCompleted = false, eventCount = 0, avgMeasure = 1, allPeerSubtasks = [], explicitLoggedVal = null) {
   if (!subtask) return 0;
 
-  // 1. Measurable subtask (Type 2 subhabit)
+  // Explicit logged value from daily log (measuredValue or loggedMeasureVal)
+  const rawLogVal = (explicitLoggedVal !== null && explicitLoggedVal !== undefined && Number(explicitLoggedVal) > 0)
+    ? Number(explicitLoggedVal)
+    : null;
+
+  // 1. Measurable subtask (Type 2 subhabit or any subtask with measure tracking)
   if (subtask.hasMeasureTracking || (subtask.measureTarget && Number(subtask.measureTarget) > 0)) {
-    // If not completed, contributes 0 measure
-    if (!isCompleted) return 0;
+    // If not completed and no positive log val, contributes 0 measure
+    if (!isCompleted && !rawLogVal) return 0;
 
     // Preserve uncapped actual measure logged by user
+    if (rawLogVal !== null) {
+      return rawLogVal;
+    }
     if (subtask.loggedMeasureVal !== undefined && subtask.loggedMeasureVal !== null && Number(subtask.loggedMeasureVal) > 0) {
       return Number(subtask.loggedMeasureVal);
+    }
+    if (subtask.lastMeasuredValue !== undefined && subtask.lastMeasuredValue !== null && Number(subtask.lastMeasuredValue) > 0) {
+      return Number(subtask.lastMeasuredValue);
     }
     return Number(subtask.measureTarget || 4);
   }
 
   // 2. Event-based subtask (Type 3 subhabit)
   if (subtask.trackingMode === 'count_event') {
+    if (rawLogVal !== null) return rawLogVal;
+    if (subtask.loggedMeasureVal !== undefined && subtask.loggedMeasureVal !== null && Number(subtask.loggedMeasureVal) > 0) {
+      return Number(subtask.loggedMeasureVal);
+    }
+
     const evCount = (eventCount !== undefined && eventCount !== null && Number(eventCount) > 0)
       ? Number(eventCount)
       : (isCompleted ? (subtask.todayEventCount || 1) : 0);
@@ -130,7 +146,7 @@ export function calculateSubtaskContribution(subtask, isCompleted = false, event
     const targetEvents = Number(subtask.targetCount || subtask.targetEventCount || subtask.eventUnitTarget || evCount || 2);
     
     // Check if peer non-event subhabits exist
-    let baseMeasure = avgMeasure > 0 ? avgMeasure : 1;
+    let baseMeasure = avgMeasure > 0 ? avgMeasure : (Number(subtask.measureTarget) > 0 ? Number(subtask.measureTarget) : 1);
     if (allPeerSubtasks && allPeerSubtasks.length > 1) {
       const nonEventAvg = calculateNonEventSubtasksAverage(allPeerSubtasks);
       if (nonEventAvg > 0) {
@@ -146,8 +162,11 @@ export function calculateSubtaskContribution(subtask, isCompleted = false, event
   }
 
   // 3. Subtask without explicit measure (Type 1 non-measure standard check-off subhabit)
-  // When completed, contributes the calculated average of measurable subtasks (or 1)
   if (isCompleted) {
+    if (rawLogVal !== null) return rawLogVal;
+    if (subtask.loggedMeasureVal !== undefined && subtask.loggedMeasureVal !== null && Number(subtask.loggedMeasureVal) > 0) {
+      return Number(subtask.loggedMeasureVal);
+    }
     return avgMeasure > 0 ? avgMeasure : 1;
   }
 
@@ -166,14 +185,17 @@ export function calculateParentDailyMeasure(childSubtasks = [], dayLogsMap = {})
 
   childSubtasks.forEach(st => {
     const log = dayLogsMap[st.id] || {};
+    const logVal = log.measuredValue !== undefined 
+      ? log.measuredValue 
+      : (log.measured_value !== undefined ? log.measured_value : null);
     const isCompleted = log.isCompleted !== undefined 
       ? Boolean(log.isCompleted) 
-      : Boolean(st.isDoneToday || st.progressPercent >= 100);
+      : Boolean(st.isDoneToday || st.progressPercent >= 100 || (logVal !== null && logVal > 0));
     const eventCount = log.eventCount !== undefined 
       ? Number(log.eventCount) 
       : (isCompleted ? (st.todayEventCount || 1) : 0);
     
-    totalDailyMeasure += calculateSubtaskContribution(st, isCompleted, eventCount, avgMeasure, childSubtasks);
+    totalDailyMeasure += calculateSubtaskContribution(st, isCompleted, eventCount, avgMeasure, childSubtasks, logVal);
   });
 
   return Math.round(totalDailyMeasure * 10) / 10;

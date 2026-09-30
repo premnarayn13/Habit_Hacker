@@ -195,7 +195,7 @@ export default function TaskDedicatedPageView({
   // Direct Child Subtasks
   const directChildSubtasks = (childSubtasks && childSubtasks.length > 0)
     ? childSubtasks
-    : (allTasks ? allTasks.filter(t => t && currentTask && t.parentTaskId === currentTask.id) : []);
+    : (allTasks ? allTasks.filter(t => t && currentTask && (t.parentTaskId === currentTask.id || t.parent_task_id === currentTask.id || t.parentId === currentTask.id)) : []);
 
   // Habit History States (Who Completed & Who Updated What Changes)
   const [completionHistory, setCompletionHistory] = useState([]);
@@ -583,31 +583,42 @@ export default function TaskDedicatedPageView({
     }
 
     let dailyDeltaMeasure = 0;
-    if (isCompletedDay) {
+    const dayEvLog = (eventLogs || []).find(el => 
+      (el.task_id === currentTask.id || el.taskId === currentTask.id || el.parent_task_id === currentTask.id || el.parentTaskId === currentTask.id) &&
+      getCleanDate(el) === dateStr
+    );
+
+    if (directChildSubtasks.length > 0) {
+      // Parent with subtasks: ALWAYS calculate from actual subtask contributions on this day!
+      if (daysAgo === 0) {
+        // Today: sum child subtask contributions today
+        dailyDeltaMeasure = todayActualMeasure;
+      } else if (dayEvLog && Number(dayEvLog.total_work_accumulated) > 0) {
+        // Event day with recorded total work
+        dailyDeltaMeasure = Number(dayEvLog.total_work_accumulated);
+      } else if (logsByDate[dateStr] !== undefined && logsByDate[dateStr] > 0) {
+        // Day with subtask logs
+        dailyDeltaMeasure = logsByDate[dateStr];
+      } else if (isCompletedDay) {
+        dailyDeltaMeasure = measureTarget > 0 ? measureTarget : (eventUnitTarget || 1);
+      } else {
+        dailyDeltaMeasure = 0;
+      }
+    } else {
+      // Standalone habit
       if (daysAgo === 0) {
         dailyDeltaMeasure = todayActualMeasure > 0 ? todayActualMeasure : (currentTask.isDoneToday ? (measureTarget || 1) : 0);
-      } else {
-        const dayEvLog = (eventLogs || []).find(el => 
-          (el.task_id === currentTask.id || el.taskId === currentTask.id || el.parent_task_id === currentTask.id || el.parentTaskId === currentTask.id) &&
-          getCleanDate(el) === dateStr
-        );
-
-        if (trackingMode === 'count_event' && dayEvLog) {
-          dailyDeltaMeasure = Number(dayEvLog.total_work_accumulated || eventUnitTarget || 65);
-        } else if (logsByDate[dateStr] !== undefined && logsByDate[dateStr] > 0) {
+      } else if (isCompletedDay) {
+        if (logsByDate[dateStr] !== undefined && logsByDate[dateStr] > 0) {
           dailyDeltaMeasure = logsByDate[dateStr];
-        } else if (subtaskLogsByDate[dateStr]?.[currentTask.id]?.measuredValue > 0) {
-          dailyDeltaMeasure = subtaskLogsByDate[dateStr][currentTask.id].measuredValue;
         } else if (parentLogsByDate[dateStr] !== undefined && parentLogsByDate[dateStr] > 0) {
           dailyDeltaMeasure = parentLogsByDate[dateStr];
-        } else if (currentTask.lastMeasuredValue !== undefined && currentTask.lastMeasuredValue > 0) {
-          dailyDeltaMeasure = currentTask.lastMeasuredValue;
         } else {
           dailyDeltaMeasure = measureTarget > 0 ? measureTarget : 1;
         }
+      } else {
+        dailyDeltaMeasure = 0;
       }
-    } else {
-      dailyDeltaMeasure = 0; // MISSED DAY OR TODAY UNCOMPLETED -> 0 measure, line stays PLAIN HORIZONTAL!
     }
 
     runningCumulativeActualMeasure = Math.round((runningCumulativeActualMeasure + dailyDeltaMeasure) * 10) / 10;
@@ -637,11 +648,9 @@ export default function TaskDedicatedPageView({
   });
 
   // Total Completed Measure is the TRUE accumulated measure across all completed events/days (No Capping!)
-  const eventMeasurePerUnit = (measureTarget > 0 ? measureTarget : eventUnitTarget);
-  const computedEventCompletedMeasure = currentCount * eventMeasurePerUnit;
-  const totalCompletedMeasure = trackingMode === 'count_event'
-    ? Math.max(runningCumulativeActualMeasure, computedEventCompletedMeasure)
-    : runningCumulativeActualMeasure;
+  const totalCompletedMeasure = runningCumulativeActualMeasure > 0
+    ? runningCumulativeActualMeasure
+    : (currentCount > 0 ? Math.round(currentCount * (measureTarget > 0 ? measureTarget : eventUnitTarget) * 10) / 10 : 0);
   const totalTargetLeft = Math.max(0, Math.round((totalTargetedMeasure - totalCompletedMeasure) * 10) / 10);
 
   // Dynamic successful days across operational timeline
@@ -807,21 +816,32 @@ export default function TaskDedicatedPageView({
             val = dayLog.measuredValue;
             note = `Logged ${val} ${measureUnit}`;
           } else if (st.trackingMode === 'count_event') {
-            // Type 3 event count: calculate contribution based on peer subtask measures
-            const peerLogs = subtaskLogsByDate[dayInfo.dateStr] || {};
-            const nonEventVals = directChildSubtasks
-              .filter(c => c.id !== st.id && c.trackingMode !== 'count_event')
-              .map(c => Number(peerLogs[c.id]?.measuredValue || c.measureTarget || 0))
-              .filter(v => v > 0);
-
-            const peerAvg = nonEventVals.length > 0
-              ? nonEventVals.reduce((a, b) => a + b, 0) / nonEventVals.length
-              : (avgMeasured > 0 ? avgMeasured : (st.measureTarget || 10));
-
-            const targetEvents = Number(st.targetCount || 2);
-            const eventsCompleted = Number(dayLog?.eventCount || 1);
-            val = Math.round((eventsCompleted * (peerAvg / Math.max(1, targetEvents))) * 10) / 10;
-            note = `${eventsCompleted} event(s) contribution: ${val} ${measureUnit}`;
+            const matchEv = (eventLogs || []).find(el => 
+              (el.task_id === currentTask.id || el.taskId === currentTask.id || el.parent_task_id === currentTask.id || el.parentTaskId === currentTask.id) &&
+              getCleanDate(el) === dayInfo.dateStr
+            );
+            if (matchEv && matchEv.subtask_breakdown) {
+              try {
+                const bk = typeof matchEv.subtask_breakdown === 'string' ? JSON.parse(matchEv.subtask_breakdown) : matchEv.subtask_breakdown;
+                if (bk[st.id] !== undefined && Number(bk[st.id]) > 0) {
+                  val = Number(bk[st.id]);
+                } else {
+                  const normId = st.id.toLowerCase().replace(/[-_]/g, '');
+                  const matchK = Object.keys(bk).find(k => {
+                    const normK = k.toLowerCase().replace(/[-_]/g, '');
+                    return normK.includes(normId) || normId.includes(normK) || (st.title && normK.includes(st.title.toLowerCase().slice(0, 4)));
+                  });
+                  if (matchK && Number(bk[matchK]) > 0) val = Number(bk[matchK]);
+                }
+              } catch(e) {}
+            }
+            if (val <= 0 && dayLog && dayLog.measuredValue > 0) {
+              val = dayLog.measuredValue;
+            }
+            if (val <= 0) {
+              val = Number(st.lastMeasuredValue || st.loggedMeasureVal || st.measureTarget || 10);
+            }
+            note = `Event contribution: ${val} ${measureUnit}`;
           } else {
             val = Number(st.measureTarget || 10);
             note = `Logged ${val} ${measureUnit}`;
@@ -903,16 +923,20 @@ export default function TaskDedicatedPageView({
             const color = subtaskColors[sIdx % subtaskColors.length];
             let val = 0;
 
-            // 1. Check breakdown in event log with fuzzy key match
+            // 1. Check breakdown in event log with exact ID or fuzzy key match
             if (el.subtask_breakdown) {
               try {
                 const bk = typeof el.subtask_breakdown === 'string' ? JSON.parse(el.subtask_breakdown) : el.subtask_breakdown;
-                const normId = st.id.toLowerCase().replace(/[-_]/g, '');
-                const matchKey = Object.keys(bk).find(k => {
-                  const normK = k.toLowerCase().replace(/[-_]/g, '');
-                  return normK.includes(normId) || normId.includes(normK) || normK.includes(`s${sIdx + 1}`) || (st.title && normK.includes(st.title.toLowerCase().slice(0, 4)));
-                });
-                if (matchKey && bk[matchKey] !== undefined) val = Number(bk[matchKey]);
+                if (bk[st.id] !== undefined && Number(bk[st.id]) > 0) {
+                  val = Number(bk[st.id]);
+                } else {
+                  const normId = st.id.toLowerCase().replace(/[-_]/g, '');
+                  const matchKey = Object.keys(bk).find(k => {
+                    const normK = k.toLowerCase().replace(/[-_]/g, '');
+                    return normK.includes(normId) || normId.includes(normK) || normK.includes(`s${sIdx + 1}`) || (st.title && normK.includes(st.title.toLowerCase().slice(0, 4)));
+                  });
+                  if (matchKey && bk[matchKey] !== undefined) val = Number(bk[matchKey]);
+                }
               } catch (e) {
                 // ignore
               }
