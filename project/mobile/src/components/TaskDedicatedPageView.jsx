@@ -1097,6 +1097,7 @@ export default function TaskDedicatedPageView({
         }));
   const missedDaysMap = new Set(missedDaysRecords.map(m => m.daysAgo));
 
+  const today = new Date();
   const todayDayOfWeek = today.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
   const heatmap52WeeksData = Array.from({ length: 52 }).map((_, wIdx) => {
     return Array.from({ length: 7 }).map((_, dIdx) => {

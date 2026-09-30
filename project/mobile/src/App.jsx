@@ -2409,8 +2409,11 @@ export default function App() {
                   habits={habits}
                   logs={[]}
                   capacityMinutes={availableCapacityMinutes}
-                  onToggleTask={(taskId) => toggleTaskCompletion(taskId)}
-                  onUpdateTaskProgress={(taskId, val) => updateTaskProgress(taskId, val)}
+                  onToggleTask={handleToggleTask}
+                  onUpdateTaskProgress={(id, prog) => {
+                    const updated = tasks.map(t => t.id === id ? { ...t, progressPercent: prog } : t);
+                    updateTasksState(updated);
+                  }}
                   onRescheduleTask={(taskId, newStart, newEnd) => {
                     const updated = tasks.map(t => t.id === taskId ? { ...t, plannedStart: newStart, plannedEnd: newEnd } : t);
                     updateTasksState(updated);

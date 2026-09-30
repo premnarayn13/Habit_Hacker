@@ -63,7 +63,8 @@ export default function AnalyticsIntelligenceView({
   reflectionsDiary = [],
   goals = [],
   missedDaysLogs = [],
-  subtaskFailureSummary = []
+  subtaskFailureSummary = [],
+  currentUser = null
 }) {
   // Global Command Center State
   const [timeWindow, setTimeWindow] = useState('30D'); // '7D', '30D', '90D', 'ALL'

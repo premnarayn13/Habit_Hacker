@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Trash2, Plus, Clock, Bell, Paperclip, Upload, Users, Layers, Calendar, Target, AlertTriangle } from 'lucide-react';
+import { X, Save, Trash2, Plus, Clock, Bell, Paperclip, Upload, Users, Layers, Calendar, Target, AlertTriangle, Ruler } from 'lucide-react';
 
 export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, existingTasks = [] }) {
   const [formData, setFormData] = useState({
