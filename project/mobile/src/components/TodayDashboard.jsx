@@ -777,7 +777,8 @@ export default function TodayDashboard({
                           {(() => {
                             const isParent = children.length > 0;
                             const parentDailyMeasure = isParent ? calculateParentDailyMeasure(children) : Number(task.loggedMeasureVal || 0);
-                            const targetMeasure = Number(task.measureTarget || (isParent ? children.reduce((acc, c) => acc + Number(c.measureTarget || 0), 0) : 0));
+                            const childrenTargetSum = isParent ? children.reduce((acc, c) => acc + Number(c.measureTarget || 0), 0) : 0;
+                            const targetMeasure = isParent && childrenTargetSum > 0 ? childrenTargetSum : Number(task.measureTarget || 0);
                             const hasMeasure = task.hasMeasureTracking || targetMeasure > 0 || parentDailyMeasure > 0;
 
                             if (!hasMeasure) return null;
@@ -1113,7 +1114,8 @@ export default function TodayDashboard({
                           const childList = tasks.filter(t => t.parentTaskId === parent.id);
                           const isParent = childList.length > 0;
                           const parentMeasure = isParent ? calculateParentDailyMeasure(childList) : Number(parent.loggedMeasureVal || 0);
-                          const targetMeasure = Number(parent.measureTarget || (isParent ? childList.reduce((acc, c) => acc + Number(c.measureTarget || 0), 0) : 0));
+                          const childrenTargetSum = isParent ? childList.reduce((acc, c) => acc + Number(c.measureTarget || 0), 0) : 0;
+                          const targetMeasure = isParent && childrenTargetSum > 0 ? childrenTargetSum : Number(parent.measureTarget || 0);
                           const hasMeasure = parent.hasMeasureTracking || targetMeasure > 0 || parentMeasure > 0;
                           if (!hasMeasure) return 'Completed • Standard Habit';
                           const displayLogged = parentMeasure > 0 ? parentMeasure : (parent.loggedMeasureVal !== undefined && parent.loggedMeasureVal !== null ? parent.loggedMeasureVal : targetMeasure);

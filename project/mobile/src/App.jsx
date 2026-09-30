@@ -694,6 +694,9 @@ export default function App() {
         }
 
         const parentDayProg = Math.round((parentCurrent / Math.max(1, targetMax)) * 100);
+        const childMeasureSum = childSubtasks.reduce((sum, c) => sum + Number(c.measureTarget || 0), 0);
+        const dynamicParentMeasureTarget = childMeasureSum > 0 ? childMeasureSum : Number(task.measureTarget || 0);
+        const dynamicParentDailyMeasure = calculateParentDailyMeasure(childSubtasks);
 
         return {
           ...task,
@@ -705,7 +708,10 @@ export default function App() {
           currentCount: parentCurrent,
           currentDayCount: parentCurrent,
           currentEventCount: parentCurrent,
-          progressPercent: parentDayProg
+          progressPercent: parentDayProg,
+          measureTarget: dynamicParentMeasureTarget,
+          eventUnitTarget: task.trackingMode === 'count_event' ? dynamicParentMeasureTarget : Number(task.eventUnitTarget || dynamicParentMeasureTarget),
+          loggedMeasureVal: dynamicParentDailyMeasure > 0 ? dynamicParentDailyMeasure : Number(task.loggedMeasureVal || 0)
         };
       }
       return task;

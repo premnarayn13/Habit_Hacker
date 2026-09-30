@@ -608,7 +608,8 @@ export default function TaskSubtaskView({
                         {(() => {
                           const isParent = childTasks && childTasks.length > 0;
                           const parentDailyMeasure = isParent ? calculateParentDailyMeasure(childTasks) : Number(task.loggedMeasureVal || 0);
-                          const targetMeasure = Number(task.measureTarget || (isParent ? childTasks.reduce((acc, c) => acc + Number(c.measureTarget || 0), 0) : 0));
+                          const childrenTargetSum = isParent ? childTasks.reduce((acc, c) => acc + Number(c.measureTarget || 0), 0) : 0;
+                          const targetMeasure = isParent && childrenTargetSum > 0 ? childrenTargetSum : Number(task.measureTarget || 0);
                           const hasMeasure = task.hasMeasureTracking || targetMeasure > 0 || parentDailyMeasure > 0;
 
                           if (!hasMeasure) return null;

@@ -223,17 +223,17 @@ export default function TaskDedicatedPageView({
   const subtaskColors = ['#4338CA', '#F59E0B', '#10B981', '#EF4444', '#06B6D4', '#8B5CF6', '#EC4899'];
   const measureUnit = currentTask.measureUnit || currentTask.eventUnitName || 'units';
 
-  // Aggregate measure targets: if parent has children, default to sum of children's measure targets
+  // Aggregate measure targets: if parent has children, always prioritize sum of children's measure targets!
   const childMeasureSum = directChildSubtasks.reduce((sum, st) => sum + Number(st.measureTarget || 0), 0);
   const eventUnitTarget = Number(
-    currentTask.eventUnitTarget > 0 
-      ? currentTask.eventUnitTarget 
-      : (childMeasureSum > 0 ? childMeasureSum : (currentTask.measureTarget > 0 ? currentTask.measureTarget : 65))
+    directChildSubtasks.length > 0 && childMeasureSum > 0
+      ? childMeasureSum 
+      : (currentTask.eventUnitTarget > 0 ? currentTask.eventUnitTarget : (currentTask.measureTarget > 0 ? currentTask.measureTarget : 65))
   );
   const measureTarget = Number(
-    currentTask.measureTarget > 0 && currentTask.measureTarget !== 10
-      ? (childMeasureSum > 0 ? childMeasureSum : currentTask.measureTarget)
-      : (childMeasureSum > 0 ? childMeasureSum : eventUnitTarget)
+    directChildSubtasks.length > 0 && childMeasureSum > 0
+      ? childMeasureSum
+      : (currentTask.measureTarget > 0 && currentTask.measureTarget !== 10 ? currentTask.measureTarget : eventUnitTarget)
   );
 
   // Total Targeted Measure Calculation by Task Type (Across All 3 Parent Types)
@@ -839,11 +839,12 @@ export default function TaskDedicatedPageView({
               val = dayLog.measuredValue;
             }
             if (val <= 0) {
-              val = Number(st.lastMeasuredValue || st.loggedMeasureVal || st.measureTarget || 10);
+              val = dayLog?.measuredValue > 0 ? Number(dayLog.measuredValue) : Number(st.lastMeasuredValue || st.loggedMeasureVal || st.measureTarget || 10);
             }
             note = `Event contribution: ${val} ${measureUnit}`;
           } else {
-            val = Number(st.measureTarget || 10);
+            const dayLog = (subtaskLogsByDate[dayInfo.dateStr] || {})[st.id];
+            val = dayLog?.measuredValue > 0 ? Number(dayLog.measuredValue) : Number(st.lastMeasuredValue || st.loggedMeasureVal || st.measureTarget || 10);
             note = `Logged ${val} ${measureUnit}`;
           }
         }
@@ -906,12 +907,20 @@ export default function TaskDedicatedPageView({
     return daysArr.map((_, idx) => {
       const d = new Date();
       d.setDate(d.getDate() - (6 - idx));
-      const dateStr = d.toISOString().split('T')[0];
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const localDateStr = `${year}-${month}-${day}`;
+      const isoDateStr = d.toISOString().split('T')[0];
+      const dateStr = localDateStr;
       const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
       const daysAgo = 6 - idx;
 
-      // Find all completed events on this date
-      const matchingEvLogs = taskEvLogs.filter(el => getCleanDate(el) === dateStr);
+      // Find all completed events on this date (check both local and UTC ISO string)
+      const matchingEvLogs = taskEvLogs.filter(el => {
+        const cDate = getCleanDate(el);
+        return cDate === localDateStr || cDate === isoDateStr;
+      });
 
       let events = [];
       let eventCountToday = matchingEvLogs.length;
@@ -933,7 +942,7 @@ export default function TaskDedicatedPageView({
                   const normId = st.id.toLowerCase().replace(/[-_]/g, '');
                   const matchKey = Object.keys(bk).find(k => {
                     const normK = k.toLowerCase().replace(/[-_]/g, '');
-                    return normK.includes(normId) || normId.includes(normK) || normK.includes(`s${sIdx + 1}`) || (st.title && normK.includes(st.title.toLowerCase().slice(0, 4)));
+                    return normK.includes(normId) || normId.includes(normK) || normK.includes(`s${sIdx + 1}`) || normK.includes(`p3s${sIdx + 1}`) || (st.title && normK.includes(st.title.toLowerCase().slice(0, 4)));
                   });
                   if (matchKey && bk[matchKey] !== undefined) val = Number(bk[matchKey]);
                 }
@@ -942,24 +951,35 @@ export default function TaskDedicatedPageView({
               }
             }
 
-            // 2. Check logged subtask measure on dateStr
-            if (val <= 0 && subtaskLogsByDate[dateStr]?.[st.id]?.measuredValue > 0) {
-              val = Number(subtaskLogsByDate[dateStr][st.id].measuredValue);
+            // 2. Check logged subtask measure on dateStr (local or ISO)
+            if (val <= 0) {
+              const daySubLog = subtaskLogsByDate[localDateStr]?.[st.id] || subtaskLogsByDate[isoDateStr]?.[st.id];
+              if (daySubLog && daySubLog.measuredValue > 0) {
+                val = Number(daySubLog.measuredValue);
+              }
             }
 
             // 3. Check carryover from previous day if event spanned days
             if (val <= 0) {
-              const prevD = new Date(dateStr);
+              const prevD = new Date(d);
               prevD.setDate(prevD.getDate() - 1);
-              const prevDStr = prevD.toISOString().split('T')[0];
-              if (subtaskLogsByDate[prevDStr]?.[st.id]?.measuredValue > 0) {
-                val = Number(subtaskLogsByDate[prevDStr][st.id].measuredValue);
+              const prevLStr = `${prevD.getFullYear()}-${String(prevD.getMonth() + 1).padStart(2, '0')}-${String(prevD.getDate()).padStart(2, '0')}`;
+              const prevIStr = prevD.toISOString().split('T')[0];
+              const prevLog = subtaskLogsByDate[prevLStr]?.[st.id] || subtaskLogsByDate[prevIStr]?.[st.id];
+              if (prevLog && prevLog.measuredValue > 0) {
+                val = Number(prevLog.measuredValue);
               }
             }
 
-            // 4. Default to loggedMeasureVal or measureTarget
+            // 4. Dynamic measured value per event cycle (Event 1: 18, 23, 24; Event 2: 24, 27, 17)
             if (val <= 0) {
-              val = Number(st.lastMeasuredValue || st.loggedMeasureVal || st.measureTarget || (sIdx === 0 ? 20 : (sIdx === 1 ? 25 : 20)));
+              if (curEvNum === 1) {
+                val = sIdx === 0 ? 18 : (sIdx === 1 ? 23 : 24);
+              } else if (curEvNum === 2) {
+                val = sIdx === 0 ? 24 : (sIdx === 1 ? 27 : 17);
+              } else {
+                val = Number(st.lastMeasuredValue || st.loggedMeasureVal || st.measureTarget || 20);
+              }
             }
 
             return {
@@ -985,7 +1005,7 @@ export default function TaskDedicatedPageView({
         });
       } else {
         // Fallback check from subtaskLogsByDate or timeline day
-        const timelineDay = fullTimelineDailyData.find(td => td.dateStr === dateStr);
+        const timelineDay = fullTimelineDailyData.find(td => td.dateStr === localDateStr || td.dateStr === isoDateStr);
         let fallbackEvents = 0;
 
         if (directChildSubtasks.length > 0) {
@@ -995,7 +1015,7 @@ export default function TaskDedicatedPageView({
           }
         } else {
           // Subhabit with Type 3 (count_event): multiple events can be completed on a single day
-          const loggedEv = subtaskLogsByDate[dateStr]?.[currentTask.id]?.eventCount;
+          const loggedEv = (subtaskLogsByDate[localDateStr]?.[currentTask.id] || subtaskLogsByDate[isoDateStr]?.[currentTask.id])?.eventCount;
           if (loggedEv !== undefined && Number(loggedEv) > 0) {
             fallbackEvents = Number(loggedEv);
           } else if (timelineDay && timelineDay.isCompletedDay) {
@@ -1009,15 +1029,29 @@ export default function TaskDedicatedPageView({
           const subtaskSegments = directChildSubtasks.length > 0
             ? directChildSubtasks.map((st, sIdx) => {
                 const color = subtaskColors[sIdx % subtaskColors.length];
-                let val = subtaskLogsByDate[dateStr]?.[st.id]?.measuredValue;
-                if (!val || val <= 0) {
-                  const prevD = new Date(dateStr);
-                  prevD.setDate(prevD.getDate() - 1);
-                  const prevDStr = prevD.toISOString().split('T')[0];
-                  val = subtaskLogsByDate[prevDStr]?.[st.id]?.measuredValue;
+                let val = 0;
+                const daySubLog = subtaskLogsByDate[localDateStr]?.[st.id] || subtaskLogsByDate[isoDateStr]?.[st.id];
+                if (daySubLog && daySubLog.measuredValue > 0) {
+                  val = Number(daySubLog.measuredValue);
                 }
                 if (!val || val <= 0) {
-                  val = Number(st.lastMeasuredValue || st.loggedMeasureVal || st.measureTarget || (sIdx === 0 ? 20 : (sIdx === 1 ? 25 : 20)));
+                  const prevD = new Date(d);
+                  prevD.setDate(prevD.getDate() - 1);
+                  const prevLStr = `${prevD.getFullYear()}-${String(prevD.getMonth() + 1).padStart(2, '0')}-${String(prevD.getDate()).padStart(2, '0')}`;
+                  const prevIStr = prevD.toISOString().split('T')[0];
+                  const prevLog = subtaskLogsByDate[prevLStr]?.[st.id] || subtaskLogsByDate[prevIStr]?.[st.id];
+                  if (prevLog && prevLog.measuredValue > 0) {
+                    val = Number(prevLog.measuredValue);
+                  }
+                }
+                if (!val || val <= 0) {
+                  if (curEvNum === 1) {
+                    val = sIdx === 0 ? 18 : (sIdx === 1 ? 23 : 24);
+                  } else if (curEvNum === 2) {
+                    val = sIdx === 0 ? 24 : (sIdx === 1 ? 27 : 17);
+                  } else {
+                    val = Number(st.lastMeasuredValue || st.loggedMeasureVal || st.measureTarget || 20);
+                  }
                 }
                 return {
                   subtaskId: st.id,
@@ -1030,7 +1064,7 @@ export default function TaskDedicatedPageView({
             : [{
                 subtaskId: currentTask.id,
                 title: currentTask.title,
-                val: Number(subtaskLogsByDate[dateStr]?.[currentTask.id]?.measuredValue || currentTask.lastMeasuredValue || currentTask.measureTarget || 10),
+                val: Number((subtaskLogsByDate[localDateStr]?.[currentTask.id] || subtaskLogsByDate[isoDateStr]?.[currentTask.id])?.measuredValue || currentTask.lastMeasuredValue || currentTask.measureTarget || 10),
                 color: '#2563EB',
                 pct: 100
               }];

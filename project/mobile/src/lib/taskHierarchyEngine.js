@@ -111,18 +111,19 @@ export function calculateSubtaskContribution(subtask, isCompleted = false, event
     ? Number(explicitLoggedVal)
     : null;
 
+  const explicitVal = rawLogVal !== null 
+    ? rawLogVal 
+    : (subtask.loggedMeasureVal !== undefined && subtask.loggedMeasureVal !== null && Number(subtask.loggedMeasureVal) > 0
+        ? Number(subtask.loggedMeasureVal)
+        : null);
+
   // 1. Measurable subtask (Type 2 subhabit or any subtask with measure tracking)
   if (subtask.hasMeasureTracking || (subtask.measureTarget && Number(subtask.measureTarget) > 0)) {
-    // If not completed and no positive log val, contributes 0 measure
-    if (!isCompleted && !rawLogVal) return 0;
-
-    // Preserve uncapped actual measure logged by user
-    if (rawLogVal !== null) {
-      return rawLogVal;
+    // Uncapped explicit logged value always takes absolute precedence!
+    if (explicitVal !== null) {
+      return explicitVal;
     }
-    if (subtask.loggedMeasureVal !== undefined && subtask.loggedMeasureVal !== null && Number(subtask.loggedMeasureVal) > 0) {
-      return Number(subtask.loggedMeasureVal);
-    }
+    if (!isCompleted) return 0;
     if (subtask.lastMeasuredValue !== undefined && subtask.lastMeasuredValue !== null && Number(subtask.lastMeasuredValue) > 0) {
       return Number(subtask.lastMeasuredValue);
     }
@@ -131,10 +132,7 @@ export function calculateSubtaskContribution(subtask, isCompleted = false, event
 
   // 2. Event-based subtask (Type 3 subhabit)
   if (subtask.trackingMode === 'count_event') {
-    if (rawLogVal !== null) return rawLogVal;
-    if (subtask.loggedMeasureVal !== undefined && subtask.loggedMeasureVal !== null && Number(subtask.loggedMeasureVal) > 0) {
-      return Number(subtask.loggedMeasureVal);
-    }
+    if (explicitVal !== null) return explicitVal;
 
     const evCount = (eventCount !== undefined && eventCount !== null && Number(eventCount) > 0)
       ? Number(eventCount)
@@ -163,10 +161,7 @@ export function calculateSubtaskContribution(subtask, isCompleted = false, event
 
   // 3. Subtask without explicit measure (Type 1 non-measure standard check-off subhabit)
   if (isCompleted) {
-    if (rawLogVal !== null) return rawLogVal;
-    if (subtask.loggedMeasureVal !== undefined && subtask.loggedMeasureVal !== null && Number(subtask.loggedMeasureVal) > 0) {
-      return Number(subtask.loggedMeasureVal);
-    }
+    if (explicitVal !== null) return explicitVal;
     return avgMeasure > 0 ? avgMeasure : 1;
   }
 
@@ -190,7 +185,7 @@ export function calculateParentDailyMeasure(childSubtasks = [], dayLogsMap = {})
       : (log.measured_value !== undefined ? log.measured_value : null);
     const isCompleted = log.isCompleted !== undefined 
       ? Boolean(log.isCompleted) 
-      : Boolean(st.isDoneToday || st.progressPercent >= 100 || (logVal !== null && logVal > 0));
+      : Boolean(st.isDoneToday || st.progressPercent >= 100 || (logVal !== null && logVal > 0) || (st.loggedMeasureVal && Number(st.loggedMeasureVal) > 0));
     const eventCount = log.eventCount !== undefined 
       ? Number(log.eventCount) 
       : (isCompleted ? (st.todayEventCount || 1) : 0);

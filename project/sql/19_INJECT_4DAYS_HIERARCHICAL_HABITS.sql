@@ -260,13 +260,13 @@ BEGIN
         'Comprehensive health regimen with 3 subhabits: Type 1 (date range), Type 2 (day count), and Type 3 (event count)',
         'Health', 'HIGH', 'end_date',
         30, 3, 'DAILY', 1,
-        TRUE, 'mins', 30, 16, 45,
+        TRUE, 'mins', 35, 16, 45,
         FALSE, 10, d_day3, (d_today + 26), (d_today + 26), 45, NULL,
         3, 3, 0, 3
     );
 
     -- [P2] Parent 2: Type 2 (Day Count / count_days)
-    -- Target: 40 units/day. Currently rolled up 22 pages today from tech reading!
+    -- Target: 28 units/day (sum of subhabits: 20 pages + 5 problems + 3 reviews). Currently rolled up 22 pages today from tech reading!
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, repeat_rule, custom_interval_days,
@@ -279,7 +279,7 @@ BEGIN
         'Software mastery sprint with 3 subhabits: Type 1 (reading), Type 2 (algorithms), and Type 3 (code reviews)',
         'Career', 'HIGH', 'count_days',
         60, 3, 'DAILY', 1,
-        TRUE, 'pages', 40, 22, 42,
+        TRUE, 'points', 28, 22, 42,
         FALSE, 5, d_day3, (d_day3 + 90), (d_day3 + 90), 60, NULL,
         3, 3, 0, 3
     );
@@ -492,7 +492,7 @@ BEGIN
     VALUES (
         gen_random_uuid()::text,
         'parent-type3-project-milestones', 'parent-type3-project-milestones', v_user_id, 1, d_day3, (d_day3 + TIME '20:05:00')::timestamptz,
-        65, '{"sub-p3-s1-core-backend-api": 18, "sub-p3-s2-frontend-ui-views": 23, "sub-p3-s3-integration-testing": 24, "backend_api": 18, "ui_views": 23, "integration_testing": 24}'::jsonb, 'FINALIZED'
+        65, '{"sub-p3-s1-core-backend-api": 18, "sub-p3-s2-frontend-ui-views": 23, "sub-p3-s3-integration-testing": 24, "backend_api": 18, "ui_views": 23, "integration_testing": 24, "sub_p3_s1": 18, "sub_p3_s2": 23, "sub_p3_s3": 24, "s1": 18, "s2": 23, "s3": 24}'::jsonb, 'FINALIZED'
     );
 
     INSERT INTO public.habit_completion_history (id, task_id, parent_task_id, task_title, user_id, user_name, completed_at, measured_value, measure_unit, event_count, notes)
@@ -557,18 +557,16 @@ BEGIN
     VALUES (
         gen_random_uuid()::text,
         'parent-type3-project-milestones', 'parent-type3-project-milestones', v_user_id, 2, d_day1, (d_day1 + TIME '17:05:00')::timestamptz,
-        68, '{"sub-p3-s1-core-backend-api": 24, "sub-p3-s2-frontend-ui-views": 27, "sub-p3-s3-integration-testing": 17, "backend_api": 24, "ui_views": 27, "integration_testing": 17}'::jsonb, 'FINALIZED'
+        68, '{"sub-p3-s1-core-backend-api": 24, "sub-p3-s2-frontend-ui-views": 27, "sub-p3-s3-integration-testing": 17, "backend_api": 24, "ui_views": 27, "integration_testing": 17, "sub_p3_s1": 24, "sub_p3_s2": 27, "sub_p3_s3": 17, "s1": 24, "s2": 27, "s3": 17}'::jsonb, 'FINALIZED'
     );
 
     INSERT INTO public.habit_completion_history (id, task_id, parent_task_id, task_title, user_id, user_name, completed_at, measured_value, measure_unit, event_count, notes)
     VALUES 
-        (gen_random_uuid()::text, 'parent-type1-wellness-routine', NULL, '[P1] Daily Wellness Mastery (Type 1 - Date Range)', v_user_id, 'Example User', (d_day1 + TIME '18:50:00')::timestamptz, 45, 'mins', 1, 'Completed all wellness subtasks on Day 3 (45 mins)'),
+        (gen_random_uuid()::text, 'parent-type1-wellness-routine', NULL, '[P1] Daily Wellness Mastery (Type 1 - Date Range)', v_user_id, 'Example User', (d_day3 + TIME '18:05:00')::timestamptz, 45, 'mins', 1, 'Completed all wellness subtasks on Day 3 (45 mins)'),
         (gen_random_uuid()::text, 'parent-type2-coding-sprint', NULL, '[P2] 60-Day Full-Stack Sprint (Type 2 - Day Count)', v_user_id, 'Example User', (d_day1 + TIME '19:35:00')::timestamptz, 42, 'points', 1, 'All sprint items checked off on Day 3 (42 units)'),
         (gen_random_uuid()::text, 'parent-type3-project-milestones', NULL, '[P3] Production Feature Shipments (Type 3 - Event Count)', v_user_id, 'Example User', (d_day1 + TIME '17:05:00')::timestamptz, 68, 'points', 1, 'Completed Event Cycle #2 (Backend: 24, UI: 27, Testing: 17 = 68 pts)');
 
     -- ─── [DAY 4: TODAY (CURRENT_DATE)] ───────────────────────────────────────
-    -- Live active executions: S1.1 (16 mins), S2.1 (22 pages), S3.1 (21 points) logged!
-    -- Remaining 6 subtasks are pending for today with dynamic measure inputs ready!
     INSERT INTO public.subtask_logs (id, subtask_id, parent_task_id, user_id, log_date, is_completed, measured_value, event_count, notes)
     VALUES 
         (gen_random_uuid()::text, 'sub-p1-s1-morning-yoga', 'parent-type1-wellness-routine', v_user_id, d_today, TRUE, 16, 1, 'Morning yoga done today (16 mins logged)'),
