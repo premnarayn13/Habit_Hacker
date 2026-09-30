@@ -33,7 +33,10 @@ import {
   calculateMeasurableAverage, 
   calculateSubtaskContribution, 
   calculateParentDailyMeasure, 
-  calculateParentCompletionStatus 
+  calculateParentCompletionStatus,
+  getLocalDateString,
+  parseLocalDate,
+  calculateLocalDaySpan
 } from './lib/taskHierarchyEngine';
 import { Flame } from 'lucide-react';
 
@@ -654,6 +657,7 @@ export default function App() {
   });
   const [subtasks, setSubtasks] = useState([]);
   const [habits, setHabits] = useState([]);
+  const [preselectedParentTaskId, setPreselectedParentTaskId] = useState('');
 
   // SUBTASK LIFECYCLE EVALUATOR & AUTOMATED PARENT TURN COMPLETION
   const processSubtaskLifecycles = (rawTasks) => {
@@ -840,14 +844,14 @@ export default function App() {
       dbTasks = res.data ? [...res.data] : [];
       taskError = res.error;
 
-      // 2. Also check accepted collaborative tasks from task_collaborations
+      // 2. Also check accepted collaborative tasks from task_collaborations (local cache to avoid 404)
       try {
-        const { data: acceptedCollabs } = await supabase.from('task_collaborations')
-          .select('task_id')
-          .eq('receiver_email', queryEmail)
-          .eq('status', 'ACCEPTED');
-        if (acceptedCollabs && acceptedCollabs.length > 0) {
-          const collabTaskIds = acceptedCollabs.map(c => c.task_id).filter(Boolean);
+        const localCollabs = JSON.parse(localStorage.getItem('hh_task_collaborations') || '[]');
+        const acceptedLocal = localCollabs.filter(c => 
+          c && c.status === 'ACCEPTED' && c.receiverEmail?.toLowerCase() === queryEmail.toLowerCase()
+        );
+        if (acceptedLocal.length > 0) {
+          const collabTaskIds = acceptedLocal.map(c => c.taskId).filter(Boolean);
           if (collabTaskIds.length > 0) {
             const { data: collabTasks } = await supabase.from('tasks').select('*').in('id', collabTaskIds);
             if (collabTasks && collabTasks.length > 0) {
@@ -889,6 +893,30 @@ export default function App() {
         dbSubtasks = subRes.data;
       } catch (e) {}
 
+      // 6. Fetch historical logs early so daily completion status can be verified against today's logs
+      let dbTaskLogs = [];
+      let dbSubtaskLogs = [];
+      let dbEventLogs = [];
+      try {
+        const { data: tLogs } = await supabase.from('task_logs').select('*').eq('user_id', queryEmail);
+        if (tLogs) {
+          dbTaskLogs = tLogs;
+          setTaskLogs(tLogs);
+        }
+
+        const { data: sLogs } = await supabase.from('subtask_logs').select('*').eq('user_id', queryEmail);
+        if (sLogs) {
+          dbSubtaskLogs = sLogs;
+          setSubtaskLogs(sLogs);
+        }
+
+        const { data: eLogs } = await supabase.from('event_logs').select('*').eq('user_id', queryEmail);
+        if (eLogs) {
+          dbEventLogs = eLogs;
+          setEventLogs(eLogs);
+        }
+      } catch (e) {}
+
       let fetchedItems = [];
 
       if (bootItems && bootItems.length > 0) {
@@ -923,6 +951,8 @@ export default function App() {
           isArchived: t.isArchived || false,
           archivedAt: t.archivedAt || null,
           isDoneToday: t.isDoneToday || false,
+          completedAt: t.completedAt || null,
+          completedDate: t.completedDate || (t.completedAt ? getLocalDateString(t.completedAt) : null),
           skipReason: ''
         }));
         fetchedItems.push(...mappedBoot);
@@ -968,6 +998,8 @@ export default function App() {
             isArchived: t.is_archived || false,
             archivedAt: t.archived_at || null,
             isDoneToday: t.is_done_today || false,
+            completedAt: t.completed_at || t.completedAt || null,
+            completedDate: t.completed_date || (t.completed_at ? getLocalDateString(t.completed_at) : null),
             skipReason: ''
           };
         });
@@ -1002,9 +1034,12 @@ export default function App() {
             measureTarget: Number(s.measure_target || 0),
             measureUnit: s.measure_unit || 'units',
             loggedMeasureVal: Number(s.logged_measure_val || 0),
+            lastMeasuredValue: Number(s.last_measured_value || s.logged_measure_val || 0),
             currentEventWork: Number(s.current_event_work || 0),
             isOptional: s.is_optional ?? false,
             isDoneToday: s.is_done_today ?? false,
+            completedAt: s.completed_at || s.completedAt || null,
+            completedDate: s.completed_date || (s.completed_at ? getLocalDateString(s.completed_at) : null),
             currentCount: s.current_count || 0,
             progressPercent: s.progress_percent || 0,
             plannedStart: pStart,
@@ -1025,10 +1060,10 @@ export default function App() {
       }
 
       // -------------------------------------------------------------
-      // AUTOMATIC DAILY RESET FOR TYPE 1 & 2 TASKS COMPLETED ON PREVIOUS DAYS
+      // AUTOMATIC DAILY RESET FOR TYPE 1 & 2 TASKS ON NEW CALENDAR DAY
       // Type 3 event-count parent tasks and their subhabits DO NOT reset at midnight (they span across days until the event completes).
       // -------------------------------------------------------------
-      const todayDateStr = new Date().toISOString().split('T')[0];
+      const todayDateStr = getLocalDateString(new Date());
       const previousDayTasksToReset = [];
 
       fetchedItems = fetchedItems.map(item => {
@@ -1042,20 +1077,35 @@ export default function App() {
         }
 
         // For Type 1 and Type 2 tasks:
-        // If marked completed, check if completed_at was on a previous date
-        const compDate = item.completedAt ? item.completedAt.split('T')[0] : null;
+        // A task is completed TODAY if and only if it has an explicit completion / log for today's local date
+        const compDate = item.completedDate || (item.completedAt ? getLocalDateString(item.completedAt) : null);
         
-        // If completed on a previous day, reset to 0 for today
-        if (item.isDoneToday && compDate && compDate < todayDateStr) {
+        const hasTodayTaskLog = (dbTaskLogs || []).some(l => 
+          (l.task_id === item.id || l.taskId === item.id) && 
+          (l.logged_date === todayDateStr || (l.logged_at && getLocalDateString(l.logged_at) === todayDateStr))
+        );
+        const hasTodaySubtaskLog = (dbSubtaskLogs || []).some(sl => 
+          (sl.subtask_id === item.id || sl.subtaskId === item.id) && 
+          (sl.log_date === todayDateStr || (sl.created_at && getLocalDateString(sl.created_at) === todayDateStr))
+        );
+
+        const isLoggedToday = hasTodayTaskLog || hasTodaySubtaskLog || (compDate === todayDateStr);
+
+        // If marked completed or has non-zero loggedMeasureVal, but was done on a previous day (not today):
+        if ((item.isDoneToday || Number(item.loggedMeasureVal || 0) > 0) && !isLoggedToday) {
           previousDayTasksToReset.push(item.id);
           return {
             ...item,
             isDoneToday: false,
-            loggedMeasureVal: 0
+            loggedMeasureVal: 0,
+            lastMeasuredValue: Number(item.loggedMeasureVal || item.lastMeasuredValue || 0)
           };
         }
         return item;
       });
+
+      // Recalculate parent metrics so parents reflect newly reset child values for today
+      fetchedItems = processSubtaskLifecycles(fetchedItems);
 
       // Sync auto-reset tasks back to Supabase in background
       if (previousDayTasksToReset.length > 0) {
@@ -1063,6 +1113,11 @@ export default function App() {
           supabase.from('tasks').update({ is_done_today: false, logged_measure_val: 0, status: 'INBOX' }).eq('id', rId).then(() => {});
           supabase.from('subtasks').update({ is_done_today: false, logged_measure_val: 0, status: 'PLANNED' }).eq('id', rId).then(() => {});
         }
+        // Also ensure parent tasks whose children reset are synced to Supabase
+        const parentsToSync = fetchedItems.filter(p => !p.parentTaskId && p.trackingMode !== 'count_event' && p.loggedMeasureVal === 0);
+        parentsToSync.forEach(p => {
+          supabase.from('tasks').update({ is_done_today: false, logged_measure_val: 0, status: 'INBOX' }).eq('id', p.id).then(() => {});
+        });
       }
 
       // Database is the SINGLE SOURCE OF TRUTH for logged-in users.
@@ -1074,16 +1129,7 @@ export default function App() {
         }
       }
 
-      try {
-        const { data: dbTaskLogs } = await supabase.from('task_logs').select('*').eq('user_id', queryEmail);
-        if (dbTaskLogs) setTaskLogs(dbTaskLogs || []);
 
-        const { data: dbSubtaskLogs } = await supabase.from('subtask_logs').select('*').eq('user_id', queryEmail);
-        if (dbSubtaskLogs) setSubtaskLogs(dbSubtaskLogs || []);
-
-        const { data: dbEventLogs } = await supabase.from('event_logs').select('*').eq('user_id', queryEmail);
-        if (dbEventLogs) setEventLogs(dbEventLogs || []);
-      } catch (e) {}
 
     } catch (err) {
       console.warn('Supabase fetch notice:', err.message);
@@ -1140,15 +1186,15 @@ export default function App() {
     };
   }, [currentUser]);
 
-  // Live 12:00 AM Midnight Day Transition Reset Engine
+  // Live 12:00 AM Midnight & Day Rollover Transition Engine
   useEffect(() => {
-    const scheduleMidnightReset = () => {
-      const now = new Date();
-      const tomorrowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
-      const msUntilMidnight = Math.max(1000, tomorrowMidnight.getTime() - now.getTime());
+    let lastDateStr = getLocalDateString(new Date());
 
-      const timerId = setTimeout(() => {
-        console.log("🕛 12:00 AM Midnight reached! Executing daily reset for Type 1 & 2 tasks...");
+    const checkDateTransition = () => {
+      const currentDateStr = getLocalDateString(new Date());
+      if (currentDateStr !== lastDateStr) {
+        console.log(`📅 Day rollover detected: ${lastDateStr} -> ${currentDateStr}. Executing daily reset for Type 1 & 2 tasks...`);
+        lastDateStr = currentDateStr;
         if (currentUser && currentUser.email) {
           fetchUserData(currentUser.id, currentUser.email);
         } else {
@@ -1160,14 +1206,41 @@ export default function App() {
             return { ...t, isDoneToday: false, loggedMeasureVal: 0 };
           }));
         }
-        scheduleMidnightReset();
-      }, msUntilMidnight);
-
-      return timerId;
+      }
     };
 
-    const timer = scheduleMidnightReset();
-    return () => clearTimeout(timer);
+    let timerId = null;
+    const scheduleMidnightReset = () => {
+      const now = new Date();
+      const tomorrowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
+      const msUntilMidnight = Math.max(1000, tomorrowMidnight.getTime() - now.getTime());
+
+      timerId = setTimeout(() => {
+        checkDateTransition();
+        scheduleMidnightReset();
+      }, msUntilMidnight);
+    };
+
+    scheduleMidnightReset();
+
+    // 15-second heartbeat check (catches system clock adjustments, OS sleep/wake)
+    const intervalId = setInterval(checkDateTransition, 15000);
+
+    // Tab visibility and window focus listeners (triggers instantly when user resumes app on a new day)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkDateTransition();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', checkDateTransition);
+
+    return () => {
+      if (timerId) clearTimeout(timerId);
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', checkDateTransition);
+    };
   }, [currentUser]);
 
   const handleTabSwitch = (newTab) => {
@@ -1477,7 +1550,7 @@ export default function App() {
       collaborationService.syncTaskCompletionStatus(taskId, currentUser?.email || 'User', updatedTask.isDoneToday);
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString(new Date());
     const nowIso = new Date().toISOString();
 
     if (currentUser && updatedTask) {
@@ -1490,6 +1563,7 @@ export default function App() {
             is_done_today: completedEventParent.isDoneToday,
             logged_measure_val: completedEventParent.loggedMeasureVal,
             last_measured_value: completedEventParent.lastMeasuredValue,
+            completed_at: completedEventParent.isDoneToday ? nowIso : null,
             status: completedEventParent.isDoneToday ? 'COMPLETED' : 'INBOX'
           }).eq('id', completedEventParent.id);
 
@@ -1538,6 +1612,7 @@ export default function App() {
               is_done_today: false,
               logged_measure_val: 0,
               last_measured_value: 0,
+              completed_at: null,
               status: 'INBOX'
             }).eq('id', st.id);
 
@@ -1546,6 +1621,7 @@ export default function App() {
               progress_percent: 0,
               is_done_today: false,
               logged_measure_val: 0,
+              completed_at: null,
               status: 'PLANNED'
             }).eq('id', st.id);
           } catch (e) {}
@@ -1557,11 +1633,9 @@ export default function App() {
             current_count: updatedTask.currentCount,
             progress_percent: updatedTask.progressPercent,
             is_done_today: updatedTask.isDoneToday,
+            completed_at: updatedTask.isDoneToday ? (updatedTask.completedAt || nowIso) : null,
             status: updatedTask.isDoneToday ? 'COMPLETED' : 'INBOX'
           };
-          if (updatedTask.completedAt) {
-            taskPayload.completed_at = updatedTask.completedAt;
-          }
           if (updatedTask.loggedMeasureVal !== undefined) {
             taskPayload.logged_measure_val = updatedTask.loggedMeasureVal;
             taskPayload.last_measured_value = updatedTask.loggedMeasureVal;
@@ -1580,11 +1654,9 @@ export default function App() {
             current_count: updatedTask.currentCount,
             progress_percent: updatedTask.progressPercent,
             is_done_today: updatedTask.isDoneToday,
+            completed_at: updatedTask.isDoneToday ? (updatedTask.completedAt || nowIso) : null,
             status: updatedTask.isDoneToday ? 'COMPLETED' : 'PLANNED'
           };
-          if (updatedTask.completedAt) {
-            subPayload.completed_at = updatedTask.completedAt;
-          }
           if (updatedTask.loggedMeasureVal !== undefined) {
             subPayload.logged_measure_val = updatedTask.loggedMeasureVal;
           }
@@ -2176,8 +2248,6 @@ export default function App() {
     updateTasksState(newTasks);
   };
 
-  const [preselectedParentTaskId, setPreselectedParentTaskId] = useState('');
-
   const handleOpenQuickAddForSubtask = (parentTaskId) => {
     setPreselectedParentTaskId(parentTaskId);
     setIsQuickAddOpen(true);
@@ -2282,6 +2352,8 @@ export default function App() {
                   habits={habits}
                   disciplineScore={disciplineScore}
                   taskLogs={taskLogs}
+                  subtaskLogs={subtaskLogs}
+                  eventLogs={eventLogs}
                   onToggleTask={handleToggleTask}
                   onUndoTask={handleUndoTask}
                   onHabitCheckIn={(id) => setHabits(prev => prev.map(h => h.id === id ? { ...h, actualValue: h.targetValue } : h))}

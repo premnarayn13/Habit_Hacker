@@ -243,6 +243,53 @@ export function calculateParentCompletionStatus(task, childSubtasks = []) {
 }
 
 /**
+ * Returns the local date in YYYY-MM-DD format (never skewed by UTC timezones).
+ */
+export function getLocalDateString(d = new Date()) {
+  if (!d) return '';
+  const dateObj = typeof d === 'string'
+    ? (d.includes('T') ? new Date(d) : (() => {
+        const parts = d.split('-');
+        if (parts.length === 3) {
+          const [y, m, day] = parts.map(Number);
+          return new Date(y, m - 1, day);
+        }
+        return new Date(d);
+      })())
+    : new Date(d);
+  if (isNaN(dateObj.getTime())) return '';
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Parses YYYY-MM-DD or ISO string into a local Date object at midnight local time.
+ */
+export function parseLocalDate(str) {
+  if (!str) return new Date();
+  if (str instanceof Date) return new Date(str.getFullYear(), str.getMonth(), str.getDate());
+  const cleanStr = String(str).split('T')[0];
+  const parts = cleanStr.split('-');
+  if (parts.length === 3) {
+    const [y, m, d] = parts.map(Number);
+    return new Date(y, (m || 1) - 1, d || 1);
+  }
+  return new Date(str);
+}
+
+/**
+ * Calculates calendar day difference between two dates in local time.
+ * (e.g. 2026-09-27 to 2026-10-01 returns 5 days inclusive).
+ */
+export function calculateLocalDaySpan(startStr, endStr) {
+  const start = parseLocalDate(startStr);
+  const end = parseLocalDate(endStr);
+  return Math.max(1, Math.round((end - start) / 86400000) + 1);
+}
+
+/**
  * Derives parent missed-days history directly from mandatory child completion states.
  * Guarantees exact 1-to-1 match between parent missed days count and listed incomplete subtask days.
  * Returns array of missed day objects: [{ daysAgo, date, dateFormatted, missedSubtasks: [titles] }]
@@ -264,7 +311,7 @@ export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount 
   for (let daysAgo = 1; daysAgo <= pastElapsed; daysAgo++) {
     const d = new Date(today);
     d.setDate(today.getDate() - daysAgo);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(d);
     const dateFormatted = d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 
     if (mandatoryChildren.length > 0) {

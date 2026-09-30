@@ -102,8 +102,6 @@ const DEFAULT_CATEGORY_ICONS = {
 };
 
 export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab, tasks = [], onSelectCategory, onLogout, currentUser }) {
-  if (!isOpen) return null;
-
   const [customCategories, setCustomCategories] = useState(() => {
     try {
       const saved = localStorage.getItem('hh_sidebar_categories_v1');
@@ -159,6 +157,8 @@ export default function SidebarDrawer({ isOpen, onClose, activeTab, setActiveTab
 
     return Array.from(categoryMap.values());
   }, [tasks, customCategories]);
+
+  if (!isOpen) return null;
 
   const handleAddCategory = () => {
     if (!newCategoryName.trim()) return;

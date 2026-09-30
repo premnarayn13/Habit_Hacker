@@ -59,6 +59,19 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
     }
   }, [item]);
 
+  const [typeRestrictionError, setTypeRestrictionError] = useState('');
+
+  const parentTask = existingTasks.find(t => t.id === formData.parentTaskId);
+  const isParentType3 = Boolean(parentTask && (parentTask.trackingMode === 'count_event' || parentTask.tracking_mode === 'count_event'));
+  const isParentNonMeasure = Boolean(parentTask && !parentTask.hasMeasureTracking && (!parentTask.measureTarget || Number(parentTask.measureTarget) <= 0));
+
+  // Auto-enforce Type-3 tracking mode if parent is Type-3
+  useEffect(() => {
+    if (isParentType3 && formData.trackingMode !== 'count_event') {
+      setFormData(prev => ({ ...prev, trackingMode: 'count_event' }));
+    }
+  }, [isParentType3]);
+
   if (!isOpen || !item) return null;
 
   const calculateSpanDays = (start, end) => {
@@ -96,19 +109,6 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
         return { count: span, explanation: 'Daily recurrence' };
     }
   };
-
-  const [typeRestrictionError, setTypeRestrictionError] = useState('');
-
-  const parentTask = existingTasks.find(t => t.id === formData.parentTaskId);
-  const isParentType3 = Boolean(parentTask && (parentTask.trackingMode === 'count_event' || parentTask.tracking_mode === 'count_event'));
-  const isParentNonMeasure = Boolean(parentTask && !parentTask.hasMeasureTracking && (!parentTask.measureTarget || Number(parentTask.measureTarget) <= 0));
-
-  // Auto-enforce Type-3 tracking mode if parent is Type-3
-  useEffect(() => {
-    if (isParentType3 && formData.trackingMode !== 'count_event') {
-      setFormData(prev => ({ ...prev, trackingMode: 'count_event' }));
-    }
-  }, [isParentType3]);
 
   let validationError = '';
   if (totalSpanDays <= 0) {

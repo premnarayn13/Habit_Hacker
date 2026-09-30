@@ -2,10 +2,17 @@ import React, { useState } from 'react';
 import { Calendar as CalendarIcon, X, ArrowRight, Save } from 'lucide-react';
 
 export default function CalendarRescheduleModal({ task, isOpen, onClose, onSaveReschedule }) {
-  if (!isOpen || !task) return null;
+  const [newStartDate, setNewStartDate] = useState(task?.plannedStart || new Date().toISOString().split('T')[0]);
+  const [newEndDate, setNewEndDate] = useState(task?.plannedEnd || task?.plannedStart || new Date().toISOString().split('T')[0]);
 
-  const [newStartDate, setNewStartDate] = useState(task.plannedStart || new Date().toISOString().split('T')[0]);
-  const [newEndDate, setNewEndDate] = useState(task.plannedEnd || task.plannedStart || new Date().toISOString().split('T')[0]);
+  React.useEffect(() => {
+    if (task) {
+      setNewStartDate(task.plannedStart || new Date().toISOString().split('T')[0]);
+      setNewEndDate(task.plannedEnd || task.plannedStart || new Date().toISOString().split('T')[0]);
+    }
+  }, [task]);
+
+  if (!isOpen || !task) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();

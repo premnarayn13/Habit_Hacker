@@ -1,33 +1,28 @@
 -- =============================================================================
 -- HABIT HACKER: SQL SCRIPT 2
 -- INJECT COMPLETE 12-HABIT HIERARCHY WITH DYNAMIC MEASURE DATA (4-DAY TIMELINE)
---
 -- Account:  example@gmail.com
 -- Password: 123456
---
 -- Hierarchy:
 -- 1. Type-1 Parent Habit (Date Range)
---    - Subhabit 1.1: Type 1 (Date Range / end_date)       -> Dynamic Measure: 15 mins target
+--    - Subhabit 1.1: Type 1 (Date Range / end_date)        -> Dynamic Measure: 15 mins target
 --    - Subhabit 1.2: Type 2 (Day Count / count_days)       -> Dynamic Measure: 8 glasses target
 --    - Subhabit 1.3: Type 3 (Event Count / count_event)    -> Dynamic Measure: 12 mins target
 -- 2. Type-2 Parent Habit (Day Count)
---    - Subhabit 2.1: Type 1 (Date Range / end_date)       -> Dynamic Measure: 20 pages target
+--    - Subhabit 2.1: Type 1 (Date Range / end_date)        -> Dynamic Measure: 20 pages target
 --    - Subhabit 2.2: Type 2 (Day Count / count_days)       -> Dynamic Measure: 5 problems target
 --    - Subhabit 2.3: Type 3 (Event Count / count_event)    -> Dynamic Measure: 3 reviews target
 -- 3. Type-3 Parent Habit (Event Count)
 --    - Subhabit 3.1: Type 3 (Event Count / count_event)    -> Dynamic Measure: 20 points target
 --    - Subhabit 3.2: Type 3 (Event Count / count_event)    -> Dynamic Measure: 25 points target
 --    - Subhabit 3.3: Type 3 (Event Count / count_event)    -> Dynamic Measure: 20 points target
---
 -- 4-Day DYNAMIC TIMELINE (VARYING NUMERICAL MEASURES ACROSS DAYS & EVENTS):
 --    - Day 1: CURRENT_DATE - 3 -> Event #1: S3.1=18, S3.2=23, S3.3=24 (Total Event 1: 65 pts)
 --    - Day 2: CURRENT_DATE - 2 -> Analytical variance: S3.1=22, S3.2=28, S3.3=0 (Total: 50 pts)
 --    - Day 3: CURRENT_DATE - 1 -> Event #2: S3.1=24, S3.2=27, S3.3=17 (Total Event 2: 68 pts)
 --    - Day 4: CURRENT_DATE     -> Live Today: S3.1=21 pts logged, S3.2 & S3.3 pending today
---
 -- Instructions: Run this script directly in Supabase SQL Editor.
 -- =============================================================================
-
 -- STEP 1: ENSURE app_users TABLE AND TEST CREDENTIALS EXIST
 CREATE TABLE IF NOT EXISTS public.app_users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -92,6 +87,8 @@ ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS max_streak INT DEFAU
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS missed_streak INT DEFAULT 0;
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS active_streak INT DEFAULT 1;
 ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS collab TEXT;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+ALTER TABLE IF EXISTS public.tasks ADD COLUMN IF NOT EXISTS completed_date DATE;
 
 CREATE TABLE IF NOT EXISTS public.subtasks (
     id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -114,6 +111,8 @@ ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS last_measured_val
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS is_done_today BOOLEAN DEFAULT FALSE;
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS planned_start DATE;
 ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS planned_end DATE;
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+ALTER TABLE IF EXISTS public.subtasks ADD COLUMN IF NOT EXISTS completed_date DATE;
 
 CREATE TABLE IF NOT EXISTS public.task_logs (
     id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -312,13 +311,13 @@ BEGIN
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
-        logged_measure_val, last_measured_value, is_done_today, parent_task_id, planned_start, planned_end, deadline
+        logged_measure_val, last_measured_value, is_done_today, parent_task_id, planned_start, planned_end, deadline, completed_at
     ) VALUES (
         'sub-p1-s1-morning-yoga', v_user_id,
         '[S1.1] Morning Yoga & Mobility (Type 1)',
         'End-date tracked physical mobility session', 'Health', 'MEDIUM', 'end_date',
         30, 3, TRUE, 'mins', 15,
-        16, 16, TRUE, 'parent-type1-wellness-routine', d_day3, (d_today + 26), (d_today + 26)
+        16, 16, TRUE, 'parent-type1-wellness-routine', d_day3, (d_today + 26), (d_today + 26), (d_today + TIME '08:30:00')::timestamptz
     );
 
     -- Subhabit 1.2: Type 2 (count_days)
@@ -358,13 +357,13 @@ BEGIN
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
-        logged_measure_val, last_measured_value, is_done_today, parent_task_id, planned_start, planned_end, deadline
+        logged_measure_val, last_measured_value, is_done_today, parent_task_id, planned_start, planned_end, deadline, completed_at
     ) VALUES (
         'sub-p2-s1-tech-reading', v_user_id,
         '[S2.1] Architectural Literature Study (Type 1)',
         'End-date technical literature reading', 'Career', 'MEDIUM', 'end_date',
         60, 3, TRUE, 'pages', 20,
-        22, 22, TRUE, 'parent-type2-coding-sprint', d_day3, (d_today + 87), (d_today + 87)
+        22, 22, TRUE, 'parent-type2-coding-sprint', d_day3, (d_today + 87), (d_today + 87), (d_today + TIME '10:00:00')::timestamptz
     );
 
     -- Subhabit 2.2: Type 2 (count_days)
@@ -404,13 +403,13 @@ BEGIN
     INSERT INTO public.tasks (
         id, user_id, title, description, category, priority, tracking_mode,
         target_count, current_count, has_measure_tracking, measure_unit, measure_target,
-        logged_measure_val, last_measured_value, is_done_today, parent_task_id, planned_start, planned_end, deadline
+        logged_measure_val, last_measured_value, is_done_today, parent_task_id, planned_start, planned_end, deadline, completed_at
     ) VALUES (
         'sub-p3-s1-core-backend-api', v_user_id,
         '[S3.1] Backend Services & APIs (Type 3)',
         'Event-count API development milestones', 'Projects', 'HIGH', 'count_event',
         2, 2, TRUE, 'points', 20,
-        21, 21, TRUE, 'parent-type3-project-milestones', d_day3, (d_today + 42), (d_today + 42)
+        21, 21, TRUE, 'parent-type3-project-milestones', d_day3, (d_today + 42), (d_today + 42), (d_today + TIME '14:00:00')::timestamptz
     );
 
     -- Subhabit 3.2: Type 3 (count_event)
@@ -447,11 +446,11 @@ BEGIN
     INSERT INTO public.subtasks (
         id, parent_task_id, user_id, title, description, status,
         has_measure_tracking, measure_target, measure_unit, logged_measure_val, last_measured_value, is_done_today,
-        tracking_mode, target_count, current_count, planned_start, planned_end
+        completed_at, tracking_mode, target_count, current_count, planned_start, planned_end
     )
     SELECT id, parent_task_id, user_id, title, description, CASE WHEN is_done_today THEN 'COMPLETED' ELSE 'PLANNED' END,
            has_measure_tracking, measure_target, measure_unit, logged_measure_val, last_measured_value, is_done_today,
-           tracking_mode, target_count, current_count, planned_start, planned_end
+           completed_at, tracking_mode, target_count, current_count, planned_start, planned_end
     FROM public.tasks
     WHERE parent_task_id IS NOT NULL AND user_id = v_user_id;
 

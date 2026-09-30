@@ -3,6 +3,9 @@ import { supabase } from './supabaseClient';
 
 const LOCAL_COLLAB_KEY = 'hh_task_collaborations';
 
+// Supabase task_collaborations table is optional; defaults to false to avoid 404 console errors
+let isSupabaseCollabTableAvailable = false;
+
 function getLocalCollabs() {
   try {
     if (typeof window === 'undefined') return [];
@@ -57,21 +60,23 @@ export const collaborationService = {
       }
       saveLocalCollabs(local);
 
-      // Try persisting to Supabase task_collaborations table
-      try {
-        await supabase.from('task_collaborations').insert([{
-          id: inviteData.id,
-          task_id: inviteData.taskId,
-          task_title: inviteData.taskTitle,
-          category: inviteData.category,
-          priority: inviteData.priority,
-          sender_email: inviteData.senderEmail,
-          sender_name: inviteData.senderName,
-          receiver_email: inviteData.receiverEmail,
-          status: 'PENDING',
-          created_at: inviteData.createdAt
-        }]);
-      } catch (e) {}
+      // Try persisting to Supabase task_collaborations table if available
+      if (isSupabaseCollabTableAvailable) {
+        try {
+          await supabase.from('task_collaborations').insert([{
+            id: inviteData.id,
+            task_id: inviteData.taskId,
+            task_title: inviteData.taskTitle,
+            category: inviteData.category,
+            priority: inviteData.priority,
+            sender_email: inviteData.senderEmail,
+            sender_name: inviteData.senderName,
+            receiver_email: inviteData.receiverEmail,
+            status: 'PENDING',
+            created_at: inviteData.createdAt
+          }]);
+        } catch (e) {}
+      }
 
       // Try posting to Spring Boot REST backend
       try {
@@ -114,12 +119,14 @@ export const collaborationService = {
       }).eq('id', taskId);
     } catch (e) {}
 
-    // 3. Sync to Supabase task_collaborations table
-    try {
-      await supabase.from('task_collaborations').update({
-        status: isDoneToday ? `COMPLETED_BY_${cleanEmail}` : 'ACCEPTED'
-      }).eq('task_id', taskId);
-    } catch (e) {}
+    // 3. Sync to Supabase task_collaborations table if available
+    if (isSupabaseCollabTableAvailable) {
+      try {
+        await supabase.from('task_collaborations').update({
+          status: isDoneToday ? `COMPLETED_BY_${cleanEmail}` : 'ACCEPTED'
+        }).eq('task_id', taskId);
+      } catch (e) {}
+    }
   },
 
   async getReceivedInvitations(receiverEmail) {
@@ -127,28 +134,30 @@ export const collaborationService = {
     const cleanEmail = receiverEmail.trim().toLowerCase();
     let remoteInvites = [];
 
-    // Try Supabase first
-    try {
-      const { data: supaCollabs } = await supabase
-        .from('task_collaborations')
-        .select('*')
-        .eq('receiver_email', cleanEmail);
+    // Try Supabase first if table is configured
+    if (isSupabaseCollabTableAvailable) {
+      try {
+        const { data: supaCollabs } = await supabase
+          .from('task_collaborations')
+          .select('*')
+          .eq('receiver_email', cleanEmail);
 
-      if (supaCollabs && supaCollabs.length > 0) {
-        remoteInvites = supaCollabs.map(c => ({
-          id: c.id,
-          taskId: c.task_id || c.taskId,
-          taskTitle: c.task_title || c.taskTitle,
-          category: c.category,
-          priority: c.priority,
-          senderEmail: c.sender_email || c.senderEmail,
-          senderName: c.sender_name || c.senderName,
-          receiverEmail: c.receiver_email || c.receiverEmail,
-          status: c.status || 'PENDING',
-          createdAt: c.created_at || c.createdAt
-        }));
-      }
-    } catch (e) {}
+        if (supaCollabs && supaCollabs.length > 0) {
+          remoteInvites = supaCollabs.map(c => ({
+            id: c.id,
+            taskId: c.task_id || c.taskId,
+            taskTitle: c.task_title || c.taskTitle,
+            category: c.category,
+            priority: c.priority,
+            senderEmail: c.sender_email || c.senderEmail,
+            senderName: c.sender_name || c.senderName,
+            receiverEmail: c.receiver_email || c.receiverEmail,
+            status: c.status || 'PENDING',
+            createdAt: c.created_at || c.createdAt
+          }));
+        }
+      } catch (e) {}
+    }
 
     // Try Spring Boot REST API
     try {
@@ -174,28 +183,30 @@ export const collaborationService = {
     const cleanEmail = senderEmail.trim().toLowerCase();
     let remoteSent = [];
 
-    // Try Supabase first
-    try {
-      const { data: supaCollabs } = await supabase
-        .from('task_collaborations')
-        .select('*')
-        .eq('sender_email', cleanEmail);
+    // Try Supabase first if table is configured
+    if (isSupabaseCollabTableAvailable) {
+      try {
+        const { data: supaCollabs } = await supabase
+          .from('task_collaborations')
+          .select('*')
+          .eq('sender_email', cleanEmail);
 
-      if (supaCollabs && supaCollabs.length > 0) {
-        remoteSent = supaCollabs.map(c => ({
-          id: c.id,
-          taskId: c.task_id || c.taskId,
-          taskTitle: c.task_title || c.taskTitle,
-          category: c.category,
-          priority: c.priority,
-          senderEmail: c.sender_email || c.senderEmail,
-          senderName: c.sender_name || c.senderName,
-          receiverEmail: c.receiver_email || c.receiverEmail,
-          status: c.status || 'PENDING',
-          createdAt: c.created_at || c.createdAt
-        }));
-      }
-    } catch (e) {}
+        if (supaCollabs && supaCollabs.length > 0) {
+          remoteSent = supaCollabs.map(c => ({
+            id: c.id,
+            taskId: c.task_id || c.taskId,
+            taskTitle: c.task_title || c.taskTitle,
+            category: c.category,
+            priority: c.priority,
+            senderEmail: c.sender_email || c.senderEmail,
+            senderName: c.sender_name || c.senderName,
+            receiverEmail: c.receiver_email || c.receiverEmail,
+            status: c.status || 'PENDING',
+            createdAt: c.created_at || c.createdAt
+          }));
+        }
+      } catch (e) {}
+    }
 
     // Try Spring Boot REST API
     try {
@@ -231,10 +242,12 @@ export const collaborationService = {
       saveLocalCollabs(local);
     }
 
-    // Try updating Supabase table
-    try {
-      await supabase.from('task_collaborations').update({ status: newStatus }).eq('id', inviteId);
-    } catch (e) {}
+    // Try updating Supabase table if available
+    if (isSupabaseCollabTableAvailable) {
+      try {
+        await supabase.from('task_collaborations').update({ status: newStatus }).eq('id', inviteId);
+      } catch (e) {}
+    }
 
     // Attempt updating Spring Boot backend
     try {

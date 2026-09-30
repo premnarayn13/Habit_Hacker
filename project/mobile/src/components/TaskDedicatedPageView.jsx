@@ -65,7 +65,10 @@ import {
   calculateSubtaskContribution, 
   calculateParentDailyMeasure, 
   calculateParentCompletionStatus,
-  getMissedDaysForTask 
+  getMissedDaysForTask,
+  getLocalDateString,
+  parseLocalDate,
+  calculateLocalDaySpan
 } from '../lib/taskHierarchyEngine';
 import { 
   calculateCurrentEventWork, 
@@ -131,20 +134,17 @@ export default function TaskDedicatedPageView({
   // Date Span Calculations
   const calculateSpanDays = (start, end) => {
     if (!start || !end) return 45;
-    const s = new Date(start);
-    const e = new Date(end);
-    const diffTime = e - s;
-    if (isNaN(diffTime)) return 45;
-    return Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
+    return calculateLocalDaySpan(start, end);
   };
 
-  const effectiveStartStr = currentTask.plannedStart || currentTask.start_date || (currentTask.created_at ? currentTask.created_at.split('T')[0] : null) || parentTask?.plannedStart || new Date().toISOString().split('T')[0];
+  const effectiveStartStr = currentTask.plannedStart || currentTask.start_date || (currentTask.created_at ? getLocalDateString(currentTask.created_at) : null) || parentTask?.plannedStart || getLocalDateString(new Date());
   const effectiveEndStr = currentTask.plannedEnd || currentTask.end_date || currentTask.deadline || parentTask?.plannedEnd || effectiveStartStr;
 
-  let totalWindowDays = calculateSpanDays(effectiveStartStr, effectiveEndStr) || 45;
-  const today = new Date();
-  const startDate = new Date(effectiveStartStr);
-  let endDate = new Date(effectiveEndStr);
+  const todayDateStr = getLocalDateString(new Date());
+  const cleanStartStr = getLocalDateString(effectiveStartStr);
+  const cleanEndStr = getLocalDateString(effectiveEndStr);
+
+  let totalWindowDays = calculateLocalDaySpan(cleanStartStr, cleanEndStr) || 45;
 
   // Target & Completed Numerical Definitions per Task Type
   const targetCount = trackingMode === 'end_date' 
@@ -156,13 +156,10 @@ export default function TaskDedicatedPageView({
   // For count_days, ensure window margin includes buffer days (default to targetCount + 30 if not specified or shorter)
   if (trackingMode === 'count_days' && totalWindowDays <= targetCount) {
     totalWindowDays = targetCount + 30;
-    const computedEnd = new Date(startDate);
-    computedEnd.setDate(startDate.getDate() + totalWindowDays - 1);
-    endDate = computedEnd;
   }
 
-  const elapsedDays = Math.max(1, Math.min(totalWindowDays, Math.floor((today - startDate) / (1000 * 60 * 60 * 24)) + 1)) || 1;
-  const remainingDays = Math.max(0, Math.floor((endDate - today) / (1000 * 60 * 60 * 24)) + 1) || 0;
+  const elapsedDays = Math.max(1, Math.min(totalWindowDays, calculateLocalDaySpan(cleanStartStr, todayDateStr))) || 1;
+  const remainingDays = Math.max(0, calculateLocalDaySpan(todayDateStr, cleanEndStr) - 1);
 
   // Type 1 Event Count Daily Requirement for Remaining Days
   const requiredEventsPerRemainingDay = remainingDays > 0 ? (remainingTargetCount / remainingDays).toFixed(1) : 0;
@@ -260,9 +257,9 @@ export default function TaskDedicatedPageView({
     if (l.log_date) return String(l.log_date).split('T')[0];
     if (l.logged_date) return String(l.logged_date).split('T')[0];
     if (l.date) return String(l.date).split('T')[0];
-    if (l.completion_timestamp) return String(l.completion_timestamp).split('T')[0];
-    if (l.logged_at) return String(l.logged_at).split('T')[0];
-    if (l.created_at) return String(l.created_at).split('T')[0];
+    if (l.completion_timestamp) return getLocalDateString(l.completion_timestamp);
+    if (l.logged_at) return getLocalDateString(l.logged_at);
+    if (l.created_at) return getLocalDateString(l.created_at);
     return null;
   };
 
@@ -311,17 +308,15 @@ export default function TaskDedicatedPageView({
   // Compute measurable average for child subtasks (using parent measureTarget if no explicit measures)
   const avgMeasured = calculateMeasurableAverage(directChildSubtasks, measureTarget);
 
-  const nowUtc = new Date();
   const getAgoDateStr = (daysAgo) => {
-    const dt = new Date(nowUtc);
+    const dt = new Date();
     dt.setDate(dt.getDate() - daysAgo);
-    return dt.toISOString().split('T')[0];
+    return getLocalDateString(dt);
   };
 
   const day3AgoStr = getAgoDateStr(3);
   const day2AgoStr = getAgoDateStr(2);
   const day1AgoStr = getAgoDateStr(1);
-  const todayDateStr = getAgoDateStr(0);
 
   // Guarantee dynamic historical data for 3-day window even if DB query is pending or empty
   if (directChildSubtasks.length > 0) {
@@ -485,7 +480,7 @@ export default function TaskDedicatedPageView({
     return sum + calculateSubtaskContribution(st, isCompleted, evCount, avgMeasured, directChildSubtasks);
   }, 0);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString(new Date());
   const loggedTodayVal = logsByDate[todayStr];
 
   const todayActualMeasure = directChildSubtasks.length > 0
@@ -500,7 +495,7 @@ export default function TaskDedicatedPageView({
   const missedDaysRecordsList = getMissedDaysForTask({ ...currentTask, elapsedDays }, directChildSubtasks, elapsedDays, subtaskLogsByDate);
   const missedDaysSetByAgo = new Set(missedDaysRecordsList.map(m => m.daysAgo));
 
-  const startTimelineDate = new Date(effectiveStartStr);
+  const startTimelineDate = parseLocalDate(cleanStartStr);
   const totalTimelineDays = Math.max(1, elapsedDays);
 
   let runningCumulativeActualMeasure = 0;
@@ -511,7 +506,7 @@ export default function TaskDedicatedPageView({
     
     const d = new Date(startTimelineDate);
     d.setDate(startTimelineDate.getDate() + idx);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(d);
     const monthDayStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const weekdayStr = d.toLocaleDateString('en-US', { weekday: 'short' });
 

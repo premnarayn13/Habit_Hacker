@@ -53,6 +53,17 @@ export default function QuickAddModal({
   const [categoryInput, setCategoryInput] = useState('');
   const [typeRestrictionError, setTypeRestrictionError] = useState('');
 
+  const parentTask = existingTasks.find(t => t.id === (taskData.parentTaskId || preselectedParentTaskId));
+  const isParentType3 = Boolean(parentTask && (parentTask.trackingMode === 'count_event' || parentTask.tracking_mode === 'count_event'));
+  const isParentNonMeasure = Boolean(parentTask && !parentTask.hasMeasureTracking && (!parentTask.measureTarget || Number(parentTask.measureTarget) <= 0));
+
+  // Auto-enforce Type-3 tracking mode if parent is Type-3
+  React.useEffect(() => {
+    if (isParentType3 && taskData.trackingMode !== 'count_event') {
+      setTaskData(prev => ({ ...prev, trackingMode: 'count_event' }));
+    }
+  }, [isParentType3]);
+
   if (!isOpen) return null;
 
   const defaultCategoriesList = ['General', 'Personal', 'Fitness', 'Mindfulness', 'Productivity', 'Shopping', 'Hobbies'];
@@ -94,17 +105,6 @@ export default function QuickAddModal({
         return { count: span, explanation: 'Daily recurrence' };
     }
   };
-
-  const parentTask = existingTasks.find(t => t.id === (taskData.parentTaskId || preselectedParentTaskId));
-  const isParentType3 = Boolean(parentTask && (parentTask.trackingMode === 'count_event' || parentTask.tracking_mode === 'count_event'));
-  const isParentNonMeasure = Boolean(parentTask && !parentTask.hasMeasureTracking && (!parentTask.measureTarget || Number(parentTask.measureTarget) <= 0));
-
-  // Auto-enforce Type-3 tracking mode if parent is Type-3
-  React.useEffect(() => {
-    if (isParentType3 && taskData.trackingMode !== 'count_event') {
-      setTaskData(prev => ({ ...prev, trackingMode: 'count_event' }));
-    }
-  }, [isParentType3]);
 
   let validationError = '';
   if (totalSpanDays <= 0) {

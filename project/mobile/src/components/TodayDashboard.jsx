@@ -43,7 +43,9 @@ import {
   calculateMeasurableAverage, 
   calculateSubtaskContribution, 
   calculateParentDailyMeasure, 
-  calculateParentCompletionStatus 
+  calculateParentCompletionStatus,
+  getLocalDateString,
+  parseLocalDate
 } from '../lib/taskHierarchyEngine';
 import TodayMeasureEditModal from './TodayMeasureEditModal';
 
@@ -136,6 +138,8 @@ export default function TodayDashboard({
   habits = [], 
   disciplineScore = null, 
   taskLogs = [],
+  subtaskLogs = [],
+  eventLogs = [],
   onToggleTask, 
   onUndoTask,
   onHabitCheckIn, 
@@ -159,12 +163,17 @@ export default function TodayDashboard({
   // Measure Edit / Completion Prompt Modal State
   const [measureModalTask, setMeasureModalTask] = useState(null);
 
-  // Calculate Selected Date Object
+  // Calculate Selected Date Object & Strings
   const selectedDateObj = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + dateOffset);
     return d;
   }, [dateOffset]);
+
+  const selectedDateStr = useMemo(() => getLocalDateString(selectedDateObj), [selectedDateObj]);
+  const todayDateStr = useMemo(() => getLocalDateString(new Date()), []);
+  const isViewingToday = selectedDateStr === todayDateStr;
+  const isPastDay = selectedDateStr < todayDateStr;
 
   const dateDisplayFormatted = selectedDateObj.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -172,21 +181,75 @@ export default function TodayDashboard({
     day: 'numeric'
   });
 
-  // Separate Parent Tasks from Child Subtasks safely
+  // Derive Contextual Tasks for Selected Date (reflects past logs if viewing historical days)
+  const contextualTasks = useMemo(() => {
+    if (isViewingToday) {
+      return tasks || [];
+    }
+
+    if (isPastDay) {
+      return (tasks || []).map(t => {
+        if (t.parentTaskId) {
+          // Subtask: look up in subtask_logs and task_logs for selectedDateStr
+          const subLog = (subtaskLogs || []).find(l => 
+            (l.subtask_id === t.id || l.subtaskId === t.id || l.task_id === t.id) &&
+            (l.log_date === selectedDateStr || (l.created_at && getLocalDateString(l.created_at) === selectedDateStr))
+          );
+          const taskLog = (taskLogs || []).find(l => 
+            (l.task_id === t.id || l.taskId === t.id) && 
+            (l.logged_date === selectedDateStr || (l.logged_at && getLocalDateString(l.logged_at) === selectedDateStr))
+          );
+          const isDone = subLog ? Boolean(subLog.is_completed) : (taskLog ? (taskLog.is_successful !== false && (taskLog.increment_value > 0 || taskLog.measured_value > 0)) : false);
+          const val = subLog ? Number(subLog.measured_value || 0) : (taskLog ? Number(taskLog.measured_value || 0) : 0);
+          return {
+            ...t,
+            isDoneToday: isDone,
+            loggedMeasureVal: val
+          };
+        } else {
+          // Standalone or Parent Task:
+          const pLog = (taskLogs || []).find(l => 
+            (l.task_id === t.id || l.taskId === t.id) && 
+            (l.logged_date === selectedDateStr || (l.logged_at && getLocalDateString(l.logged_at) === selectedDateStr))
+          );
+          const evLog = (eventLogs || []).find(el => 
+            (el.task_id === t.id || el.taskId === t.id || el.parent_task_id === t.id || el.parentTaskId === t.id) &&
+            (el.completion_date === selectedDateStr || (el.completion_timestamp && getLocalDateString(el.completion_timestamp) === selectedDateStr))
+          );
+          const isDone = evLog ? true : (pLog ? (pLog.is_successful !== false && (pLog.increment_value > 0 || pLog.measured_value > 0)) : false);
+          const val = evLog ? Number(evLog.total_work_accumulated || 0) : (pLog ? Number(pLog.measured_value || 0) : 0);
+          return {
+            ...t,
+            isDoneToday: isDone,
+            loggedMeasureVal: val
+          };
+        }
+      });
+    }
+
+    // Future scheduled date
+    return (tasks || []).map(t => ({
+      ...t,
+      isDoneToday: false,
+      loggedMeasureVal: 0
+    }));
+  }, [tasks, isViewingToday, isPastDay, selectedDateStr, subtaskLogs, taskLogs, eventLogs]);
+
+  // Separate Parent Tasks from Child Subtasks safely using contextualTasks
   const parentTasks = useMemo(() => {
-    return (tasks || []).filter(t => t && !t.parentTaskId);
-  }, [tasks]);
+    return contextualTasks.filter(t => t && !t.parentTaskId);
+  }, [contextualTasks]);
 
   const subtasksMap = useMemo(() => {
     const map = {};
-    (tasks || []).forEach(t => {
+    contextualTasks.forEach(t => {
       if (t && t.parentTaskId) {
         if (!map[t.parentTaskId]) map[t.parentTaskId] = [];
         map[t.parentTaskId].push(t);
       }
     });
     return map;
-  }, [tasks]);
+  }, [contextualTasks]);
 
   // Recurrence Frequency Label Resolver
   const getFrequencyLabel = (t) => {
@@ -303,23 +366,27 @@ export default function TodayDashboard({
   const todayStreak = useMemo(() => {
     const datesSet = new Set();
     (taskLogs || []).forEach(l => {
-      const d = l.logged_at ? l.logged_at.split('T')[0] : (l.logged_date || l.entry_date);
+      const d = l.logged_date || l.entry_date || (l.logged_at ? getLocalDateString(l.logged_at) : null);
       if (d) datesSet.add(d);
+    });
+    (subtaskLogs || []).forEach(l => {
+      const d = l.log_date || (l.created_at ? getLocalDateString(l.created_at) : null);
+      if (d && l.is_completed) datesSet.add(d);
     });
     (tasks || []).forEach(t => {
       if (t && (t.isDoneToday || t.progressPercent >= 100)) {
-        datesSet.add(new Date().toISOString().split('T')[0]);
+        datesSet.add(getLocalDateString(new Date()));
       }
     });
     if (datesSet.size === 0) return 0;
     let streak = 0;
     const checkDate = new Date();
-    const todayStr = checkDate.toISOString().split('T')[0];
+    const todayStr = getLocalDateString(checkDate);
     if (!datesSet.has(todayStr)) {
       checkDate.setDate(checkDate.getDate() - 1);
     }
     while (true) {
-      const s = checkDate.toISOString().split('T')[0];
+      const s = getLocalDateString(checkDate);
       if (datesSet.has(s)) {
         streak++;
         checkDate.setDate(checkDate.getDate() - 1);
@@ -328,7 +395,7 @@ export default function TodayDashboard({
       }
     }
     return streak;
-  }, [taskLogs, tasks]);
+  }, [taskLogs, subtaskLogs, tasks]);
 
   // Compute Task Type Breakdown (Type-1, Type-2, Type-3)
   const typeBreakdown = useMemo(() => {
@@ -506,11 +573,25 @@ export default function TodayDashboard({
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
-              Today
+            <h1 style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span>{dateOffset === 0 ? 'Today' : (dateOffset === -1 ? 'Yesterday' : (dateOffset === 1 ? 'Tomorrow' : dateDisplayFormatted))}</span>
+              {dateOffset !== 0 && (
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  padding: '3px 9px',
+                  borderRadius: '8px',
+                  background: isPastDay ? '#FEF3C7' : '#EFF6FF',
+                  color: isPastDay ? '#B45309' : '#1D4ED8',
+                  border: isPastDay ? '1px solid #FCD34D' : '1px solid #BFDBFE'
+                }}>
+                  {isPastDay ? 'Historical Archive' : 'Future Schedule'}
+                </span>
+              )}
             </h1>
-            <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', marginTop: '2px' }}>
-              {dateDisplayFormatted}
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748B', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>{dateDisplayFormatted}</span>
+              {dateOffset === 0 && <span style={{ color: '#16A34A', fontWeight: 800 }}>• Active Daily Cycle</span>}
             </div>
           </div>
 
@@ -542,9 +623,9 @@ export default function TodayDashboard({
             {dateOffset !== 0 && (
               <button
                 onClick={() => setDateOffset(0)}
-                style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#2563EB', padding: '6px 10px', borderRadius: '10px', fontSize: '11px', fontWeight: 800, cursor: 'pointer' }}
+                style={{ background: '#EFF6FF', border: '1.5px solid #93C5FD', color: '#1D4ED8', padding: '6px 12px', borderRadius: '10px', fontSize: '11px', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', boxShadow: '0 2px 4px rgba(29, 78, 216, 0.1)' }}
               >
-                Reset
+                ⚡ Return to Today
               </button>
             )}
           </div>
