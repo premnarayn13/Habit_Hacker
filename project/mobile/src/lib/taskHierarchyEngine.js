@@ -339,9 +339,7 @@ export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount 
           const cLog = dayLogs[matchKey];
           isTaskDoneOnDay = Boolean(cLog.isCompleted && Number(cLog.measuredValue !== undefined ? cLog.measuredValue : 1) > 0);
         } else {
-          // If subtaskLogsByDate has entries for this date but not for this subtask, check currentCount fallback
-          const currentCount = Math.min(elapsed, task.currentCount || task.currentDayCount || 0);
-          isTaskDoneOnDay = (pastElapsed - daysAgo) < currentCount;
+          isTaskDoneOnDay = false;
         }
       }
 

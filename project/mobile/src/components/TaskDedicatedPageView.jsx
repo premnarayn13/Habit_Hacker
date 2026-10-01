@@ -276,13 +276,17 @@ export default function TaskDedicatedPageView({
 
   const getCleanDate = (l) => {
     if (!l) return null;
-    if (l.completion_date) return String(l.completion_date).split('T')[0];
-    if (l.log_date) return String(l.log_date).split('T')[0];
-    if (l.logged_date) return String(l.logged_date).split('T')[0];
-    if (l.date) return String(l.date).split('T')[0];
-    if (l.completion_timestamp) return getLocalDateString(l.completion_timestamp);
-    if (l.logged_at) return getLocalDateString(l.logged_at);
-    if (l.created_at) return getLocalDateString(l.created_at);
+    // 1. Prioritize exact timestamps converted into the user's local calendar day
+    const ts = l.completion_timestamp || l.logged_at || l.created_at;
+    if (ts) {
+      const localD = getLocalDateString(ts);
+      if (localD) return localD;
+    }
+    // 2. Client-explicit logged_date (already in local time YYYY-MM-DD)
+    if (l.logged_date) return getLocalDateString(l.logged_date);
+    if (l.completion_date) return getLocalDateString(l.completion_date);
+    if (l.log_date) return getLocalDateString(l.log_date);
+    if (l.date) return getLocalDateString(l.date);
     return null;
   };
 
@@ -628,8 +632,6 @@ export default function TaskDedicatedPageView({
       } else if (logsByDate[dateStr] !== undefined && logsByDate[dateStr] > 0) {
         // Day with subtask logs
         dailyDeltaMeasure = logsByDate[dateStr];
-      } else if (isCompletedDay) {
-        dailyDeltaMeasure = measureTarget > 0 ? measureTarget : (eventUnitTarget || 1);
       } else {
         dailyDeltaMeasure = 0;
       }
@@ -666,7 +668,7 @@ export default function TaskDedicatedPageView({
         } else if (subtaskLogsByDate[dateStr]?.[currentTask.id]?.measuredValue > 0) {
           dailyDeltaMeasure = subtaskLogsByDate[dateStr][currentTask.id].measuredValue;
         } else {
-          dailyDeltaMeasure = Number(currentTask.lastMeasuredValue || currentTask.loggedMeasureVal || currentTask.measureTarget || 1);
+          dailyDeltaMeasure = 0;
         }
       } else {
         dailyDeltaMeasure = 0;
@@ -705,15 +707,14 @@ export default function TaskDedicatedPageView({
     : (currentCount > 0 ? Math.round(currentCount * (measureTarget > 0 ? measureTarget : eventUnitTarget) * 10) / 10 : 0);
   const totalTargetLeft = Math.max(0, Math.round((totalTargetedMeasure - totalCompletedMeasure) * 10) / 10);
 
-  // Dynamic successful days across operational timeline
+  // Dynamic successful days across operational timeline (strictly based on actual days with completed events/work)
   const timelineSuccessfulDays = fullTimelineDailyData.filter(d => (d.daysAgo > 0 && d.isCompletedDay) || (d.daysAgo === 0 && Boolean(currentTask.isDoneToday || (currentTask.todayEventCount || 0) > 0))).length;
   
-  // For count_event: displaySuccessfulCount is eventSuccessfulDays, and completion percentage is strictly (currentCount / targetCount)%
-  const displaySuccessfulCount = trackingMode === 'count_event' ? eventSuccessfulDays : timelineSuccessfulDays;
+  const displaySuccessfulCount = timelineSuccessfulDays;
   const displayCompletionPercent = targetCount > 0 ? Math.min(100, Math.round((currentCount / targetCount) * 100)) : 0;
 
   // Past missed days count (excludes today if done, or includes full elapsed)
-  const missedDaysCount = trackingMode === 'count_event' ? eventZeroMissedDays : Math.max(0, elapsedDays - displaySuccessfulCount);
+  const missedDaysCount = Math.max(0, elapsedDays - displaySuccessfulCount);
   const successRatePercent = elapsedDays > 0 ? Math.round((displaySuccessfulCount / elapsedDays) * 100) : 0;
   const missRatePercent = elapsedDays > 0 ? Math.round((missedDaysCount / elapsedDays) * 100) : 0;
 
@@ -1731,12 +1732,12 @@ export default function TaskDedicatedPageView({
           <div style={{ marginTop: '16px', background: '#EFF6FF', padding: '16px', borderRadius: '14px', border: '1px solid #BFDBFE', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
             <div>
               <span style={{ fontSize: '10px', fontWeight: 800, color: '#1E40AF', textTransform: 'uppercase', display: 'block' }}>Successful Days (≥1 Event)</span>
-              <span style={{ fontSize: '14px', fontWeight: 900, color: '#16A34A' }}>{eventSuccessfulDays} Days</span>
+              <span style={{ fontSize: '14px', fontWeight: 900, color: '#16A34A' }}>{displaySuccessfulCount} Days</span>
             </div>
 
             <div>
               <span style={{ fontSize: '10px', fontWeight: 800, color: '#1E40AF', textTransform: 'uppercase', display: 'block' }}>Missed Days (0 Events)</span>
-              <span style={{ fontSize: '14px', fontWeight: 900, color: '#DC2626' }}>{eventZeroMissedDays} Days</span>
+              <span style={{ fontSize: '14px', fontWeight: 900, color: '#DC2626' }}>{missedDaysCount} Days</span>
             </div>
 
             <div>

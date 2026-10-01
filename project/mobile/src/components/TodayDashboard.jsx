@@ -191,14 +191,18 @@ export default function TodayDashboard({
       return (tasks || []).map(t => {
         if (t.parentTaskId) {
           // Subtask: look up in subtask_logs and task_logs for selectedDateStr
-          const subLog = (subtaskLogs || []).find(l => 
-            (l.subtask_id === t.id || l.subtaskId === t.id || l.task_id === t.id) &&
-            (l.log_date === selectedDateStr || (l.created_at && getLocalDateString(l.created_at) === selectedDateStr))
-          );
-          const taskLog = (taskLogs || []).find(l => 
-            (l.task_id === t.id || l.taskId === t.id) && 
-            (l.logged_date === selectedDateStr || (l.logged_at && getLocalDateString(l.logged_at) === selectedDateStr))
-          );
+          const subLog = (subtaskLogs || []).find(l => {
+            if (l.subtask_id !== t.id && l.subtaskId !== t.id && l.task_id !== t.id) return false;
+            const ts = l.created_at || l.logged_at;
+            if (ts) return getLocalDateString(ts) === selectedDateStr;
+            return (l.logged_date === selectedDateStr || l.log_date === selectedDateStr);
+          });
+          const taskLog = (taskLogs || []).find(l => {
+            if (l.task_id !== t.id && l.taskId !== t.id) return false;
+            const ts = l.logged_at || l.created_at;
+            if (ts) return getLocalDateString(ts) === selectedDateStr;
+            return (l.logged_date === selectedDateStr || l.log_date === selectedDateStr);
+          });
           const isDone = subLog ? Boolean(subLog.is_completed) : (taskLog ? (taskLog.is_successful !== false && (taskLog.increment_value > 0 || taskLog.measured_value > 0)) : false);
           const val = subLog ? Number(subLog.measured_value || 0) : (taskLog ? Number(taskLog.measured_value || 0) : 0);
           return {
@@ -208,14 +212,18 @@ export default function TodayDashboard({
           };
         } else {
           // Standalone or Parent Task:
-          const pLog = (taskLogs || []).find(l => 
-            (l.task_id === t.id || l.taskId === t.id) && 
-            (l.logged_date === selectedDateStr || (l.logged_at && getLocalDateString(l.logged_at) === selectedDateStr))
-          );
-          const evLog = (eventLogs || []).find(el => 
-            (el.task_id === t.id || el.taskId === t.id || el.parent_task_id === t.id || el.parentTaskId === t.id) &&
-            (el.completion_date === selectedDateStr || (el.completion_timestamp && getLocalDateString(el.completion_timestamp) === selectedDateStr))
-          );
+          const pLog = (taskLogs || []).find(l => {
+            if (l.task_id !== t.id && l.taskId !== t.id) return false;
+            const ts = l.logged_at || l.created_at;
+            if (ts) return getLocalDateString(ts) === selectedDateStr;
+            return (l.logged_date === selectedDateStr || l.log_date === selectedDateStr);
+          });
+          const evLog = (eventLogs || []).find(el => {
+            if (el.task_id !== t.id && el.taskId !== t.id && el.parent_task_id !== t.id && el.parentTaskId !== t.id) return false;
+            const ts = el.completion_timestamp || el.created_at || el.logged_at;
+            if (ts) return getLocalDateString(ts) === selectedDateStr;
+            return (el.completion_date === selectedDateStr || el.log_date === selectedDateStr || el.logged_date === selectedDateStr);
+          });
           const isDone = evLog ? true : (pLog ? (pLog.is_successful !== false && (pLog.increment_value > 0 || pLog.measured_value > 0)) : false);
           const val = evLog ? Number(evLog.total_work_accumulated || 0) : (pLog ? Number(pLog.measured_value || 0) : 0);
           return {

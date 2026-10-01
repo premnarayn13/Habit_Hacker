@@ -1688,6 +1688,7 @@ export default function App() {
             task_id: completedEventParent.id,
             user_id: currentUserId,
             logged_date: todayStr,
+            log_date: todayStr,
             logged_at: nowIso,
             increment_value: 1,
             measured_value: parentCycleTotal
@@ -1793,6 +1794,7 @@ export default function App() {
                 task_id: taskId,
                 user_id: currentUserId,
                 logged_date: todayStr,
+                log_date: todayStr,
                 logged_at: nowIso,
                 increment_value: 1,
                 measured_value: updatedTask.loggedMeasureVal || 0
@@ -1829,6 +1831,7 @@ export default function App() {
                 parent_task_id: updatedTask.parentTaskId,
                 user_id: currentUserId,
                 log_date: todayStr,
+                logged_date: todayStr,
                 is_completed: true,
                 measured_value: updatedTask.loggedMeasureVal || 0
               }]);
@@ -2213,11 +2216,31 @@ export default function App() {
             task_id: taskId,
             user_id: currentUserId,
             logged_date: todayStr,
+            log_date: todayStr,
             logged_at: nowIso,
             increment_value: 1,
             measured_value: updatedTask.loggedMeasureVal
           }]);
         }
+
+        setTaskLogs(prev => {
+          const existingIdx = prev.findIndex(l => (l.task_id || l.taskId) === taskId && (l.logged_date === todayStr || l.log_date === todayStr || (l.logged_at && getLocalDateString(l.logged_at) === todayStr)));
+          if (existingIdx !== -1) {
+            const copy = [...prev];
+            copy[existingIdx] = { ...copy[existingIdx], measured_value: updatedTask.loggedMeasureVal, logged_date: todayStr, log_date: todayStr };
+            return copy;
+          }
+          return [{
+            id: 'log-' + Date.now(),
+            task_id: taskId,
+            user_id: currentUserId,
+            logged_date: todayStr,
+            log_date: todayStr,
+            logged_at: nowIso,
+            increment_value: 1,
+            measured_value: updatedTask.loggedMeasureVal
+          }, ...prev];
+        });
       } catch (e) {}
 
       // 5. If child subtask, also log to subtask_logs
@@ -2228,9 +2251,20 @@ export default function App() {
             parent_task_id: updatedTask.parentTaskId,
             user_id: currentUserId,
             log_date: todayStr,
+            logged_date: todayStr,
             is_completed: true,
             measured_value: updatedTask.loggedMeasureVal
           }]);
+          setSubtaskLogs(prev => [{
+            id: 'sublog-' + Date.now(),
+            subtask_id: taskId,
+            parent_task_id: updatedTask.parentTaskId,
+            user_id: currentUserId,
+            log_date: todayStr,
+            logged_date: todayStr,
+            is_completed: true,
+            measured_value: updatedTask.loggedMeasureVal
+          }, ...prev]);
         } catch (e) {}
       }
 
@@ -2252,10 +2286,22 @@ export default function App() {
             task_id: completedParent.id,
             user_id: currentUserId,
             logged_date: todayStr,
+            log_date: todayStr,
             logged_at: nowIso,
             increment_value: 1,
             measured_value: parentCycleTotal
           }]);
+
+          setTaskLogs(prev => [{
+            id: 'log-p-' + Date.now(),
+            task_id: completedParent.id,
+            user_id: currentUserId,
+            logged_date: todayStr,
+            log_date: todayStr,
+            logged_at: nowIso,
+            increment_value: 1,
+            measured_value: parentCycleTotal
+          }, ...prev]);
 
           habitHistoryService.logCompletion({
             taskId: completedParent.id,
