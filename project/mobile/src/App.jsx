@@ -1059,6 +1059,22 @@ export default function App() {
         });
       }
 
+      // Deduplicate shared collaborative tasks:
+      // Ensure only ONE single instance of each task/habit is displayed. If a duplicate was created by an accepted invitation
+      // or duplicate collab mapping, keep only the original owner's task.
+      const seenTaskKeys = new Set();
+      fetchedItems = fetchedItems.filter(item => {
+        if (!item || !item.id) return false;
+        // Filter out legacy cloned tasks if the real shared task exists
+        if (item.description && item.description.startsWith('Collaborative task accepted from') &&
+            fetchedItems.some(other => other.id !== item.id && other.title?.toLowerCase() === item.title?.toLowerCase())) {
+          return false;
+        }
+        if (seenTaskKeys.has(item.id)) return false;
+        seenTaskKeys.add(item.id);
+        return true;
+      });
+
       // -------------------------------------------------------------
       // AUTOMATIC DAILY RESET FOR TYPE 1 & 2 TASKS ON NEW CALENDAR DAY
       // Type 3 event-count parent tasks and their subhabits DO NOT reset at midnight (they span across days until the event completes).
@@ -1913,18 +1929,29 @@ export default function App() {
     }
   };
 
-  const handleLogEventCount = async (taskId) => {
+  const handleLogEventCount = async (taskId, customMeasureVal = null) => {
     let updatedTask = null;
+    const targetTask = tasks.find(t => t.id === taskId);
+    if (!targetTask) return;
+
+    const thisEventMeasure = (customMeasureVal !== null && customMeasureVal !== undefined && !isNaN(Number(customMeasureVal)))
+      ? Number(customMeasureVal)
+      : Number(targetTask.eventUnitTarget || targetTask.measureTarget || 10);
+
+    const prevMeasure = Number(targetTask.loggedMeasureVal || 0);
+    const newCumulativeMeasure = Math.round((prevMeasure + thisEventMeasure) * 10) / 10;
+    const target = targetTask.targetCount || 50;
+    const nextCount = (targetTask.currentCount || 0) + 1;
+    const nextProg = Math.min(100, Math.round((nextCount / target) * 100));
 
     const newTasks = tasks.map(t => {
       if (t.id === taskId) {
-        const target = t.targetCount || 50;
-        const nextCount = (t.currentCount || 0) + 1;
-        const nextProg = Math.round((nextCount / target) * 100);
         updatedTask = {
           ...t,
           currentCount: nextCount,
           currentEventCount: nextCount,
+          loggedMeasureVal: newCumulativeMeasure,
+          lastMeasuredValue: thisEventMeasure,
           progressPercent: nextProg,
           isDoneToday: nextCount >= target
         };
@@ -1935,30 +1962,128 @@ export default function App() {
 
     updateTasksState(newTasks);
 
+    const currentUserId = (currentUser?.email || currentUser?.id || 'default-user').toLowerCase().trim();
+    const todayStr = getLocalDateString(new Date());
+    const nowIso = new Date().toISOString();
+
     if (currentUser && updatedTask) {
-      await supabase.from('tasks').update({
-        current_count: updatedTask.currentCount,
-        progress_percent: updatedTask.progressPercent
-      }).eq('id', taskId);
+      // 1. Update tasks table safely
+      try {
+        const { error: tErr } = await supabase.from('tasks').update({
+          current_count: updatedTask.currentCount,
+          progress_percent: updatedTask.progressPercent,
+          logged_measure_val: updatedTask.loggedMeasureVal,
+          last_measured_value: updatedTask.lastMeasuredValue,
+          is_done_today: updatedTask.isDoneToday,
+          status: updatedTask.isDoneToday ? 'COMPLETED' : 'INBOX'
+        }).eq('id', taskId);
+        if (tErr) console.warn('tasks table update notice:', tErr.message);
+      } catch (e) {
+        console.warn('tasks table update catch:', e);
+      }
 
-      await supabase.from('task_logs').insert([{
-        task_id: taskId,
-        user_id: currentUser.id,
-        logged_at: new Date().toISOString(),
-        increment_value: 1
-      }]);
+      // 2. Update subtasks table if this is a subtask
+      try {
+        await supabase.from('subtasks').update({
+          completed_value: updatedTask.currentCount,
+          logged_measure_val: updatedTask.loggedMeasureVal,
+          status: updatedTask.isDoneToday ? 'COMPLETED' : 'IN_PROGRESS'
+        }).eq('id', taskId);
+      } catch (e) {}
 
-      habitHistoryService.logCompletion({
-        taskId: taskId,
-        parentTaskId: updatedTask.parentTaskId || null,
-        taskTitle: updatedTask.title,
-        userId: (currentUser?.email || currentUser?.id || 'user').toLowerCase(),
-        userName: currentUser?.user_metadata?.full_name || currentUser?.displayName || 'User',
-        measuredValue: 1,
-        measureUnit: updatedTask.measureUnit || 'event',
-        eventCount: 1,
-        notes: `Event logged (+1)`
-      });
+      // 3. Insert into event_logs with exact measured value for this event
+      try {
+        const evLogPayload = {
+          task_id: taskId,
+          parent_task_id: updatedTask.parentTaskId || taskId,
+          user_id: currentUserId,
+          event_number: updatedTask.currentCount,
+          completion_date: todayStr,
+          completion_timestamp: nowIso,
+          total_work_accumulated: thisEventMeasure,
+          status: 'FINALIZED'
+        };
+        const { data: insertedEvLog, error: evErr } = await supabase.from('event_logs').insert([evLogPayload]).select();
+        if (evErr) {
+          console.warn('event_logs insert notice:', evErr.message);
+        }
+        setEventLogs(prev => [insertedEvLog?.[0] || { id: 'evlog-' + Date.now(), ...evLogPayload }, ...prev]);
+      } catch (e) {
+        console.warn('event_logs insert catch:', e);
+      }
+
+      // 4. Update or insert into task_logs for today's cumulative measure
+      try {
+        const { data: existingLogs } = await supabase
+          .from('task_logs')
+          .select('id, increment_value, measured_value')
+          .eq('task_id', taskId)
+          .eq('logged_date', todayStr);
+
+        if (existingLogs && existingLogs.length > 0) {
+          const nextInc = (existingLogs[0].increment_value || 1) + 1;
+          await supabase
+            .from('task_logs')
+            .update({ 
+              increment_value: nextInc, 
+              measured_value: updatedTask.loggedMeasureVal 
+            })
+            .eq('id', existingLogs[0].id);
+
+          setTaskLogs(prev => prev.map(l => 
+            (l.id === existingLogs[0].id || ((l.task_id === taskId || l.taskId === taskId) && (l.logged_date === todayStr || l.logged_at?.startsWith(todayStr))))
+              ? { ...l, increment_value: nextInc, measured_value: updatedTask.loggedMeasureVal }
+              : l
+          ));
+        } else {
+          const newLog = {
+            task_id: taskId,
+            user_id: currentUserId,
+            logged_date: todayStr,
+            logged_at: nowIso,
+            increment_value: 1,
+            measured_value: updatedTask.loggedMeasureVal
+          };
+          const { data: insertedLog, error: logErr } = await supabase.from('task_logs').insert([newLog]).select();
+          if (logErr) {
+            console.warn('task_logs insert notice:', logErr.message);
+          }
+          setTaskLogs(prev => [insertedLog?.[0] || { id: 'log-' + Date.now(), ...newLog }, ...prev]);
+        }
+      } catch (e) {
+        console.warn('task_logs sync notice:', e);
+      }
+
+      // 5. If child subtask, also log to subtask_logs
+      if (updatedTask.parentTaskId) {
+        try {
+          const subLogPayload = {
+            subtask_id: taskId,
+            parent_task_id: updatedTask.parentTaskId,
+            user_id: currentUserId,
+            log_date: todayStr,
+            is_completed: true,
+            measured_value: updatedTask.loggedMeasureVal
+          };
+          const { data: insertedSubLog } = await supabase.from('subtask_logs').insert([subLogPayload]).select();
+          setSubtaskLogs(prev => [insertedSubLog?.[0] || { id: 'sublog-' + Date.now(), ...subLogPayload }, ...prev]);
+        } catch (e) {}
+      }
+
+      // 6. Record to habitHistoryService
+      try {
+        habitHistoryService.logCompletion({
+          taskId: taskId,
+          parentTaskId: updatedTask.parentTaskId || null,
+          taskTitle: updatedTask.title,
+          userId: currentUserId,
+          userName: currentUser?.user_metadata?.full_name || currentUser?.displayName || currentUserId.split('@')[0],
+          measuredValue: thisEventMeasure,
+          measureUnit: updatedTask.measureUnit || 'units',
+          eventCount: 1,
+          notes: `Event #${updatedTask.currentCount} logged (+${thisEventMeasure} ${updatedTask.measureUnit || 'units'})`
+        });
+      } catch (e) {}
     }
   };
 
@@ -1994,8 +2119,17 @@ export default function App() {
     let initialCollab = newTaskData.collab || '';
     if (newTaskData.parentTaskId) {
       const parentHabit = tasks.find(t => t.id === newTaskData.parentTaskId);
-      if (parentHabit && parentHabit.collab && !initialCollab) {
-        initialCollab = parentHabit.collab;
+      if (parentHabit) {
+        // Collect all participants: parent owner + all collaborators
+        const participants = new Set();
+        if (parentHabit.user_id) participants.add(parentHabit.user_id.toLowerCase().trim());
+        if (parentHabit.collab) {
+          parentHabit.collab.split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(Boolean).forEach(e => participants.add(e));
+        }
+        participants.delete(currentUserId.toLowerCase().trim());
+        if (participants.size > 0) {
+          initialCollab = Array.from(participants).join(', ');
+        }
       }
     }
 
@@ -2470,7 +2604,7 @@ export default function App() {
                   currentUser={currentUser}
                   onLogout={handleSignOut}
                   onOpenAuth={() => setCurrentUser(null)}
-                  onAcceptCollaborativeTask={(newTask) => handleAddTask(newTask)}
+                  onAcceptCollaborativeTask={() => fetchUserData(currentUser.id, currentUser.email)}
                 />
               )}
             </>

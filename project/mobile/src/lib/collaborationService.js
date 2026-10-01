@@ -262,23 +262,14 @@ export const collaborationService = {
       console.log('Responded to invitation locally offline.');
     }
 
-    // If accepted, add the collaborative task to acceptor's active task list
-    if (normalizedAction === 'ACCEPT' && onAcceptTask && (taskData || updatedItem)) {
+    // If accepted, the shared task already exists in Supabase/database under taskId.
+    // We do NOT create a duplicate task; both users share and operate the same single task.
+    if (normalizedAction === 'ACCEPT') {
       const itemToUse = updatedItem || taskData;
-      const newTask = {
-        id: 'collab-task-' + Date.now(),
-        title: itemToUse.taskTitle || 'Accepted Collaborative Habit',
-        category: itemToUse.category || itemToUse.taskCategory || 'General',
-        priority: itemToUse.priority || itemToUse.taskPriority || 'HIGH',
-        collab: itemToUse.senderEmail || '',
-        description: `Collaborative task accepted from ${itemToUse.senderName || itemToUse.senderEmail}`,
-        estimatedMinutes: 30,
-        actualMinutes: 0,
-        progressPercent: 0,
-        isDoneToday: false,
-        trackingMode: 'end_date'
-      };
-      onAcceptTask(newTask);
+      console.log('Accepted shared habit invitation for task:', itemToUse?.taskId);
+      if (onAcceptTask) {
+        onAcceptTask(itemToUse);
+      }
     }
 
     return updatedItem;

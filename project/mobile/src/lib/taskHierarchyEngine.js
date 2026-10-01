@@ -323,7 +323,7 @@ export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount 
         if (cLog) {
           return !cLog.isCompleted || Number(cLog.measuredValue || 0) <= 0;
         }
-        return hasLogsForDate;
+        return true;
       });
 
       if (actualMissed.length > 0) {

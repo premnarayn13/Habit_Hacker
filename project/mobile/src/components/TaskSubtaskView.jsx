@@ -24,7 +24,7 @@ import {
   ExternalLink,
   Paperclip
 } from 'lucide-react';
-import { isParentTaskWithChildren, canManuallyCompleteTask, calculateParentDailyMeasure } from '../lib/taskHierarchyEngine';
+import { isParentTaskWithChildren, canManuallyCompleteTask, calculateParentDailyMeasure, getLocalDateString } from '../lib/taskHierarchyEngine';
 
 export default function TaskSubtaskView({ 
   tasks, 
@@ -62,6 +62,7 @@ export default function TaskSubtaskView({
   // Measure Modal Popup State for Daily Performance Measure Input
   const [measureModalTask, setMeasureModalTask] = useState(null);
   const [measureInputValue, setMeasureInputValue] = useState('');
+  const [measureModalAction, setMeasureModalAction] = useState('TOGGLE'); // 'TOGGLE' or 'LOG_EVENT'
 
   // Searchable Custom Select Dropdown Modal State ('TYPE', 'CATEGORY', 'SORT', or null)
   const [pickerModalMode, setPickerModalMode] = useState(null);
@@ -85,7 +86,7 @@ export default function TaskSubtaskView({
 
   let displayedTasks = activeParentTasks;
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString(new Date());
 
   // Helper: Is task overall finished (Refers to tasks whose planned end date has passed OR 100% target count reached)
   const isTaskOverallFinished = (t) => {
@@ -219,18 +220,42 @@ export default function TaskSubtaskView({
     if (!isDone && hasMeasure) {
       // Prompt for daily performance measure input
       setMeasureModalTask(task);
+      setMeasureModalAction('TOGGLE');
       setMeasureInputValue(task.measureTarget || task.eventUnitTarget || '');
     } else {
       onToggleTask(task.id);
     }
   };
 
+  const handleQuickLogEventClick = (task) => {
+    const hasMeasure = Boolean(
+      task.hasMeasureTracking || 
+      (task.measureTarget && Number(task.measureTarget) > 0) || 
+      task.trackingMode === 'count_event' ||
+      (task.eventUnitTarget && Number(task.eventUnitTarget) > 0) ||
+      (task.measureUnit && task.measureUnit !== 'units' && task.measureUnit !== 'events')
+    );
+
+    if (hasMeasure) {
+      setMeasureModalTask(task);
+      setMeasureModalAction('LOG_EVENT');
+      setMeasureInputValue(task.eventUnitTarget || task.measureTarget || 10);
+    } else {
+      onLogEventCount(task.id);
+    }
+  };
+
   const handleSaveMeasureAndComplete = () => {
     if (measureModalTask) {
-      const val = parseFloat(measureInputValue) || Number(measureModalTask.measureTarget) || Number(measureModalTask.eventUnitTarget) || 0;
-      onToggleTask(measureModalTask.id, val);
+      const val = parseFloat(measureInputValue) || Number(measureModalTask.eventUnitTarget) || Number(measureModalTask.measureTarget) || 0;
+      if (measureModalAction === 'LOG_EVENT') {
+        onLogEventCount(measureModalTask.id, val);
+      } else {
+        onToggleTask(measureModalTask.id, val);
+      }
       setMeasureModalTask(null);
       setMeasureInputValue('');
+      setMeasureModalAction('TOGGLE');
     }
   };
 
@@ -426,14 +451,14 @@ export default function TaskSubtaskView({
         ) : (() => {
           const get7DayHeatmapTiles = (item, children = []) => {
             const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
+            const todayStr = getLocalDateString(today);
             const isItemDoneToday = item.isDoneToday || item.progressPercent >= 100;
 
             const tiles = [];
             for (let offset = -6; offset <= 0; offset++) {
               const d = new Date(today);
               d.setDate(today.getDate() + offset);
-              const dStr = d.toISOString().split('T')[0];
+              const dStr = getLocalDateString(d);
               const dayLabel = offset === 0 ? 'Today' : `${offset}d`;
 
               let isComplete = false;
@@ -696,7 +721,7 @@ export default function TaskSubtaskView({
                       {task.trackingMode === 'count_event' && !isTaskOverallFinished(task) && (
                         <div style={{ marginTop: '6px' }}>
                           <button
-                            onClick={(e) => { e.stopPropagation(); onLogEventCount(task.id); }}
+                            onClick={(e) => { e.stopPropagation(); handleQuickLogEventClick(task); }}
                             style={{ background: '#DC2626', color: '#FFF', border: 'none', padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 800, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                           >
                             +1 Log Event
@@ -1180,7 +1205,7 @@ export default function TaskSubtaskView({
           <div className="glass-panel" style={{ width: '100%', maxWidth: '420px', padding: '24px', position: 'relative', borderRadius: '18px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
             
             <button 
-              onClick={() => setMeasureModalTask(null)}
+              onClick={() => { setMeasureModalTask(null); setMeasureModalAction('TOGGLE'); }}
               style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer' }}
             >
               <X size={20} />
@@ -1191,28 +1216,33 @@ export default function TaskSubtaskView({
                 <Ruler size={20} color="#2563EB" />
               </div>
               <div>
-                <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A' }}>Log Daily Measure</h3>
+                <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A' }}>
+                  {measureModalAction === 'LOG_EVENT' ? 'Log Event Measure' : 'Log Daily Measure'}
+                </h3>
                 <p style={{ fontSize: '12px', color: '#64748B' }}>{measureModalTask.title}</p>
               </div>
             </div>
 
             <div style={{ marginBottom: '18px' }}>
               <label style={{ fontSize: '12px', fontWeight: 800, color: '#475569', display: 'block', marginBottom: '6px' }}>
-                Enter today's measure ({measureModalTask.measureUnit || 'units'}):
+                {measureModalAction === 'LOG_EVENT' 
+                  ? `Enter measure for this event (${measureModalTask.measureUnit || 'units'}):` 
+                  : `Enter today's measure (${measureModalTask.measureUnit || 'units'}):`
+                }
               </label>
               <input 
                 type="number"
                 step="any"
                 autoFocus
-                placeholder={`e.g., ${measureModalTask.measureTarget || 10} ${measureModalTask.measureUnit || 'units'}`}
+                placeholder={`e.g., ${measureModalTask.eventUnitTarget || measureModalTask.measureTarget || 10} ${measureModalTask.measureUnit || 'units'}`}
                 value={measureInputValue}
                 onChange={(e) => setMeasureInputValue(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSaveMeasureAndComplete(); }}
                 style={{ width: '100%', height: '42px', borderRadius: '10px', paddingLeft: '14px', fontSize: '14px', border: '1.5px solid #2563EB', fontWeight: 700 }}
               />
-              {measureModalTask.measureTarget > 0 && (
+              {(measureModalTask.eventUnitTarget > 0 || measureModalTask.measureTarget > 0) && (
                 <div style={{ fontSize: '11px', color: '#64748B', marginTop: '6px' }}>
-                  Target: {measureModalTask.measureTarget} {measureModalTask.measureUnit || 'units'} / day
+                  Target: {measureModalTask.eventUnitTarget || measureModalTask.measureTarget} {measureModalTask.measureUnit || 'units'} / event
                 </div>
               )}
             </div>
@@ -1223,11 +1253,19 @@ export default function TaskSubtaskView({
                 className="btn-primary"
                 style={{ flex: 1, padding: '10px', fontSize: '13px' }}
               >
-                Save & Complete Turn
+                {measureModalAction === 'LOG_EVENT' ? 'Save & Log Event' : 'Save & Complete Turn'}
               </button>
 
               <button 
-                onClick={() => { onToggleTask(measureModalTask.id); setMeasureModalTask(null); }}
+                onClick={() => { 
+                  if (measureModalAction === 'LOG_EVENT') {
+                    onLogEventCount(measureModalTask.id);
+                  } else {
+                    onToggleTask(measureModalTask.id);
+                  }
+                  setMeasureModalTask(null);
+                  setMeasureModalAction('TOGGLE');
+                }}
                 className="btn-secondary"
                 style={{ padding: '10px', fontSize: '13px' }}
               >
