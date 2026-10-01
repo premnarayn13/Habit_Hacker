@@ -958,10 +958,21 @@ export default function TaskDedicatedPageView({
 
   // Event Count Daily Cluster Data (Derived from actual completed event logs & timeline records)
   const eventClusterDailyData = (() => {
-    // Strictly isolate event logs for currentTask (parent's own logs for parent, subtask's own logs for subtask)
-    const taskEvLogs = (eventLogs || []).filter(el => 
+    const parentId = currentTask.parentTaskId || parentTask?.id;
+    const isParent = directChildSubtasks.length > 0;
+    const siblings = parentId ? (allTasks || []).filter(t => t.parentTaskId === parentId) : [];
+    const siblingIdx = siblings.findIndex(s => s.id === currentTask.id);
+    const subtaskColor = siblingIdx >= 0 ? subtaskColors[siblingIdx % subtaskColors.length] : '#2563EB';
+
+    // Direct event logs for this task
+    const directTaskEvLogs = (eventLogs || []).filter(el => 
       el.task_id === currentTask.id || el.taskId === currentTask.id
     );
+
+    // Parent event logs if currentTask is a subhabit
+    const parentEvLogs = (!isParent && parentId) ? (eventLogs || []).filter(el => 
+      el.task_id === parentId || el.taskId === parentId || el.parent_task_id === parentId
+    ) : [];
 
     const daysArr = Array.from({ length: 7 });
 
@@ -978,26 +989,26 @@ export default function TaskDedicatedPageView({
       const daysAgo = 6 - idx;
       const isToday = daysAgo === 0;
 
-      // Find all completed events on this date
-      const matchingEvLogs = taskEvLogs.filter(el => {
-        const cDate = getCleanDate(el);
-        return cDate === localDateStr || cDate === isoDateStr;
-      });
+      if (isParent) {
+        // =========================================================================
+        // VIEWING PARENT HABIT
+        // =========================================================================
+        const matchingEvLogs = directTaskEvLogs.filter(el => {
+          const cDate = getCleanDate(el);
+          return cDate === localDateStr || cDate === isoDateStr;
+        });
 
-      let events = [];
-      let eventCountToday = matchingEvLogs.length;
+        let events = [];
+        let eventCountToday = matchingEvLogs.length;
 
-      if (eventCountToday > 0) {
-        // Sort matchingEvLogs by event_number ascending
-        const sortedLogs = [...matchingEvLogs].sort((a, b) => 
-          (Number(a.event_number || a.eventNumber || 0) - Number(b.event_number || b.eventNumber || 0))
-        );
+        if (eventCountToday > 0) {
+          const sortedLogs = [...matchingEvLogs].sort((a, b) => 
+            (Number(a.event_number || a.eventNumber || 0) - Number(b.event_number || b.eventNumber || 0))
+          );
 
-        events = sortedLogs.map((el, elIdx) => {
-          const curEvNum = el.event_number || el.eventNumber || (elIdx + 1);
+          events = sortedLogs.map((el, elIdx) => {
+            const curEvNum = el.event_number || el.eventNumber || (elIdx + 1);
 
-          if (directChildSubtasks.length > 0) {
-            // Viewing PARENT habit:
             let bkObj = {};
             if (el.subtask_breakdown) {
               try {
@@ -1057,78 +1068,151 @@ export default function TaskDedicatedPageView({
               label: `Ev #${curEvNum}`,
               subtaskSegments
             };
-          } else {
-            // Viewing SUBHABIT or STANDALONE habit:
-            const evMeasure = Math.round(Number(el.total_work_accumulated || el.measured_value || currentTask.eventUnitTarget || 10) * 10) / 10;
-            return {
-              eventId: curEvNum,
-              label: `Ev #${curEvNum}`,
-              subtaskSegments: [{
-                subtaskId: currentTask.id,
-                title: currentTask.title,
-                val: evMeasure,
-                color: '#2563EB',
-                pct: 100
-              }]
-            };
-          }
-        });
-      } else {
-        // No matching event logs in event_logs
-        if (isToday && Number(currentTask.currentCount || 0) > 0) {
+          });
+        } else if (isToday && Number(currentTask.currentCount || 0) > 0) {
           eventCountToday = Number(currentTask.currentCount);
           events = Array.from({ length: eventCountToday }).map((_, evIdx) => {
             const curEvNum = evIdx + 1;
-            if (directChildSubtasks.length > 0) {
-              const subtaskSegments = directChildSubtasks.map((st, sIdx) => {
-                const color = subtaskColors[sIdx % subtaskColors.length];
-                const childEv = (eventLogs || []).find(cel => 
-                  (cel.task_id === st.id || cel.taskId === st.id) &&
-                  Number(cel.event_number || cel.eventNumber) === curEvNum
-                );
-                const segVal = childEv 
-                  ? Number(childEv.total_work_accumulated || childEv.measured_value || 0)
-                  : Number(st.lastMeasuredValue || st.eventUnitTarget || st.measureTarget || 10);
-                return {
-                  subtaskId: st.id,
-                  title: st.title,
-                  val: Math.round(segVal * 10) / 10,
-                  color,
-                  pct: Math.round((segVal / Math.max(1, eventUnitTarget)) * 100)
-                };
-              });
+            const subtaskSegments = directChildSubtasks.map((st, sIdx) => {
+              const color = subtaskColors[sIdx % subtaskColors.length];
+              const childEv = (eventLogs || []).find(cel => 
+                (cel.task_id === st.id || cel.taskId === st.id) &&
+                Number(cel.event_number || cel.eventNumber) === curEvNum
+              );
+              const segVal = childEv 
+                ? Number(childEv.total_work_accumulated || childEv.measured_value || 0)
+                : Number(st.lastMeasuredValue || st.eventUnitTarget || st.measureTarget || 10);
               return {
-                eventId: curEvNum,
-                label: `Ev #${curEvNum}`,
-                subtaskSegments
+                subtaskId: st.id,
+                title: st.title,
+                val: Math.round(segVal * 10) / 10,
+                color,
+                pct: Math.round((segVal / Math.max(1, eventUnitTarget)) * 100)
               };
-            } else {
-              const evMeasure = Math.round(Number(currentTask.lastMeasuredValue || currentTask.eventUnitTarget || 10) * 10) / 10;
-              return {
-                eventId: curEvNum,
-                label: `Ev #${curEvNum}`,
-                subtaskSegments: [{
-                  subtaskId: currentTask.id,
-                  title: currentTask.title,
-                  val: evMeasure,
-                  color: '#2563EB',
-                  pct: 100
-                }]
-              };
-            }
+            });
+            return {
+              eventId: curEvNum,
+              label: `Ev #${curEvNum}`,
+              subtaskSegments
+            };
           });
-        } else {
-          eventCountToday = 0;
-          events = [];
         }
-      }
 
-      return {
-        date: dateStr,
-        dayLabel,
-        eventCountToday,
-        events
-      };
+        return {
+          date: dateStr,
+          dayLabel,
+          eventCountToday: events.length,
+          events
+        };
+
+      } else {
+        // =========================================================================
+        // VIEWING SUBHABIT OR STANDALONE HABIT
+        // =========================================================================
+        const matchingDirectLogs = directTaskEvLogs.filter(el => {
+          const cDate = getCleanDate(el);
+          return cDate === localDateStr || cDate === isoDateStr;
+        });
+
+        const matchingParentLogs = parentEvLogs.filter(el => {
+          const cDate = getCleanDate(el);
+          return cDate === localDateStr || cDate === isoDateStr;
+        });
+
+        // Collect events keyed by event number: Map<eventNumber, measureValue>
+        const eventsMap = new Map();
+
+        // A. From parent logs subtask_breakdown:
+        matchingParentLogs.forEach(pel => {
+          const evNum = Number(pel.event_number || pel.eventNumber || 1);
+          let bkObj = {};
+          if (pel.subtask_breakdown) {
+            try {
+              bkObj = typeof pel.subtask_breakdown === 'string' ? JSON.parse(pel.subtask_breakdown) : pel.subtask_breakdown;
+            } catch (e) {}
+          }
+          let subVal = 0;
+          if (bkObj[currentTask.id] !== undefined && Number(bkObj[currentTask.id]) > 0) {
+            subVal = Number(bkObj[currentTask.id]);
+          } else {
+            const normId = currentTask.id.toLowerCase().replace(/[-_]/g, '');
+            const matchK = Object.keys(bkObj).find(k => {
+              const normK = k.toLowerCase().replace(/[-_]/g, '');
+              return normK.includes(normId) || normId.includes(normK) || (currentTask.title && normK.includes(currentTask.title.toLowerCase().slice(0, 4)));
+            });
+            if (matchK && Number(bkObj[matchK]) > 0) subVal = Number(bkObj[matchK]);
+          }
+          if (subVal > 0) {
+            eventsMap.set(evNum, Math.round(subVal * 10) / 10);
+          }
+        });
+
+        // B. From direct subhabit event logs (take precedence if present):
+        matchingDirectLogs.forEach((del, dIdx) => {
+          const evNum = Number(del.event_number || del.eventNumber || (dIdx + 1));
+          const val = Number(del.total_work_accumulated || del.measured_value || 0);
+          if (val > 0) {
+            eventsMap.set(evNum, Math.round(val * 10) / 10);
+          }
+        });
+
+        // C. Fallback for Today: if currentTask.currentCount > eventsMap.size
+        if (isToday) {
+          const expectedCount = Math.max(
+            Number(currentTask.currentCount || 0),
+            Number(currentTask.currentEventCount || 0),
+            matchingParentLogs.length,
+            matchingDirectLogs.length
+          );
+
+          if (expectedCount > eventsMap.size) {
+            const lastVal = Number(currentTask.lastMeasuredValue || currentTask.eventUnitTarget || 10);
+            const totalMeasure = Number(currentTask.loggedMeasureVal || 0);
+
+            if (expectedCount === 2 && eventsMap.size === 1) {
+              if (eventsMap.has(2)) {
+                const ev1Val = Math.max(1, Math.round((totalMeasure - eventsMap.get(2)) * 10) / 10);
+                eventsMap.set(1, ev1Val > 0 ? ev1Val : (lastVal || 25));
+              } else if (eventsMap.has(1)) {
+                eventsMap.set(2, Math.round(lastVal * 10) / 10);
+              }
+            } else if (expectedCount >= 2 && eventsMap.size === 0) {
+              const ev2Val = Math.round(lastVal * 10) / 10;
+              const ev1Val = Math.max(1, Math.round((totalMeasure - ev2Val) * 10) / 10);
+              eventsMap.set(1, ev1Val > 0 ? ev1Val : ev2Val);
+              eventsMap.set(2, ev2Val);
+              for (let k = 3; k <= expectedCount; k++) {
+                eventsMap.set(k, ev2Val);
+              }
+            } else if (expectedCount === 1 && eventsMap.size === 0) {
+              eventsMap.set(1, Math.round((lastVal || totalMeasure || 10) * 10) / 10);
+            }
+          }
+        }
+
+        // Convert sorted eventsMap entries to event bars
+        const sortedEntries = Array.from(eventsMap.entries()).sort((a, b) => a[0] - b[0]);
+        const events = sortedEntries.map(([evNum, evMeasure]) => {
+          return {
+            eventId: evNum,
+            label: `Ev #${evNum}`,
+            subtaskSegments: [{
+              subtaskId: currentTask.id,
+              title: currentTask.title,
+              val: evMeasure,
+              color: subtaskColor,
+              pct: 100
+            }]
+          };
+        });
+
+        return {
+          date: dateStr,
+          dayLabel,
+          eventCountToday: events.length,
+          events
+        };
+      }
     });
   })();
 
