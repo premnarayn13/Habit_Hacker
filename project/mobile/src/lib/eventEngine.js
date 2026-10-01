@@ -14,6 +14,8 @@
  * 10. Optional subtasks never block event finalization.
  */
 
+import { getLocalDateString } from './taskHierarchyEngine';
+
 export const DEFAULT_SUBTASK_COLORS = [
   '#4F46E5', // Indigo
   '#F59E0B', // Amber
@@ -70,7 +72,7 @@ export function isEventConditionSatisfied(parentTask, subtasks = []) {
 export function finalizeCurrentEvent(parentTask, subtasks = [], completionDate = null) {
   if (!parentTask) return null;
 
-  const todayStr = completionDate || new Date().toISOString().split('T')[0];
+  const todayStr = completionDate || getLocalDateString(new Date());
   const eventUnitTarget = Number(parentTask.eventUnitTarget || parentTask.measureTarget || 10);
   const eventUnitName = parentTask.eventUnitName || parentTask.measureUnit || 'units';
   const completedEventCount = (parentTask.completedEventCount || parentTask.currentCount || 0) + 1;

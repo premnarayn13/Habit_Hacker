@@ -661,7 +661,7 @@ export default function App() {
 
   // SUBTASK LIFECYCLE EVALUATOR & AUTOMATED PARENT TURN COMPLETION
   const processSubtaskLifecycles = (rawTasks) => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString(new Date());
 
     // Preserve original subtask mappings
     let updatedTasks = [...rawTasks];
@@ -1841,6 +1841,7 @@ export default function App() {
                 parent_task_id: updatedTask.parentTaskId,
                 user_id: currentUserId,
                 log_date: todayStr,
+                logged_date: todayStr,
                 is_completed: true,
                 measured_value: updatedTask.loggedMeasureVal || 0
               }, ...prev]);

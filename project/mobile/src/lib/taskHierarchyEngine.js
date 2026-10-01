@@ -232,16 +232,20 @@ export function calculateParentCompletionStatus(task, childSubtasks = []) {
  */
 export function getLocalDateString(d = new Date()) {
   if (!d) return '';
-  const dateObj = typeof d === 'string'
-    ? (d.includes('T') ? new Date(d) : (() => {
-        const parts = d.split('-');
-        if (parts.length === 3) {
-          const [y, m, day] = parts.map(Number);
-          return new Date(y, m - 1, day);
-        }
-        return new Date(d);
-      })())
-    : new Date(d);
+  let dateObj;
+  if (d instanceof Date) {
+    dateObj = d;
+  } else if (typeof d === 'string') {
+    const trimmed = d.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      const [y, m, day] = trimmed.split('-').map(Number);
+      dateObj = new Date(y, m - 1, day);
+    } else {
+      dateObj = new Date(trimmed);
+    }
+  } else {
+    dateObj = new Date(d);
+  }
   if (isNaN(dateObj.getTime())) return '';
   const year = dateObj.getFullYear();
   const month = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -255,13 +259,14 @@ export function getLocalDateString(d = new Date()) {
 export function parseLocalDate(str) {
   if (!str) return new Date();
   if (str instanceof Date) return new Date(str.getFullYear(), str.getMonth(), str.getDate());
-  const cleanStr = String(str).split('T')[0];
-  const parts = cleanStr.split('-');
-  if (parts.length === 3) {
-    const [y, m, d] = parts.map(Number);
+  const trimmed = String(str).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [y, m, d] = trimmed.split('-').map(Number);
     return new Date(y, (m || 1) - 1, d || 1);
   }
-  return new Date(str);
+  const dt = new Date(trimmed);
+  if (isNaN(dt.getTime())) return new Date();
+  return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
 }
 
 /**

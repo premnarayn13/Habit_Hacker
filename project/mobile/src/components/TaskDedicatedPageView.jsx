@@ -562,10 +562,12 @@ export default function TaskDedicatedPageView({
       isMissedDay = false;
     } else {
       if (trackingMode === 'count_event') {
-        const hasEv = dayEvLog && (Number(dayEvLog.event_number) > 0 || Number(dayEvLog.total_work_accumulated) > 0);
-        const hasP = dayPLog && (dayPLog.is_successful === true || (dayPLog.increment_value > 0 && dayPLog.is_successful !== false) || dayPLog.measured_value > 0);
-        const hasS = directSubLog && (directSubLog.is_completed || Number(directSubLog.measured_value) > 0);
-        if (hasEv || hasP || hasS) {
+        const matchingEvLogs = (eventLogs || []).filter(el => 
+          (el.task_id === currentTask.id || el.taskId === currentTask.id || el.parent_task_id === currentTask.id || el.parentTaskId === currentTask.id) &&
+          getCleanDate(el) === dateStr
+        );
+        const hasEv = matchingEvLogs.length > 0 && matchingEvLogs.some(el => Number(el.event_number || el.eventNumber || 0) > 0 || Number(el.total_work_accumulated || 0) > 0);
+        if (hasEv) {
           isCompletedDay = true;
           isMissedDay = false;
         } else {
@@ -626,10 +628,16 @@ export default function TaskDedicatedPageView({
       if (daysAgo === 0) {
         // Today: sum child subtask contributions today
         dailyDeltaMeasure = todayActualMeasure;
+      } else if (trackingMode === 'count_event') {
+        const matchingEvLogs = (eventLogs || []).filter(el => 
+          (el.task_id === currentTask.id || el.taskId === currentTask.id) &&
+          getCleanDate(el) === dateStr
+        );
+        dailyDeltaMeasure = matchingEvLogs.reduce((sum, el) => sum + Number(el.total_work_accumulated || 0), 0);
       } else if (dayEvLog && Number(dayEvLog.total_work_accumulated) > 0) {
         // Event day with recorded total work
         dailyDeltaMeasure = Number(dayEvLog.total_work_accumulated);
-      } else if (logsByDate[dateStr] !== undefined && logsByDate[dateStr] > 0) {
+      } else if (isCompletedDay && logsByDate[dateStr] !== undefined && logsByDate[dateStr] > 0) {
         // Day with subtask logs
         dailyDeltaMeasure = logsByDate[dateStr];
       } else {
@@ -639,6 +647,12 @@ export default function TaskDedicatedPageView({
       // Individual subtask or standalone habit without subtasks
       if (daysAgo === 0) {
         dailyDeltaMeasure = todayActualMeasure > 0 ? todayActualMeasure : (currentTask.isDoneToday ? Number(currentTask.loggedMeasureVal || currentTask.lastMeasuredValue || measureTarget || 1) : 0);
+      } else if (trackingMode === 'count_event') {
+        const matchingEvLogs = (eventLogs || []).filter(el => 
+          (el.task_id === currentTask.id || el.taskId === currentTask.id) &&
+          getCleanDate(el) === dateStr
+        );
+        dailyDeltaMeasure = matchingEvLogs.reduce((sum, el) => sum + Number(el.total_work_accumulated || el.measured_value || 0), 0);
       } else if (isCompletedDay) {
         const directSubVal = directSubLog?.measured_value !== undefined ? Number(directSubLog.measured_value) : (subtaskLogsByDate[dateStr]?.[currentTask.id]?.measuredValue);
         const taskLogVal = dayPLog?.measured_value !== undefined ? Number(dayPLog.measured_value) : undefined;
@@ -783,7 +797,7 @@ export default function TaskDedicatedPageView({
   }
   
   while (true) {
-    const cStr = currCheckDate.toISOString().split('T')[0];
+    const cStr = getLocalDateString(currCheckDate);
     const matchDay = fullTimelineDailyData.find(d => d.dateStr === cStr);
     if (matchDay && matchDay.isCompletedDay) {
       dynamicActiveStreak++;
@@ -810,7 +824,7 @@ export default function TaskDedicatedPageView({
   let checkMissedDate = new Date();
   checkMissedDate.setDate(checkMissedDate.getDate() - 1);
   while (true) {
-    const cStr = checkMissedDate.toISOString().split('T')[0];
+    const cStr = getLocalDateString(checkMissedDate);
     const matchDay = fullTimelineDailyData.find(d => d.dateStr === cStr);
     if (matchDay && matchDay.isMissedDay) {
       dynamicMissedStreak++;
@@ -835,7 +849,6 @@ export default function TaskDedicatedPageView({
     : dynamicMissedStreak;
 
   // Daily Subtask / Standalone Stacked Bar Measures from Day 1 to Today (Real Subtask Logs)
-  // Daily Subtask / Standalone Stacked Bar Measures from Day 1 to Today (Real Subtask Logs)
   const fullSubtaskDailyMeasures = fullTimelineDailyData.map(dayInfo => {
     let totalColumnVal = 0;
     let subtaskContributions = [];
@@ -848,86 +861,120 @@ export default function TaskDedicatedPageView({
         let note = '';
 
         if (isToday) {
-          // If subtask has logged measure, use it
-          val = Number(st.loggedMeasureVal || 0);
-          if (val <= 0 && (st.isDoneToday || st.progressPercent >= 100 || Number(st.currentCount || 0) > 0)) {
-            val = Number(st.lastMeasuredValue || st.eventUnitTarget || st.measureTarget || 0);
-          }
-          if (val <= 0) {
-            // Check today's event logs for this subtask
-            const todayLogs = (eventLogs || []).filter(el => 
-              (el.task_id === st.id || el.taskId === st.id) &&
-              (getCleanDate(el) === dayInfo.dateStr || getCleanDate(el) === todayStr)
-            );
-            if (todayLogs.length > 0) {
-              val = todayLogs.reduce((sum, el) => sum + Number(el.total_work_accumulated || el.measured_value || 0), 0);
-            }
-          }
-          if (val <= 0) {
+          if (trackingMode === 'count_event') {
             // Check parent event logs on today for this subtask breakdown
             const parentTodayLogs = (eventLogs || []).filter(el => 
               (el.task_id === currentTask.id || el.taskId === currentTask.id) &&
               (getCleanDate(el) === dayInfo.dateStr || getCleanDate(el) === todayStr)
             );
-            parentTodayLogs.forEach(pel => {
-              if (pel.subtask_breakdown) {
-                try {
-                  const bk = typeof pel.subtask_breakdown === 'string' ? JSON.parse(pel.subtask_breakdown) : pel.subtask_breakdown;
-                  if (bk[st.id] !== undefined && Number(bk[st.id]) > 0) {
-                    val += Number(bk[st.id]);
-                  } else {
-                    const normId = st.id.toLowerCase().replace(/[-_]/g, '');
-                    const matchK = Object.keys(bk).find(k => {
-                      const normK = k.toLowerCase().replace(/[-_]/g, '');
-                      return normK.includes(normId) || normId.includes(normK) || (st.title && normK.includes(st.title.toLowerCase().slice(0, 4)));
-                    });
-                    if (matchK && Number(bk[matchK]) > 0) val += Number(bk[matchK]);
-                  }
-                } catch (e) {}
+            if (parentTodayLogs.length > 0) {
+              parentTodayLogs.forEach(pel => {
+                if (pel.subtask_breakdown) {
+                  try {
+                    const bk = typeof pel.subtask_breakdown === 'string' ? JSON.parse(pel.subtask_breakdown) : pel.subtask_breakdown;
+                    if (bk[st.id] !== undefined && Number(bk[st.id]) > 0) {
+                      val += Number(bk[st.id]);
+                    } else {
+                      const normId = st.id.toLowerCase().replace(/[-_]/g, '');
+                      const matchK = Object.keys(bk).find(k => {
+                        const normK = k.toLowerCase().replace(/[-_]/g, '');
+                        return normK.includes(normId) || normId.includes(normK) || (st.title && normK.includes(st.title.toLowerCase().slice(0, 4)));
+                      });
+                      if (matchK && Number(bk[matchK]) > 0) val += Number(bk[matchK]);
+                    }
+                  } catch (e) {}
+                }
+              });
+            }
+            if (val <= 0) {
+              const todayLogs = (eventLogs || []).filter(el => 
+                (el.task_id === st.id || el.taskId === st.id) &&
+                (getCleanDate(el) === dayInfo.dateStr || getCleanDate(el) === todayStr)
+              );
+              if (todayLogs.length > 0) {
+                val = todayLogs.reduce((sum, el) => sum + Number(el.total_work_accumulated || el.measured_value || 0), 0);
               }
-            });
+            }
+            if (val <= 0 && (currentTask.isDoneToday || (currentTask.todayEventCount || 0) > 0 || (currentTask.currentCount || 0) > 0)) {
+              val = Number(st.loggedMeasureVal || 0);
+            }
+          } else {
+            val = Number(st.loggedMeasureVal || 0);
+            if (val <= 0 && (st.isDoneToday || st.progressPercent >= 100 || Number(st.currentCount || 0) > 0)) {
+              val = Number(st.lastMeasuredValue || st.eventUnitTarget || st.measureTarget || 0);
+            }
           }
           val = Math.round(val * 10) / 10;
           note = val > 0 ? `Today: ${val} ${st.measureUnit || measureUnit}` : 'Today uncompleted';
         } else {
-          // Past days: check parent event logs on that date with subtask_breakdown
-          const parentDateLogs = (eventLogs || []).filter(el => 
-            (el.task_id === currentTask.id || el.taskId === currentTask.id) &&
-            getCleanDate(el) === dayInfo.dateStr
-          );
-          if (parentDateLogs.length > 0) {
-            parentDateLogs.forEach(pel => {
-              if (pel.subtask_breakdown) {
-                try {
-                  const bk = typeof pel.subtask_breakdown === 'string' ? JSON.parse(pel.subtask_breakdown) : pel.subtask_breakdown;
-                  if (bk[st.id] !== undefined && Number(bk[st.id]) > 0) {
-                    val += Number(bk[st.id]);
-                  } else {
-                    const normId = st.id.toLowerCase().replace(/[-_]/g, '');
-                    const matchK = Object.keys(bk).find(k => {
-                      const normK = k.toLowerCase().replace(/[-_]/g, '');
-                      return normK.includes(normId) || normId.includes(normK) || (st.title && normK.includes(st.title.toLowerCase().slice(0, 4)));
-                    });
-                    if (matchK && Number(bk[matchK]) > 0) val += Number(bk[matchK]);
-                  }
-                } catch (e) {}
-              }
-            });
-          }
-          if (val <= 0) {
-            // Check subtask's own event logs on that date
-            const stDateLogs = (eventLogs || []).filter(el => 
-              (el.task_id === st.id || el.taskId === st.id) &&
+          // Past days:
+          if (trackingMode === 'count_event') {
+            // For count_event: measures strictly originate from events completed on dayInfo.dateStr!
+            const parentDateLogs = (eventLogs || []).filter(el => 
+              (el.task_id === currentTask.id || el.taskId === currentTask.id) &&
               getCleanDate(el) === dayInfo.dateStr
             );
-            if (stDateLogs.length > 0) {
-              val = stDateLogs.reduce((sum, el) => sum + Number(el.total_work_accumulated || el.measured_value || 0), 0);
+            if (parentDateLogs.length > 0) {
+              parentDateLogs.forEach(pel => {
+                if (pel.subtask_breakdown) {
+                  try {
+                    const bk = typeof pel.subtask_breakdown === 'string' ? JSON.parse(pel.subtask_breakdown) : pel.subtask_breakdown;
+                    if (bk[st.id] !== undefined && Number(bk[st.id]) > 0) {
+                      val += Number(bk[st.id]);
+                    } else {
+                      const normId = st.id.toLowerCase().replace(/[-_]/g, '');
+                      const matchK = Object.keys(bk).find(k => {
+                        const normK = k.toLowerCase().replace(/[-_]/g, '');
+                        return normK.includes(normId) || normId.includes(normK) || (st.title && normK.includes(st.title.toLowerCase().slice(0, 4)));
+                      });
+                      if (matchK && Number(bk[matchK]) > 0) val += Number(bk[matchK]);
+                    }
+                  } catch (e) {}
+                }
+              });
             }
-          }
-          if (val <= 0) {
-            const dayLog = (subtaskLogsByDate[dayInfo.dateStr] || {})[st.id];
-            if (dayLog && dayLog.measuredValue > 0) {
-              val = Number(dayLog.measuredValue);
+            if (val <= 0) {
+              const stDateLogs = (eventLogs || []).filter(el => 
+                (el.task_id === st.id || el.taskId === st.id) &&
+                getCleanDate(el) === dayInfo.dateStr
+              );
+              if (stDateLogs.length > 0) {
+                val = stDateLogs.reduce((sum, el) => sum + Number(el.total_work_accumulated || el.measured_value || 0), 0);
+              }
+            }
+            // For count_event: if no events completed on this date, val remains 0! Never fall back to subtaskLogsByDate!
+          } else if (dayInfo.isMissedDay || !dayInfo.isCompletedDay) {
+            // For count_days / target_date: missed days always have 0 measure!
+            val = 0;
+          } else {
+            const parentDateLogs = (eventLogs || []).filter(el => 
+              (el.task_id === currentTask.id || el.taskId === currentTask.id) &&
+              getCleanDate(el) === dayInfo.dateStr
+            );
+            if (parentDateLogs.length > 0) {
+              parentDateLogs.forEach(pel => {
+                if (pel.subtask_breakdown) {
+                  try {
+                    const bk = typeof pel.subtask_breakdown === 'string' ? JSON.parse(pel.subtask_breakdown) : pel.subtask_breakdown;
+                    if (bk[st.id] !== undefined && Number(bk[st.id]) > 0) {
+                      val += Number(bk[st.id]);
+                    } else {
+                      const normId = st.id.toLowerCase().replace(/[-_]/g, '');
+                      const matchK = Object.keys(bk).find(k => {
+                        const normK = k.toLowerCase().replace(/[-_]/g, '');
+                        return normK.includes(normId) || normId.includes(normK) || (st.title && normK.includes(st.title.toLowerCase().slice(0, 4)));
+                      });
+                      if (matchK && Number(bk[matchK]) > 0) val += Number(bk[matchK]);
+                    }
+                  } catch (e) {}
+                }
+              });
+            }
+            if (val <= 0) {
+              const dayLog = (subtaskLogsByDate[dayInfo.dateStr] || {})[st.id];
+              if (dayLog && dayLog.isCompleted && Number(dayLog.measuredValue || 0) > 0) {
+                val = Number(dayLog.measuredValue);
+              }
             }
           }
           val = Math.round(val * 10) / 10;
@@ -948,50 +995,35 @@ export default function TaskDedicatedPageView({
       // Individual subtask or standalone habit
       let val = 0;
       if (isToday) {
-        val = Number(currentTask.loggedMeasureVal || 0);
-        if (val <= 0 && (currentTask.isDoneToday || Number(currentTask.currentCount || 0) > 0)) {
-          val = Number(currentTask.lastMeasuredValue || currentTask.eventUnitTarget || currentTask.measureTarget || 0);
-        }
-        if (val <= 0) {
+        if (trackingMode === 'count_event') {
           const todayLogs = (eventLogs || []).filter(el => 
             (el.task_id === currentTask.id || el.taskId === currentTask.id) &&
             (getCleanDate(el) === dayInfo.dateStr || getCleanDate(el) === todayStr)
           );
           if (todayLogs.length > 0) {
             val = todayLogs.reduce((sum, el) => sum + Number(el.total_work_accumulated || el.measured_value || 0), 0);
+          } else if (currentTask.isDoneToday || (currentTask.todayEventCount || 0) > 0 || (currentTask.currentCount || 0) > 0) {
+            val = Number(currentTask.loggedMeasureVal || 0);
+          }
+        } else {
+          val = Number(currentTask.loggedMeasureVal || 0);
+          if (val <= 0 && (currentTask.isDoneToday || Number(currentTask.currentCount || 0) > 0)) {
+            val = Number(currentTask.lastMeasuredValue || currentTask.eventUnitTarget || currentTask.measureTarget || 0);
           }
         }
-        if (val <= 0 && (currentTask.parentTaskId || currentTask.parentId)) {
-          const pId = currentTask.parentTaskId || currentTask.parentId;
-          const parentTodayLogs = (eventLogs || []).filter(el => 
-            (el.task_id === pId || el.taskId === pId) &&
-            (getCleanDate(el) === dayInfo.dateStr || getCleanDate(el) === todayStr)
-          );
-          parentTodayLogs.forEach(pel => {
-            if (pel.subtask_breakdown) {
-              try {
-                const bk = typeof pel.subtask_breakdown === 'string' ? JSON.parse(pel.subtask_breakdown) : pel.subtask_breakdown;
-                if (bk[currentTask.id] !== undefined && Number(bk[currentTask.id]) > 0) {
-                  val += Number(bk[currentTask.id]);
-                } else {
-                  const normId = currentTask.id.toLowerCase().replace(/[-_]/g, '');
-                  const matchK = Object.keys(bk).find(k => {
-                    const normK = k.toLowerCase().replace(/[-_]/g, '');
-                    return normK.includes(normId) || normId.includes(normK) || (currentTask.title && normK.includes(currentTask.title.toLowerCase().slice(0, 4)));
-                  });
-                  if (matchK && Number(bk[matchK]) > 0) val += Number(bk[matchK]);
-                }
-              } catch (e) {}
-            }
-          });
-        }
       } else {
-        const dateLogs = (eventLogs || []).filter(el => 
-          (el.task_id === currentTask.id || el.taskId === currentTask.id) &&
-          getCleanDate(el) === dayInfo.dateStr
-        );
-        if (dateLogs.length > 0) {
-          val = dateLogs.reduce((sum, el) => sum + Number(el.total_work_accumulated || 0), 0);
+        if (trackingMode === 'count_event') {
+          const dateLogs = (eventLogs || []).filter(el => 
+            (el.task_id === currentTask.id || el.taskId === currentTask.id) &&
+            getCleanDate(el) === dayInfo.dateStr
+          );
+          if (dateLogs.length > 0) {
+            val = dateLogs.reduce((sum, el) => sum + Number(el.total_work_accumulated || 0), 0);
+          } else {
+            val = 0;
+          }
+        } else if (dayInfo.isMissedDay || !dayInfo.isCompletedDay) {
+          val = 0;
         } else {
           const directLog = (taskLogs || []).find(l => (l.task_id === currentTask.id || l.taskId === currentTask.id) && getCleanDate(l) === dayInfo.dateStr);
           if (directLog && directLog.measured_value > 0) val = Number(directLog.measured_value);
@@ -1009,7 +1041,7 @@ export default function TaskDedicatedPageView({
         title: currentTask.title,
         val,
         color: '#2563EB',
-        note: isToday ? (val > 0 ? `Logged ${val} ${measureUnit}` : 'Today in progress') : `Logged ${val} ${measureUnit}`
+        note: isToday ? (val > 0 ? `Logged ${val} ${measureUnit}` : 'Today in progress') : (val > 0 ? `Logged ${val} ${measureUnit}` : (dayInfo.isMissedDay ? 'Missed Day (0 Measure)' : '0 Measure'))
       }];
     }
 
@@ -1055,7 +1087,6 @@ export default function TaskDedicatedPageView({
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       const localDateStr = `${year}-${month}-${day}`;
-      const isoDateStr = d.toISOString().split('T')[0];
       const dateStr = localDateStr;
       const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' });
       const daysAgo = 6 - idx;
@@ -1067,7 +1098,7 @@ export default function TaskDedicatedPageView({
         // =========================================================================
         const matchingEvLogs = directTaskEvLogs.filter(el => {
           const cDate = getCleanDate(el);
-          return cDate === localDateStr || cDate === isoDateStr;
+          return cDate === localDateStr || (isToday && cDate === todayStr);
         });
 
         let events = [];
@@ -1183,12 +1214,12 @@ export default function TaskDedicatedPageView({
         // =========================================================================
         const matchingDirectLogs = directTaskEvLogs.filter(el => {
           const cDate = getCleanDate(el);
-          return cDate === localDateStr || cDate === isoDateStr;
+          return cDate === localDateStr || (isToday && cDate === todayStr);
         });
 
         const matchingParentLogs = parentEvLogs.filter(el => {
           const cDate = getCleanDate(el);
-          return cDate === localDateStr || cDate === isoDateStr;
+          return cDate === localDateStr || (isToday && cDate === todayStr);
         });
 
         // Collect events keyed by event number: Map<eventNumber, measureValue>
