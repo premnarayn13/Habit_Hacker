@@ -1476,6 +1476,13 @@ export default function App() {
           ? Number(customMeasureValue) 
           : (t.lastMeasuredValue || t.loggedMeasureVal || t.measureTarget || 0);
 
+        let cumulativeMeasure = measuredVal;
+        if (t.trackingMode === 'count_event') {
+          cumulativeMeasure = nextIsDone 
+            ? Math.round(((t.loggedMeasureVal || 0) + measuredVal) * 10) / 10
+            : Math.max(0, Math.round(((t.loggedMeasureVal || 0) - measuredVal) * 10) / 10);
+        }
+
         updatedTask = {
           ...t,
           currentCount: nextCount,
@@ -1486,7 +1493,7 @@ export default function App() {
           completedBy: nextIsDone ? (currentUser?.email || 'Collaborator') : null,
           completedAt: nextIsDone ? new Date().toISOString() : null,
           lastMeasuredValue: measuredVal,
-          loggedMeasureVal: measuredVal
+          loggedMeasureVal: cumulativeMeasure
         };
         return updatedTask;
       }
@@ -1497,6 +1504,8 @@ export default function App() {
     let eventCycleCompleted = false;
     let completedEventParent = null;
     let resetSiblings = [];
+    let parentCycleTotal = 0;
+    let parentCycleBreakdown = {};
 
     if (updatedTask && updatedTask.parentTaskId && updatedTask.isDoneToday) {
       const parent = newTasks.find(p => p.id === updatedTask.parentTaskId);
@@ -1505,53 +1514,74 @@ export default function App() {
         const mandatorySiblings = siblings.filter(item => !item.isOptional);
         const checkList = mandatorySiblings.length > 0 ? mandatorySiblings : siblings;
 
-        const allMandatoryDone = checkList.length > 0 && checkList.every(item => item.isDoneToday || item.progressPercent >= 100);
+        const nextParentEventCount = (parent.currentCount || 0) + 1;
+
+        const allMandatoryDone = checkList.length > 0 && checkList.every(item => 
+          (item.currentCount || 0) >= nextParentEventCount || item.isDoneToday
+        );
+
+        const totalParentDailyMeasure = Math.round(
+          siblings.reduce((sum, s) => {
+            const sVal = (s.id === updatedTask.id) 
+              ? Number(updatedTask.loggedMeasureVal || 0) 
+              : Number(s.loggedMeasureVal || 0);
+            return sum + sVal;
+          }, 0) * 10
+        ) / 10;
 
         if (allMandatoryDone) {
           eventCycleCompleted = true;
-          const nextParentEventCount = (parent.currentCount || 0) + 1;
           const targetEventMax = parent.targetCount || parent.targetEventCount || 10;
           const parentProg = Math.min(100, Math.round((nextParentEventCount / Math.max(1, targetEventMax)) * 100));
 
-          // Calculate total measure accumulated for THIS event cycle across all subtasks
-          // User specification: h1 = 20, h2 = 30, h3 = 25 -> total = 20 + 30 + 25 = 75
           siblings.forEach(s => {
-            const val = (s.id === updatedTask.id && customMeasureValue !== null)
-              ? Number(customMeasureValue)
-              : Number(s.loggedMeasureVal || s.lastMeasuredValue || s.measureTarget || 0);
-            eventTotalMeasure += val;
+            let sCycleVal = 0;
+            if (s.id === updatedTask.id) {
+              sCycleVal = customMeasureValue !== null ? Number(customMeasureValue) : Number(updatedTask.lastMeasuredValue || updatedTask.measureTarget || 10);
+            } else {
+              const sEv = (eventLogs || []).find(el => 
+                (el.task_id === s.id || el.taskId === s.id) &&
+                Number(el.event_number || el.eventNumber) === nextParentEventCount
+              );
+              if (sEv && Number(sEv.total_work_accumulated || sEv.measured_value) > 0) {
+                sCycleVal = Number(sEv.total_work_accumulated || sEv.measured_value);
+              } else {
+                sCycleVal = Number(s.lastMeasuredValue || s.eventUnitTarget || s.measureTarget || 10);
+              }
+            }
+            parentCycleBreakdown[s.id] = sCycleVal;
+            parentCycleTotal += sCycleVal;
           });
-          eventTotalMeasure = Math.round(eventTotalMeasure * 10) / 10;
-
-          const updatedParentMeasure = Math.round(((parent.loggedMeasureVal || 0) + eventTotalMeasure) * 10) / 10;
+          parentCycleTotal = Math.round(parentCycleTotal * 10) / 10;
 
           completedEventParent = {
             ...parent,
             currentCount: nextParentEventCount,
             currentEventCount: nextParentEventCount,
             progressPercent: parentProg,
-            loggedMeasureVal: updatedParentMeasure,
-            lastMeasuredValue: eventTotalMeasure,
+            loggedMeasureVal: totalParentDailyMeasure,
+            lastMeasuredValue: parentCycleTotal,
             isDoneToday: nextParentEventCount >= targetEventMax
           };
 
           resetSiblings = siblings;
 
-          // Immediately reset all subtasks under this Type-3 parent for the next event cycle!
           newTasks = newTasks.map(item => {
-            if (item.id === parent.id) {
-              return completedEventParent;
-            }
+            if (item.id === parent.id) return completedEventParent;
             if (item.parentTaskId === parent.id) {
               return {
                 ...item,
-                isDoneToday: false,
-                currentCount: 0,
-                progressPercent: 0,
-                loggedMeasureVal: 0,
-                lastMeasuredValue: 0,
-                currentEventWork: 0,
-                status: 'PLANNED'
+                isDoneToday: false
+              };
+            }
+            return item;
+          });
+        } else {
+          newTasks = newTasks.map(item => {
+            if (item.id === parent.id) {
+              return {
+                ...item,
+                loggedMeasureVal: totalParentDailyMeasure
               };
             }
             return item;
@@ -1589,19 +1619,23 @@ export default function App() {
             logged_date: todayStr,
             logged_at: nowIso,
             increment_value: 1,
-            measured_value: eventTotalMeasure
+            measured_value: parentCycleTotal
           }]);
 
           try {
-            await supabase.from('event_logs').insert([{
+            const parentEvLog = {
               task_id: completedEventParent.id,
               parent_task_id: completedEventParent.id,
               user_id: currentUserId,
               event_number: completedEventParent.currentCount,
               completion_date: todayStr,
               completion_timestamp: nowIso,
-              total_work_accumulated: eventTotalMeasure
-            }]);
+              total_work_accumulated: parentCycleTotal,
+              subtask_breakdown: JSON.stringify(parentCycleBreakdown),
+              status: 'FINALIZED'
+            };
+            await supabase.from('event_logs').insert([parentEvLog]);
+            setEventLogs(prev => [parentEvLog, ...prev]);
 
             habitHistoryService.logCompletion({
               taskId: completedEventParent.id,
@@ -1609,7 +1643,7 @@ export default function App() {
               taskTitle: completedEventParent.title,
               userId: currentUserId,
               userName: currentUser?.user_metadata?.full_name || currentUser?.displayName || currentUserId.split('@')[0],
-              measuredValue: eventTotalMeasure || 0,
+              measuredValue: parentCycleTotal || 0,
               measureUnit: completedEventParent.measureUnit || 'events',
               eventCount: 1,
               notes: `Completed Event Cycle #${completedEventParent.currentCount}`
@@ -1619,26 +1653,15 @@ export default function App() {
           console.warn('Event parent sync notice:', e);
         }
 
-        // Reset child subtasks in database immediately for next event cycle
+        // Subtasks maintain current_count and logged_measure_val; ONLY reset is_done_today
         for (const st of resetSiblings) {
           try {
             await supabase.from('tasks').update({
-              current_count: 0,
-              progress_percent: 0,
-              is_done_today: false,
-              logged_measure_val: 0,
-              last_measured_value: 0,
-              completed_at: null,
-              status: 'INBOX'
+              is_done_today: false
             }).eq('id', st.id);
 
             await supabase.from('subtasks').update({
-              current_count: 0,
-              progress_percent: 0,
-              is_done_today: false,
-              logged_measure_val: 0,
-              completed_at: null,
-              status: 'PLANNED'
+              is_done_today: false
             }).eq('id', st.id);
           } catch (e) {}
         }
@@ -1934,143 +1957,269 @@ export default function App() {
     const targetTask = tasks.find(t => t.id === taskId);
     if (!targetTask) return;
 
+    const currentUserId = (currentUser?.email || currentUser?.id || 'default-user').toLowerCase().trim();
+    const todayStr = getLocalDateString(new Date());
+    const nowIso = new Date().toISOString();
+
     const thisEventMeasure = (customMeasureVal !== null && customMeasureVal !== undefined && !isNaN(Number(customMeasureVal)))
       ? Number(customMeasureVal)
       : Number(targetTask.eventUnitTarget || targetTask.measureTarget || 10);
 
     const prevMeasure = Number(targetTask.loggedMeasureVal || 0);
     const newCumulativeMeasure = Math.round((prevMeasure + thisEventMeasure) * 10) / 10;
-    const target = targetTask.targetCount || 50;
+    const target = (targetTask.targetCount && targetTask.targetCount > 0) ? targetTask.targetCount : (targetTask.targetEventCount || 50);
     const nextCount = (targetTask.currentCount || 0) + 1;
-    const nextProg = Math.min(100, Math.round((nextCount / target) * 100));
+    const nextProg = Math.min(100, Math.round((nextCount / Math.max(1, target)) * 100));
+
+    updatedTask = {
+      ...targetTask,
+      currentCount: nextCount,
+      currentEventCount: nextCount,
+      loggedMeasureVal: newCumulativeMeasure,
+      lastMeasuredValue: thisEventMeasure,
+      progressPercent: nextProg,
+      isDoneToday: true
+    };
+
+    const subtaskEvLog = {
+      id: 'evlog-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      task_id: taskId,
+      parent_task_id: targetTask.parentTaskId || taskId,
+      user_id: currentUserId,
+      event_number: nextCount,
+      completion_date: todayStr,
+      completion_timestamp: nowIso,
+      total_work_accumulated: thisEventMeasure,
+      status: 'FINALIZED'
+    };
+
+    let completedParent = null;
+    let parentEvLog = null;
+    let eventCycleCompleted = false;
+    let parentCycleTotal = 0;
+    let parentCycleBreakdown = {};
+    const parent = targetTask.parentTaskId ? tasks.find(p => p.id === targetTask.parentTaskId) : null;
+
+    if (parent && parent.trackingMode === 'count_event') {
+      const siblings = tasks.filter(item => item.parentTaskId === parent.id);
+      const mandatorySiblings = siblings.filter(item => !item.isOptional);
+      const checkList = mandatorySiblings.length > 0 ? mandatorySiblings : siblings;
+
+      const nextParentEventCount = (parent.currentCount || 0) + 1;
+
+      // Has every mandatory sibling reached nextParentEventCount?
+      const allSiblingsReachedCycle = checkList.every(item => {
+        const c = (item.id === taskId) ? nextCount : (item.currentCount || 0);
+        return c >= nextParentEventCount;
+      });
+
+      const totalParentDailyMeasure = Math.round(
+        siblings.reduce((sum, s) => {
+          const sVal = (s.id === taskId) ? newCumulativeMeasure : Number(s.loggedMeasureVal || 0);
+          return sum + sVal;
+        }, 0) * 10
+      ) / 10;
+
+      if (allSiblingsReachedCycle) {
+        eventCycleCompleted = true;
+
+        siblings.forEach(s => {
+          let sCycleVal = 0;
+          if (s.id === taskId) {
+            sCycleVal = thisEventMeasure;
+          } else {
+            const sEv = (eventLogs || []).find(el => 
+              (el.task_id === s.id || el.taskId === s.id) &&
+              Number(el.event_number || el.eventNumber) === nextParentEventCount
+            );
+            if (sEv && Number(sEv.total_work_accumulated || sEv.measured_value) > 0) {
+              sCycleVal = Number(sEv.total_work_accumulated || sEv.measured_value);
+            } else {
+              sCycleVal = Number(s.lastMeasuredValue || s.eventUnitTarget || s.measureTarget || 10);
+            }
+          }
+          parentCycleBreakdown[s.id] = sCycleVal;
+          parentCycleTotal += sCycleVal;
+        });
+        parentCycleTotal = Math.round(parentCycleTotal * 10) / 10;
+
+        const parentTarget = parent.targetCount || parent.targetEventCount || 10;
+        const parentProg = Math.min(100, Math.round((nextParentEventCount / Math.max(1, parentTarget)) * 100));
+
+        completedParent = {
+          ...parent,
+          currentCount: nextParentEventCount,
+          currentEventCount: nextParentEventCount,
+          loggedMeasureVal: totalParentDailyMeasure,
+          lastMeasuredValue: parentCycleTotal,
+          progressPercent: parentProg,
+          isDoneToday: nextParentEventCount >= parentTarget
+        };
+
+        parentEvLog = {
+          id: 'evlog-p-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+          task_id: parent.id,
+          parent_task_id: parent.id,
+          user_id: currentUserId,
+          event_number: nextParentEventCount,
+          completion_date: todayStr,
+          completion_timestamp: nowIso,
+          total_work_accumulated: parentCycleTotal,
+          subtask_breakdown: JSON.stringify(parentCycleBreakdown),
+          status: 'FINALIZED'
+        };
+      } else {
+        completedParent = {
+          ...parent,
+          loggedMeasureVal: totalParentDailyMeasure
+        };
+      }
+    }
 
     const newTasks = tasks.map(t => {
-      if (t.id === taskId) {
-        updatedTask = {
+      if (t.id === taskId) return updatedTask;
+      if (completedParent && t.id === completedParent.id) return completedParent;
+      if (eventCycleCompleted && completedParent && t.parentTaskId === completedParent.id) {
+        return {
           ...t,
-          currentCount: nextCount,
-          currentEventCount: nextCount,
-          loggedMeasureVal: newCumulativeMeasure,
-          lastMeasuredValue: thisEventMeasure,
-          progressPercent: nextProg,
-          isDoneToday: nextCount >= target
+          isDoneToday: false
         };
-        return updatedTask;
       }
       return t;
     });
 
     updateTasksState(newTasks);
 
-    const currentUserId = (currentUser?.email || currentUser?.id || 'default-user').toLowerCase().trim();
-    const todayStr = getLocalDateString(new Date());
-    const nowIso = new Date().toISOString();
+    const newEvLogs = [subtaskEvLog];
+    if (parentEvLog) newEvLogs.unshift(parentEvLog);
+    setEventLogs(prev => [...newEvLogs, ...prev]);
 
-    if (currentUser && updatedTask) {
-      // 1. Update tasks table safely
+    if (currentUser) {
+      // 1. Update subtask in tasks table
       try {
-        const { error: tErr } = await supabase.from('tasks').update({
+        await supabase.from('tasks').update({
           current_count: updatedTask.currentCount,
           progress_percent: updatedTask.progressPercent,
           logged_measure_val: updatedTask.loggedMeasureVal,
           last_measured_value: updatedTask.lastMeasuredValue,
-          is_done_today: updatedTask.isDoneToday,
-          status: updatedTask.isDoneToday ? 'COMPLETED' : 'INBOX'
+          is_done_today: eventCycleCompleted ? false : true,
+          status: 'INBOX'
         }).eq('id', taskId);
-        if (tErr) console.warn('tasks table update notice:', tErr.message);
       } catch (e) {
-        console.warn('tasks table update catch:', e);
+        console.warn('subtask tasks update notice:', e);
       }
 
-      // 2. Update subtasks table if this is a subtask
+      // 2. Update subtasks table if present
       try {
         await supabase.from('subtasks').update({
           completed_value: updatedTask.currentCount,
           logged_measure_val: updatedTask.loggedMeasureVal,
-          status: updatedTask.isDoneToday ? 'COMPLETED' : 'IN_PROGRESS'
+          status: 'IN_PROGRESS'
         }).eq('id', taskId);
       } catch (e) {}
 
-      // 3. Insert into event_logs with exact measured value for this event
+      // 3. Insert subtask event log
       try {
-        const evLogPayload = {
-          task_id: taskId,
-          parent_task_id: updatedTask.parentTaskId || taskId,
-          user_id: currentUserId,
-          event_number: updatedTask.currentCount,
-          completion_date: todayStr,
-          completion_timestamp: nowIso,
-          total_work_accumulated: thisEventMeasure,
-          status: 'FINALIZED'
-        };
-        const { data: insertedEvLog, error: evErr } = await supabase.from('event_logs').insert([evLogPayload]).select();
-        if (evErr) {
-          console.warn('event_logs insert notice:', evErr.message);
-        }
-        setEventLogs(prev => [insertedEvLog?.[0] || { id: 'evlog-' + Date.now(), ...evLogPayload }, ...prev]);
+        await supabase.from('event_logs').insert([subtaskEvLog]);
       } catch (e) {
-        console.warn('event_logs insert catch:', e);
+        console.warn('subtask event_logs insert notice:', e);
       }
 
-      // 4. Update or insert into task_logs for today's cumulative measure
+      // 4. Update task_logs for subtask
       try {
         const { data: existingLogs } = await supabase
           .from('task_logs')
-          .select('id, increment_value, measured_value')
+          .select('id, increment_value')
           .eq('task_id', taskId)
           .eq('logged_date', todayStr);
 
         if (existingLogs && existingLogs.length > 0) {
           const nextInc = (existingLogs[0].increment_value || 1) + 1;
-          await supabase
-            .from('task_logs')
-            .update({ 
-              increment_value: nextInc, 
-              measured_value: updatedTask.loggedMeasureVal 
-            })
-            .eq('id', existingLogs[0].id);
-
-          setTaskLogs(prev => prev.map(l => 
-            (l.id === existingLogs[0].id || ((l.task_id === taskId || l.taskId === taskId) && (l.logged_date === todayStr || l.logged_at?.startsWith(todayStr))))
-              ? { ...l, increment_value: nextInc, measured_value: updatedTask.loggedMeasureVal }
-              : l
-          ));
+          await supabase.from('task_logs').update({
+            increment_value: nextInc,
+            measured_value: updatedTask.loggedMeasureVal
+          }).eq('id', existingLogs[0].id);
         } else {
-          const newLog = {
+          await supabase.from('task_logs').insert([{
             task_id: taskId,
             user_id: currentUserId,
             logged_date: todayStr,
             logged_at: nowIso,
             increment_value: 1,
             measured_value: updatedTask.loggedMeasureVal
-          };
-          const { data: insertedLog, error: logErr } = await supabase.from('task_logs').insert([newLog]).select();
-          if (logErr) {
-            console.warn('task_logs insert notice:', logErr.message);
-          }
-          setTaskLogs(prev => [insertedLog?.[0] || { id: 'log-' + Date.now(), ...newLog }, ...prev]);
+          }]);
         }
-      } catch (e) {
-        console.warn('task_logs sync notice:', e);
-      }
+      } catch (e) {}
 
       // 5. If child subtask, also log to subtask_logs
       if (updatedTask.parentTaskId) {
         try {
-          const subLogPayload = {
+          await supabase.from('subtask_logs').insert([{
             subtask_id: taskId,
             parent_task_id: updatedTask.parentTaskId,
             user_id: currentUserId,
             log_date: todayStr,
             is_completed: true,
             measured_value: updatedTask.loggedMeasureVal
-          };
-          const { data: insertedSubLog } = await supabase.from('subtask_logs').insert([subLogPayload]).select();
-          setSubtaskLogs(prev => [insertedSubLog?.[0] || { id: 'sublog-' + Date.now(), ...subLogPayload }, ...prev]);
+          }]);
         } catch (e) {}
       }
 
-      // 6. Record to habitHistoryService
+      // 6. If parent event cycle completed, sync parent to DB!
+      if (eventCycleCompleted && completedParent && parentEvLog) {
+        try {
+          await supabase.from('tasks').update({
+            current_count: completedParent.currentCount,
+            progress_percent: completedParent.progressPercent,
+            logged_measure_val: completedParent.loggedMeasureVal,
+            last_measured_value: completedParent.lastMeasuredValue,
+            is_done_today: completedParent.isDoneToday,
+            status: completedParent.isDoneToday ? 'COMPLETED' : 'INBOX'
+          }).eq('id', completedParent.id);
+
+          await supabase.from('event_logs').insert([parentEvLog]);
+
+          await supabase.from('task_logs').insert([{
+            task_id: completedParent.id,
+            user_id: currentUserId,
+            logged_date: todayStr,
+            logged_at: nowIso,
+            increment_value: 1,
+            measured_value: parentCycleTotal
+          }]);
+
+          habitHistoryService.logCompletion({
+            taskId: completedParent.id,
+            parentTaskId: null,
+            taskTitle: completedParent.title,
+            userId: currentUserId,
+            userName: currentUser?.user_metadata?.full_name || currentUser?.displayName || currentUserId.split('@')[0],
+            measuredValue: parentCycleTotal,
+            measureUnit: completedParent.measureUnit || 'events',
+            eventCount: 1,
+            notes: `Completed Event Cycle #${completedParent.currentCount}`
+          });
+        } catch (e) {
+          console.warn('parent sync notice:', e);
+        }
+
+        // Reset siblings is_done_today in DB for next cycle
+        try {
+          const siblings = tasks.filter(item => item.parentTaskId === completedParent.id);
+          for (const s of siblings) {
+            await supabase.from('tasks').update({ is_done_today: false }).eq('id', s.id);
+            await supabase.from('subtasks').update({ is_done_today: false }).eq('id', s.id);
+          }
+        } catch (e) {}
+      } else if (completedParent) {
+        try {
+          await supabase.from('tasks').update({
+            logged_measure_val: completedParent.loggedMeasureVal
+          }).eq('id', completedParent.id);
+        } catch (e) {}
+      }
+
+      // 7. Record subtask to habitHistoryService
       try {
         habitHistoryService.logCompletion({
           taskId: taskId,
