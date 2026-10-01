@@ -12,10 +12,11 @@ import {
   Hash, 
   MessageSquare,
   BarChart2,
-  Grid
+  Grid,
+  Trash2
 } from 'lucide-react';
 
-export default function TaskDetailModal({ item, subtasks, isOpen, onClose, onEditItem, onLogSkipReason, onOpenDatePicker }) {
+export default function TaskDetailModal({ item, subtasks, isOpen, onClose, onEditItem, onLogSkipReason, onOpenDatePicker, onDeleteTask }) {
   const [skipReason, setSkipReason] = useState(item?.skipReason || '');
   const [skipLogged, setSkipLogged] = useState(false);
 
@@ -84,6 +85,21 @@ export default function TaskDetailModal({ item, subtasks, isOpen, onClose, onEdi
             >
               <Edit3 size={14} /> Edit Task
             </button>
+
+            {onDeleteTask && (
+              <button 
+                onClick={() => {
+                  if (window.confirm(`Are you sure you want to delete "${item.title}"? This cannot be undone.`)) {
+                    onDeleteTask(item.id);
+                    onClose();
+                  }
+                }}
+                className="btn-secondary"
+                style={{ padding: '6px 12px', fontSize: '12px', color: '#DC2626', borderColor: '#FCA5A5', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                <Trash2 size={14} color="#DC2626" /> Delete
+              </button>
+            )}
             
             <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748B', cursor: 'pointer' }}>
               <X size={22} />

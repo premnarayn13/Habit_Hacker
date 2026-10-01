@@ -1328,7 +1328,11 @@ export default function TaskDedicatedPageView({
 
           {/* 4. DELETE */}
           <button 
-            onClick={() => onDeleteTask(currentTask.id)}
+            onClick={() => {
+              if (window.confirm(`Are you sure you want to delete "${currentTask.title}"? This cannot be undone.`)) {
+                onDeleteTask(currentTask.id);
+              }
+            }}
             className="btn-secondary"
             style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: 800, padding: '7px 4px', fontSize: '11px', color: '#DC2626', borderColor: '#FCA5A5', whiteSpace: 'nowrap' }}
           >
@@ -2665,6 +2669,30 @@ export default function TaskDedicatedPageView({
                     {st.progressPercent || 0}%
                   </span>
                   <ExternalLink size={15} color="#64748B" />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm(`Are you sure you want to delete child subtask "${st.title}"?`)) {
+                        onDeleteTask(st.id);
+                      }
+                    }}
+                    title="Delete child subtask"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#94A3B8',
+                      cursor: 'pointer',
+                      padding: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '4px'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = '#DC2626'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = '#94A3B8'}
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             ))

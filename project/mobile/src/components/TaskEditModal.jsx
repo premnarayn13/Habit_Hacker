@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Trash2, Plus, Clock, Bell, Paperclip, Upload, Users, Layers, Calendar, Target, AlertTriangle, Ruler } from 'lucide-react';
 
-export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, existingTasks = [] }) {
+export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, onDeleteTask, existingTasks = [] }) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -696,11 +696,39 @@ export default function TaskEditModal({ item, isOpen, onClose, onSaveTask, exist
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary" disabled={Boolean(validationError)}>
-              <Save size={16} /> Save Changes
-            </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+            {onDeleteTask && item && (
+              <button 
+                type="button" 
+                onClick={() => {
+                  if (window.confirm(`Are you sure you want to delete "${formData.title || item.title}"? This cannot be undone.`)) {
+                    onDeleteTask(item.id);
+                    onClose();
+                  }
+                }}
+                style={{
+                  background: '#FEF2F2',
+                  color: '#DC2626',
+                  border: '1px solid #FCA5A5',
+                  padding: '8px 14px',
+                  borderRadius: '10px',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Trash2 size={14} color="#DC2626" /> Delete Task
+              </button>
+            )}
+            <div style={{ display: 'flex', gap: '10px', marginLeft: 'auto' }}>
+              <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+              <button type="submit" className="btn-primary" disabled={Boolean(validationError)}>
+                <Save size={16} /> Save Changes
+              </button>
+            </div>
           </div>
 
         </form>

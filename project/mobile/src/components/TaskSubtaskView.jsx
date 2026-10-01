@@ -832,6 +832,32 @@ export default function TaskSubtaskView({
                         >
                           <ExternalLink size={13} color="#2563EB" /> Open
                         </button>
+
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Are you sure you want to delete "${task.title}"? This cannot be undone.`)) {
+                              if (onDeleteTask) onDeleteTask(task.id);
+                              if (selectedTaskId === task.id) setSelectedTaskId(null);
+                            }
+                          }}
+                          title="Delete Task"
+                          style={{
+                            background: '#FEF2F2',
+                            color: '#DC2626',
+                            border: '1px solid #FCA5A5',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <Trash2 size={13} color="#DC2626" /> Delete
+                        </button>
                       </div>
                     </div>
 
@@ -930,6 +956,32 @@ export default function TaskSubtaskView({
                                   <span style={{ fontSize: '12px', fontWeight: 800, color: '#D97706' }}>
                                     {childProg}% ({childDone}/{childTarget})
                                   </span>
+
+                                  {/* Delete Child Subtask Button */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (window.confirm(`Are you sure you want to delete child subtask "${child.title}"?`)) {
+                                        if (onDeleteTask) onDeleteTask(child.id);
+                                      }
+                                    }}
+                                    title="Delete child subtask"
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      color: '#94A3B8',
+                                      cursor: 'pointer',
+                                      padding: '4px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      borderRadius: '4px'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.color = '#DC2626'}
+                                    onMouseLeave={(e) => e.currentTarget.style.color = '#94A3B8'}
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
                                 </div>
                               </div>
                             );
@@ -1101,6 +1153,36 @@ export default function TaskSubtaskView({
             }}
           >
             <Unlink size={13} color="#DC2626" /> Unmap
+          </button>
+
+          {/* 6. Delete */}
+          <button 
+            onClick={() => {
+              if (window.confirm(`Are you sure you want to delete "${selectedTaskObj.title}"? This cannot be undone.`)) {
+                if (onDeleteTask) onDeleteTask(selectedTaskObj.id);
+                setSelectedTaskId(null);
+              }
+            }}
+            title="Delete Selected Task"
+            style={{
+              flex: 1,
+              background: '#FEF2F2',
+              color: '#DC2626',
+              border: '1px solid #FCA5A5',
+              padding: '6px 4px',
+              borderRadius: '8px',
+              fontSize: '11px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '3px',
+              whiteSpace: 'nowrap',
+              height: '31px'
+            }}
+          >
+            <Trash2 size={13} color="#DC2626" /> Delete
           </button>
         </div>
       )}

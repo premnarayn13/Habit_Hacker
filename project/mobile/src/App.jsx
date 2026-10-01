@@ -1328,36 +1328,103 @@ export default function App() {
   };
 
   const handleDeleteTask = async (taskId) => {
-    // 1. Any subhabits of this parent become standalone parent habits (parentTaskId: '')
+    if (!taskId) return;
+    const idStr = String(taskId);
+
+    // 1. In-memory state: Remove the task from tasks list.
+    // Any child subhabits of this parent become standalone parent habits (parentTaskId: '')
     const newTasks = tasks
-      .filter(t => t.id !== taskId)
-      .map(t => (t.parentTaskId === taskId || t.parent_task_id === taskId || t.parent_id === taskId) 
+      .filter(t => String(t.id) !== idStr)
+      .map(t => (String(t.parentTaskId) === idStr || String(t.parent_task_id) === idStr || String(t.parent_id) === idStr) 
         ? { ...t, parentTaskId: '', parent_task_id: '', parent_id: '' } 
         : t
       );
     updateTasksState(newTasks);
-    setSubtasks(prev => prev.map(s => (s.parentTaskId === taskId || s.parent_task_id === taskId || s.parent_id === taskId) 
-      ? { ...s, parentTaskId: '', parent_task_id: '', parent_id: '' } 
-      : s
+
+    // Filter out from subtasks list and unmap any children
+    setSubtasks(prev => prev
+      .filter(s => String(s.id) !== idStr)
+      .map(s => (String(s.parentTaskId) === idStr || String(s.parent_task_id) === idStr || String(s.parent_id) === idStr) 
+        ? { ...s, parentTaskId: '', parent_task_id: '', parent_id: '' } 
+        : s
+      )
+    );
+
+    // Clean up habits list
+    setHabits(prev => prev.filter(h => String(h.id) !== idStr));
+
+    // Clean up associated logs in memory
+    setEventLogs(prev => prev.filter(e => 
+      String(e.task_id) !== idStr && String(e.taskId) !== idStr && String(e.parent_task_id) !== idStr
+    ));
+    setTaskLogs(prev => prev.filter(l => 
+      String(l.task_id) !== idStr && String(l.taskId) !== idStr
+    ));
+    setSubtaskLogs(prev => prev.filter(l => 
+      String(l.subtask_id) !== idStr && String(l.taskId) !== idStr && String(l.parent_task_id) !== idStr
     ));
 
-    if (currentUser) {
-      // 2. In database, unmap children first so they become standalone
-      try {
-        await supabase.from('tasks')
-          .update({ parent_task_id: null, parent_id: null })
-          .or(`parent_task_id.eq.${taskId},parent_id.eq.${taskId}`);
-      } catch (e) {}
-
-      try {
-        await supabase.from('subtasks')
-          .update({ parent_task_id: null, parent_id: null })
-          .or(`parent_task_id.eq.${taskId},parent_id.eq.${taskId}`);
-      } catch (e) {}
-
-      // 3. Delete parent task
-      await supabase.from('tasks').delete().eq('id', taskId);
+    // Close any open modals/pages viewing this task
+    if (selectedDetailItem && String(selectedDetailItem.id) === idStr) {
+      setSelectedDetailItem(null);
     }
+    if (selectedEditItem && String(selectedEditItem.id) === idStr) {
+      setSelectedEditItem(null);
+    }
+    if (dedicatedTaskPageItem && String(dedicatedTaskPageItem.id) === idStr) {
+      setDedicatedTaskPageItem(null);
+    }
+
+    // Clean up local collaboration cache
+    try {
+      const localCollabs = JSON.parse(localStorage.getItem('hh_task_collaborations') || '[]');
+      const filtered = localCollabs.filter(c => String(c.taskId) !== idStr && String(c.task_id) !== idStr);
+      localStorage.setItem('hh_task_collaborations', JSON.stringify(filtered));
+    } catch (e) {}
+
+    // 2. Remote database cleanup (Supabase)
+    if (currentUser) {
+      try {
+        // Step A: Unmap any child tasks in public.tasks
+        await supabase.from('tasks').update({ parent_task_id: null, parent_id: null }).eq('parent_task_id', idStr);
+        await supabase.from('tasks').update({ parent_task_id: null, parent_id: null }).eq('parent_id', idStr);
+
+        // Step B: Unmap any child subtasks in public.subtasks
+        await supabase.from('subtasks').update({ parent_task_id: null, parent_id: null }).eq('parent_task_id', idStr);
+        await supabase.from('subtasks').update({ parent_task_id: null, parent_id: null }).eq('parent_id', idStr);
+
+        // Step C: Delete referencing rows from dependent tables first (prevents FK violations)
+        await supabase.from('task_collaborations').delete().eq('task_id', idStr);
+        await supabase.from('event_logs').delete().eq('task_id', idStr);
+        await supabase.from('event_logs').delete().eq('parent_task_id', idStr);
+        await supabase.from('task_logs').delete().eq('task_id', idStr);
+        await supabase.from('subtask_logs').delete().eq('subtask_id', idStr);
+        await supabase.from('subtask_logs').delete().eq('parent_task_id', idStr);
+        await supabase.from('habit_completion_history').delete().eq('task_id', idStr);
+        await supabase.from('habit_completion_history').delete().eq('parent_task_id', idStr);
+        await supabase.from('habit_update_history').delete().eq('task_id', idStr);
+        await supabase.from('habit_update_history').delete().eq('parent_task_id', idStr);
+
+        // Step D: Delete from subtasks table (if it exists there)
+        await supabase.from('subtasks').delete().eq('id', idStr);
+
+        // Step E: Delete from tasks table
+        const { error: delErr } = await supabase.from('tasks').delete().eq('id', idStr);
+        if (delErr) {
+          console.warn('Supabase tasks delete warning:', delErr.message);
+        }
+      } catch (err) {
+        console.warn('Error during Supabase task deletion:', err);
+      }
+    }
+
+    // 3. Spring Boot REST backend deletion if connected
+    try {
+      const baseUrl = getApiBaseUrl();
+      if (baseUrl) {
+        await fetch(`${baseUrl}/api/tasks/${encodeURIComponent(idStr)}`, { method: 'DELETE' });
+      }
+    } catch (e) {}
   };
 
   const handleMapTaskParent = async (taskId, newParentId) => {
@@ -2607,7 +2674,12 @@ export default function App() {
               onBack={() => setDedicatedTaskPageItem(null)}
               onEditTask={(t) => setSelectedEditItem(t)}
               onArchiveTask={handleArchiveTask}
-              onDeleteTask={(id) => { handleDeleteTask(id); setDedicatedTaskPageItem(null); }}
+              onDeleteTask={(id) => { 
+                handleDeleteTask(id); 
+                if (dedicatedTaskPageItem && String(dedicatedTaskPageItem.id) === String(id)) {
+                  setDedicatedTaskPageItem(null); 
+                }
+              }}
               onNavigateToSubtask={(subtaskItem) => setDedicatedTaskPageItem(subtaskItem)}
             />
           ) : (
@@ -2788,6 +2860,7 @@ export default function App() {
         }}
         onOpenDatePicker={handleOpenDatePickerForTask}
         onLogSkipReason={handleLogSkipReason}
+        onDeleteTask={handleDeleteTask}
       />
 
       <TaskEditModal 
@@ -2795,6 +2868,7 @@ export default function App() {
         isOpen={!!selectedEditItem}
         onClose={() => setSelectedEditItem(null)}
         onSaveTask={handleSaveTaskEdit}
+        onDeleteTask={handleDeleteTask}
         existingTasks={tasks}
       />
 
