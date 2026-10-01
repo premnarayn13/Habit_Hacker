@@ -531,7 +531,7 @@ export default function TaskSubtaskView({
             // Calculations for Task Row KPI Badges
             const spanDays = calculateSpanDays(task.plannedStart, task.plannedEnd);
             const targetCount = task.targetCount || task.targetDayCount || task.targetEventCount || spanDays || 30;
-            const currentCount = task.currentCount || task.currentDayCount || task.currentEventCount || (isTaskDone ? targetCount : 0);
+            const currentCount = task.currentCount || task.currentDayCount || task.currentEventCount || (isTaskDone ? (targetCount > 1 ? 1 : targetCount) : 0);
             const calculatedProgPercent = task.progressPercent || (targetCount > 0 ? Math.round((currentCount / targetCount) * 100) : 0);
             const countRatioStr = `${currentCount}:${targetCount}`;
             const cardBgStyle = isSelected 
@@ -539,7 +539,7 @@ export default function TaskSubtaskView({
               : (isTaskDone ? '#F8FAFC' : '#FFFFFF');
 
             // Subtask completion stats for expanded dropdown section
-            const subtaskCompletedCount = childTasks.filter(c => c.isDoneToday || c.progressPercent >= 100).length;
+            const subtaskCompletedCount = childTasks.filter(c => c.isDoneToday || c.progressPercent >= 100 || (Number(c.currentCount || 0) > 0)).length;
             const subtaskTotalCount = childTasks.length;
             const subtaskRatioStr = `${subtaskCompletedCount}:${subtaskTotalCount} Completed`;
             const subtaskProgPercent = subtaskTotalCount > 0 ? Math.round((subtaskCompletedCount / subtaskTotalCount) * 100) : 0;
@@ -632,7 +632,9 @@ export default function TaskSubtaskView({
                         {/* Measure Target Pill (Applies to Type 1, Type 2, Type 3) */}
                         {(() => {
                           const isParent = childTasks && childTasks.length > 0;
-                          const parentDailyMeasure = isParent ? calculateParentDailyMeasure(childTasks) : Number(task.loggedMeasureVal || 0);
+                          const parentDailyMeasure = isParent 
+                            ? Math.max(calculateParentDailyMeasure(childTasks), Number(task.loggedMeasureVal || 0)) 
+                            : Number(task.loggedMeasureVal || 0);
                           const childrenTargetSum = isParent ? childTasks.reduce((acc, c) => acc + Number(c.measureTarget || 0), 0) : 0;
                           const targetMeasure = isParent && childrenTargetSum > 0 ? childrenTargetSum : Number(task.measureTarget || 0);
                           const hasMeasure = task.hasMeasureTracking || targetMeasure > 0 || parentDailyMeasure > 0;
@@ -913,7 +915,7 @@ export default function TaskSubtaskView({
                                     onClick={(e) => handleCheckmarkClick(e, child)}
                                     style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
                                   >
-                                    {child.progressPercent >= 100 || child.isDoneToday ? (
+                                    {child.progressPercent >= 100 || child.isDoneToday || (Number(child.currentCount || 0) > 0) ? (
                                       <CheckCircle2 size={18} color="#D97706" />
                                     ) : (
                                       <Circle size={18} color="#94A3B8" />
@@ -926,7 +928,7 @@ export default function TaskSubtaskView({
                                       <span style={{ 
                                         fontSize: '13px', 
                                         fontWeight: 800, 
-                                        color: child.progressPercent >= 100 || child.isDoneToday ? '#475569' : '#0F172A'
+                                        color: child.progressPercent >= 100 || child.isDoneToday || (Number(child.currentCount || 0) > 0) ? '#475569' : '#0F172A'
                                       }}>
                                         {child.title}
                                       </span>

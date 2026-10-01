@@ -117,50 +117,35 @@ export function calculateSubtaskContribution(subtask, isCompleted = false, event
         ? Number(subtask.loggedMeasureVal)
         : null);
 
-  // 1. Measurable subtask (Type 2 subhabit or any subtask with measure tracking)
+  // 1. Event-based subtask (Type 3 subhabit)
+  if (subtask.trackingMode === 'count_event') {
+    if (explicitVal !== null && explicitVal > 0) return explicitVal;
+
+    const unitMeasure = Number(subtask.lastMeasuredValue || subtask.eventUnitTarget || subtask.measureTarget || 10);
+    const evCount = (eventCount !== undefined && eventCount !== null && Number(eventCount) > 0)
+      ? Number(eventCount)
+      : ((isCompleted || subtask.isDoneToday || (Number(subtask.currentCount || 0) > 0)) ? Number(subtask.todayEventCount || subtask.currentCount || 1) : 0);
+
+    if (evCount <= 0) return 0;
+
+    return Math.round(evCount * unitMeasure * 10) / 10;
+  }
+
+  // 2. Measurable subtask (Type 2 subhabit or any subtask with measure tracking)
   if (subtask.hasMeasureTracking || (subtask.measureTarget && Number(subtask.measureTarget) > 0)) {
     // Uncapped explicit logged value always takes absolute precedence!
     if (explicitVal !== null) {
       return explicitVal;
     }
-    if (!isCompleted) return 0;
+    if (!isCompleted && !subtask.isDoneToday) return 0;
     if (subtask.lastMeasuredValue !== undefined && subtask.lastMeasuredValue !== null && Number(subtask.lastMeasuredValue) > 0) {
       return Number(subtask.lastMeasuredValue);
     }
     return Number(subtask.measureTarget || 4);
   }
 
-  // 2. Event-based subtask (Type 3 subhabit)
-  if (subtask.trackingMode === 'count_event') {
-    if (explicitVal !== null) return explicitVal;
-
-    const evCount = (eventCount !== undefined && eventCount !== null && Number(eventCount) > 0)
-      ? Number(eventCount)
-      : (isCompleted ? (subtask.todayEventCount || 1) : 0);
-
-    if (evCount <= 0) return 0;
-
-    // Target events for this subhabit (defaults to targetCount, eventUnitTarget, or evCount)
-    const targetEvents = Number(subtask.targetCount || subtask.targetEventCount || subtask.eventUnitTarget || evCount || 2);
-    
-    // Check if peer non-event subhabits exist
-    let baseMeasure = avgMeasure > 0 ? avgMeasure : (Number(subtask.measureTarget) > 0 ? Number(subtask.measureTarget) : 1);
-    if (allPeerSubtasks && allPeerSubtasks.length > 1) {
-      const nonEventAvg = calculateNonEventSubtasksAverage(allPeerSubtasks);
-      if (nonEventAvg > 0) {
-        baseMeasure = nonEventAvg;
-      }
-    }
-
-    // Per event contribution = baseMeasure / targetEvents (e.g., 6 / 2 = 3)
-    const perEventContribution = baseMeasure / Math.max(1, targetEvents);
-
-    // Total contribution = evCount * perEventContribution (e.g. 2 * 3 = 6)
-    return Math.round(evCount * perEventContribution * 10) / 10;
-  }
-
   // 3. Subtask without explicit measure (Type 1 non-measure standard check-off subhabit)
-  if (isCompleted) {
+  if (isCompleted || subtask.isDoneToday) {
     if (explicitVal !== null) return explicitVal;
     return avgMeasure > 0 ? avgMeasure : 1;
   }
@@ -185,10 +170,10 @@ export function calculateParentDailyMeasure(childSubtasks = [], dayLogsMap = {})
       : (log.measured_value !== undefined ? log.measured_value : null);
     const isCompleted = log.isCompleted !== undefined 
       ? Boolean(log.isCompleted) 
-      : Boolean(st.isDoneToday || st.progressPercent >= 100 || (logVal !== null && logVal > 0) || (st.loggedMeasureVal && Number(st.loggedMeasureVal) > 0));
+      : Boolean(st.isDoneToday || st.progressPercent >= 100 || (logVal !== null && logVal > 0) || (st.loggedMeasureVal && Number(st.loggedMeasureVal) > 0) || (Number(st.currentCount || 0) > 0));
     const eventCount = log.eventCount !== undefined 
       ? Number(log.eventCount) 
-      : (isCompleted ? (st.todayEventCount || 1) : 0);
+      : (isCompleted ? Number(st.todayEventCount || st.currentCount || 1) : 0);
     
     totalDailyMeasure += calculateSubtaskContribution(st, isCompleted, eventCount, avgMeasure, childSubtasks, logVal);
   });
