@@ -30,8 +30,8 @@ export default function Header({
   return (
     <>
       {/* Top Mobile-Responsive Navbar */}
-      <header className="glass-panel" style={{ padding: '8px 12px', margin: '8px 8px', borderRadius: '14px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'nowrap', gap: '6px' }}>
+      <header className="glass-panel" style={{ padding: '8px 10px', margin: '8px', borderRadius: '14px', maxWidth: 'calc(100vw - 16px)', boxSizing: 'border-box', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'nowrap', gap: '6px', width: '100%' }}>
           
           {/* Hamburger Menu & Brand Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
