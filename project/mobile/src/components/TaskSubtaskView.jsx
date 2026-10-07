@@ -607,12 +607,7 @@ export default function TaskSubtaskView({
                           {task.title}
                         </span>
 
-                        {/* Recurrence Frequency Pill */}
-                        {task.repeatRule && task.repeatRule !== 'NONE' && (
-                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569', background: '#F1F5F9', border: '1px solid #CBD5E1', padding: '2px 7px', borderRadius: '6px' }}>
-                            {task.repeatRule === 'EVERY_2_DAYS' ? 'Every 2 Days' : (task.repeatRule === 'EVERY_3_DAYS' ? 'Every 3 Days' : (task.repeatRule === 'INTERVAL' ? `Every ${task.customIntervalDays || 2} Days` : (task.repeatRule === 'WEEKLY' ? 'Weekly' : (task.repeatRule === 'MONTHLY' ? 'Monthly' : 'Daily'))))}
-                          </span>
-                        )}
+
 
                         {/* Measure Target Pill (Applies to Type 1, Type 2, Type 3) */}
                         {(() => {
