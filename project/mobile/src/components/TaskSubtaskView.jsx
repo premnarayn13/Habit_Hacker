@@ -607,21 +607,6 @@ export default function TaskSubtaskView({
                           {task.title}
                         </span>
 
-                        {/* Priority Badge */}
-                        {task.priority && (
-                          <span style={{ 
-                            fontSize: '10px', 
-                            fontWeight: 800, 
-                            padding: '2px 7px', 
-                            borderRadius: '6px',
-                            background: task.priority === 'URGENT' ? '#FEE2E2' : (task.priority === 'HIGH' ? '#FFEDD5' : (task.priority === 'MEDIUM' ? '#FEF3C7' : '#EFF6FF')),
-                            border: '1px solid ' + (task.priority === 'URGENT' ? '#FCA5A5' : (task.priority === 'HIGH' ? '#FED7AA' : (task.priority === 'MEDIUM' ? '#FDE68A' : '#BFDBFE'))),
-                            color: task.priority === 'URGENT' ? '#DC2626' : (task.priority === 'HIGH' ? '#C2410C' : (task.priority === 'MEDIUM' ? '#B45309' : '#1D4ED8'))
-                          }}>
-                            {task.priority === 'URGENT' ? 'Urgent' : (task.priority === 'HIGH' ? 'High' : (task.priority === 'MEDIUM' ? 'Medium' : 'Low'))}
-                          </span>
-                        )}
-
                         {/* Recurrence Frequency Pill */}
                         {task.repeatRule && task.repeatRule !== 'NONE' && (
                           <span style={{ fontSize: '10px', fontWeight: 800, color: '#475569', background: '#F1F5F9', border: '1px solid #CBD5E1', padding: '2px 7px', borderRadius: '6px' }}>
