@@ -77,7 +77,7 @@ export default function CalendarMonthView({ dateMap, currentDate, onSelectDate }
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '3px', width: '100%', boxSizing: 'border-box' }}>
           {cells.map(cell => {
             if (cell.isPadding) {
-              return <div key={cell.key} style={{ minHeight: '85px', background: '#F8FAFC', borderRadius: '10px', opacity: 0.4 }} />;
+              return <div key={cell.key} style={{ minHeight: '72px', background: '#F8FAFC', borderRadius: '8px', opacity: 0.4, minWidth: 0, boxSizing: 'border-box' }} />;
             }
 
             const { data, dayNumber, dateStr } = cell;
@@ -101,26 +101,29 @@ export default function CalendarMonthView({ dateMap, currentDate, onSelectDate }
                 key={dateStr}
                 onClick={() => onSelectDate && onSelectDate(dateStr)}
                 style={{
-                  minHeight: '85px',
+                  minHeight: '72px',
                   background: isToday ? '#FEF2F2' : (workloadLevel.color || '#FFF'),
-                  borderRadius: '12px',
+                  borderRadius: '10px',
                   border: isToday ? '2px solid #DC2626' : (isOverloaded ? '2px solid #DC2626' : `1px solid ${workloadLevel.border || '#CBD5E1'}`),
-                  padding: '6px 8px',
+                  padding: '4px 3px',
                   cursor: 'pointer',
                   display: 'flex',
                   flexDirection: 'column',
-                  justify: 'space-between',
+                  justifyContent: 'space-between',
                   position: 'relative',
-                  transition: 'transform 0.1s ease'
+                  transition: 'transform 0.1s ease',
+                  minWidth: 0,
+                  boxSizing: 'border-box',
+                  overflow: 'hidden'
                 }}
               >
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 900, color: isToday ? '#DC2626' : '#0F172A' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 900, color: isToday ? '#DC2626' : '#0F172A' }}>
                       {dayNumber}
                     </span>
                     {tasks.length > 0 && (
-                      <span style={{ fontSize: '9px', fontWeight: 800, color: isOverloaded ? '#DC2626' : '#2563EB' }}>
+                      <span style={{ fontSize: '8px', fontWeight: 800, color: isOverloaded ? '#DC2626' : '#2563EB', whiteSpace: 'nowrap' }}>
                         {plannedWorkloadMinutes}m
                       </span>
                     )}
@@ -128,23 +131,23 @@ export default function CalendarMonthView({ dateMap, currentDate, onSelectDate }
 
                   {/* Compact Badges */}
                   {deadlines.length > 0 && (
-                    <div style={{ fontSize: '8px', fontWeight: 900, background: '#DC2626', color: '#FFF', padding: '1px 3px', borderRadius: '4px', marginBottom: '2px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '7.5px', fontWeight: 900, background: '#DC2626', color: '#FFF', padding: '1px 2px', borderRadius: '3px', marginBottom: '2px', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       Deadline
                     </div>
                   )}
 
                   {tasks.length > 0 && (
-                    <div style={{ fontSize: '9px', color: '#475569', fontWeight: 700 }}>
+                    <div style={{ fontSize: '8px', color: '#475569', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {completedCount}/{tasks.length} Done
                     </div>
                   )}
                 </div>
 
                 {/* Local Availability Icons */}
-                <div style={{ display: 'flex', gap: '3px', alignItems: 'center', marginTop: '4px' }}>
-                  {diaryInfo.hasEntry && <BookOpen size={10} color="#DC2626" title="Journal Entry Available" />}
-                  {todoInfo.count > 0 && <Bell size={10} color="#0284C7" title="Todo Reminder Present" />}
-                  {habits.length > 0 && <Flame size={10} color="#EA580C" title="Habit Activity" />}
+                <div style={{ display: 'flex', gap: '2px', alignItems: 'center', marginTop: '2px', overflow: 'hidden' }}>
+                  {diaryInfo.hasEntry && <BookOpen size={9} color="#DC2626" title="Journal Entry Available" />}
+                  {todoInfo.count > 0 && <Bell size={9} color="#0284C7" title="Todo Reminder Present" />}
+                  {habits.length > 0 && <Flame size={9} color="#EA580C" title="Habit Activity" />}
                 </div>
               </div>
             );
