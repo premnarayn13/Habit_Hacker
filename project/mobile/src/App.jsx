@@ -2664,7 +2664,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingBottom: '40px' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingBottom: '40px', maxWidth: '100vw', overflowX: 'hidden' }}>
       
       {/* Top Header */}
       <Header 
@@ -2710,7 +2710,7 @@ export default function App() {
         </div>
       ) : (
         /* Main View Switcher */
-        <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 12px' }}>
+        <main style={{ maxWidth: '1200px', width: '100%', boxSizing: 'border-box', margin: '0 auto', padding: '0 12px', overflowX: 'hidden' }}>
           
           {/* DEDICATED FULL-SCREEN TASK PAGE ON DOUBLE CLICK OR OPEN */}
           {dedicatedTaskPageItem ? (
