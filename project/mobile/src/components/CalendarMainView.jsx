@@ -216,34 +216,36 @@ export default function CalendarMainView({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           
           {/* Navigation Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button
-              onClick={() => handleNavigatePeriod(-1)}
-              style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '12px', color: '#0F172A' }}
-            >
-              <ChevronLeft size={16} /> Prev
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', maxWidth: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                onClick={() => handleNavigatePeriod(-1)}
+                style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '12px', color: '#0F172A' }}
+              >
+                <ChevronLeft size={16} /> Prev
+              </button>
 
-            <button
-              onClick={handleResetToday}
-              style={{ background: '#DC2626', color: '#FFF', border: 'none', padding: '6px 14px', borderRadius: '8px', fontWeight: 800, fontSize: '12px', cursor: 'pointer' }}
-            >
-              Today
-            </button>
+              <button
+                onClick={handleResetToday}
+                style={{ background: '#DC2626', color: '#FFF', border: 'none', padding: '6px 12px', borderRadius: '8px', fontWeight: 800, fontSize: '12px', cursor: 'pointer' }}
+              >
+                Today
+              </button>
 
-            <button
-              onClick={() => handleNavigatePeriod(1)}
-              style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '12px', color: '#0F172A' }}
-            >
-              Next <ChevronRight size={16} />
-            </button>
+              <button
+                onClick={() => handleNavigatePeriod(1)}
+                style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, fontSize: '12px', color: '#0F172A' }}
+              >
+                Next <ChevronRight size={16} />
+              </button>
+            </div>
 
             {/* Date Picker Input */}
             <input
               type="date"
               value={currentDateStr}
               onChange={(e) => e.target.value && setCurrentDateStr(e.target.value)}
-              style={{ padding: '5px 10px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '12px', color: '#334155', fontWeight: 700 }}
+              style={{ padding: '5px 8px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '12px', color: '#334155', fontWeight: 700, maxWidth: '100%', boxSizing: 'border-box' }}
             />
           </div>
 
