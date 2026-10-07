@@ -65,9 +65,9 @@ export default function CalendarMonthView({ dateMap, currentDate, onSelectDate }
         overflowX: 'hidden'
       }}>
         {/* Weekday Header Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', marginBottom: '8px', textAlign: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '3px', marginBottom: '8px', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}>
           {WEEKDAY_HEADERS.map(w => (
-            <div key={w} style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', padding: '4px 0' }}>
+            <div key={w} style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', padding: '4px 0', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {w}
             </div>
           ))}
