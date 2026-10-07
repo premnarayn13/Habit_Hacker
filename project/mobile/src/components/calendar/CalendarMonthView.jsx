@@ -58,8 +58,11 @@ export default function CalendarMonthView({ dateMap, currentDate, onSelectDate }
         borderRadius: '20px',
         border: '1px solid #CBD5E1',
         borderBottom: '4px solid #94A3B8',
-        padding: '16px',
-        boxShadow: '0 8px 18px rgba(0,0,0,0.03)'
+        padding: '10px 6px',
+        boxShadow: '0 8px 18px rgba(0,0,0,0.03)',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        overflowX: 'hidden'
       }}>
         {/* Weekday Header Row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', marginBottom: '8px', textAlign: 'center' }}>
