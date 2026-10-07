@@ -164,31 +164,7 @@ export default function TaskSubtaskView({
   // Selected Task Object (ONLY populated if user explicitly clicked a card)
   const selectedTaskObj = selectedTaskId ? tasks.find(t => t.id === selectedTaskId) || null : null;
 
-  // LIGHTNING BOLT VISUAL PRIORITY INDICATOR
-  const renderPriorityVisual = (priority) => {
-    const p = (priority || 'HIGH').toUpperCase();
-    const color = (p === 'CRITICAL' || p === 'HIGH') ? '#DC2626' : (p === 'MEDIUM' ? '#F59E0B' : '#16A34A');
-    const labelText = `${p} Priority`;
 
-    return (
-      <div 
-        title={labelText} 
-        style={{ 
-          display: 'inline-flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          padding: '3px 5px',
-          borderRadius: '6px',
-          background: `${color}15`,
-          border: `1px solid ${color}40`,
-          cursor: 'pointer',
-          whiteSpace: 'nowrap'
-        }}
-      >
-        <Zap size={14} color={color} fill={color} />
-      </div>
-    );
-  };
 
   const handleTaskCardClick = (taskId) => {
     if (selectedTaskId === taskId) {
