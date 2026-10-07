@@ -75,31 +75,6 @@ export default function Header({
             </div>
           </div>
 
-          {/* Capacity Warning Indicator Pill */}
-          {isOverloaded && (
-            <div 
-              onClick={() => setActiveTab('planner')}
-              style={{
-                background: 'rgba(220, 38, 38, 0.1)',
-                border: '1px solid rgba(220, 38, 38, 0.4)',
-                color: '#DC2626',
-                padding: '3px 8px',
-                borderRadius: '16px',
-                fontSize: '10px',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '3px',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                flexShrink: 0
-              }}
-            >
-              <AlertTriangle size={12} color="#DC2626" />
-              <span>+{capacityData.overloadMinutes}m</span>
-            </div>
-          )}
-
           {/* Top Desktop Navigation Shortcuts */}
           <nav className="desktop-nav" style={{ display: 'flex', gap: '4px', background: '#F8FAFC', padding: '3px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
             <button 
