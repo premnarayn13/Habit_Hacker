@@ -207,13 +207,15 @@ export default function CalendarMainView({
         borderRadius: '18px',
         border: '1px solid #CBD5E1',
         borderBottom: '3px solid #94A3B8',
-        padding: '16px',
+        padding: '12px',
         boxShadow: '0 4px 10px rgba(0,0,0,0.02)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px'
+        gap: '12px',
+        maxWidth: '100%',
+        boxSizing: 'border-box'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', maxWidth: '100%' }}>
           
           {/* Navigation Controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', maxWidth: '100%' }}>
@@ -250,7 +252,7 @@ export default function CalendarMainView({
           </div>
 
           {/* Search Bar */}
-          <div style={{ position: 'relative', minWidth: '220px', flex: 1, maxWidth: '360px' }}>
+          <div style={{ position: 'relative', minWidth: '160px', flex: 1, maxWidth: '100%', boxSizing: 'border-box' }}>
             <Search size={15} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '10px' }} />
             <input
               type="text"
@@ -263,7 +265,7 @@ export default function CalendarMainView({
         </div>
 
         {/* Filter Dropdowns Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', paddingTop: '8px', borderTop: '1px solid #F1F5F9' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(115px, 1fr))', gap: '8px', paddingTop: '8px', borderTop: '1px solid #F1F5F9', maxWidth: '100%' }}>
           
           <select
             value={priorityFilter}
