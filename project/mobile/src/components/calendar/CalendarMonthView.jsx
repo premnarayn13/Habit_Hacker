@@ -74,7 +74,7 @@ export default function CalendarMonthView({ dateMap, currentDate, onSelectDate }
         </div>
 
         {/* 35/42 Cell Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '3px', width: '100%', boxSizing: 'border-box' }}>
           {cells.map(cell => {
             if (cell.isPadding) {
               return <div key={cell.key} style={{ minHeight: '85px', background: '#F8FAFC', borderRadius: '10px', opacity: 0.4 }} />;
