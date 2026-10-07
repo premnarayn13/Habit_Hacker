@@ -912,7 +912,6 @@ export default function TaskSubtaskView({
                                       }}>
                                         {child.title}
                                       </span>
-                                      {renderPriorityVisual(child.priority)}
                                     </div>
                                   </div>
                                 </div>
