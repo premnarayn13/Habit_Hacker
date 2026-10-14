@@ -649,6 +649,7 @@ export default function App() {
   const [subtaskFailureSummary, setSubtaskFailureSummary] = useState([]);
 
   const [availableCapacityMinutes, setAvailableCapacityMinutes] = useState(480);
+  const [selectedHabitDate, setSelectedHabitDate] = useState(() => getLocalDateString(new Date()));
 
   const [tasks, setTasks] = useState(() => {
     // On initial render we don't yet know the user, so start with empty.
@@ -1284,6 +1285,13 @@ export default function App() {
     setDedicatedTaskPageItem(null);
     setActiveTab(newTab);
     setTimeout(() => setIsLoadingView(false), 200);
+  };
+
+  const handleOpenDateInHabits = (dateStr) => {
+    if (dateStr) {
+      setSelectedHabitDate(dateStr);
+    }
+    handleTabSwitch('tasks');
   };
 
   const handleSignOut = () => {
@@ -2481,7 +2489,36 @@ export default function App() {
     }
   };
 
-  const handleToggleSubtask = (subtaskId) => {
+  const handleToggleSubtask = (subtaskId, targetDate = null) => {
+    const todayStr = getLocalDateString(new Date());
+    const isHistorical = targetDate && targetDate !== todayStr;
+    if (isHistorical) {
+      const targetSub = subtasks.find(s => s.id === subtaskId) || tasks.find(t => t.id === subtaskId);
+      const existingLog = (subtaskLogs || []).find(l => (l.subtask_id === subtaskId || l.subtaskId === subtaskId) && (l.log_date === targetDate || l.logged_date === targetDate));
+      const newStatus = existingLog?.status === 'COMPLETED' ? 'PLANNED' : 'COMPLETED';
+      const targetVal = targetSub?.targetValue || targetSub?.targetCount || 1;
+      const newLog = {
+        id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'sublog-' + Date.now(),
+        subtask_id: subtaskId,
+        subtaskId: subtaskId,
+        log_date: targetDate,
+        logged_date: targetDate,
+        status: newStatus,
+        is_completed: newStatus === 'COMPLETED',
+        isCompleted: newStatus === 'COMPLETED',
+        completedValue: newStatus === 'COMPLETED' ? targetVal : 0,
+        measured_value: newStatus === 'COMPLETED' ? targetVal : 0,
+        created_at: new Date().toISOString()
+      };
+      const updatedLogs = [...(subtaskLogs || []).filter(l => !((l.subtask_id === subtaskId || l.subtaskId === subtaskId) && (l.log_date === targetDate || l.logged_date === targetDate))), newLog];
+      setSubtaskLogs(updatedLogs);
+      if (currentUser?.email) {
+        try {
+          localStorage.setItem('hh_subtask_logs_' + currentUser.email.toLowerCase(), JSON.stringify(updatedLogs));
+        } catch (e) {}
+      }
+      return;
+    }
     setSubtasks(prev => prev.map(s => {
       if (s.id === subtaskId) {
         const nextStatus = s.status === 'COMPLETED' ? 'PLANNED' : 'COMPLETED';
@@ -2921,6 +2958,8 @@ export default function App() {
                   onOpenDedicatedTaskPage={(task) => setDedicatedTaskPageItem(task)}
                   onEditTask={(task) => setSelectedEditItem(task)}
                   onExtendTask={handleExtendTask}
+                  selectedDate={selectedHabitDate}
+                  onSelectDate={setSelectedHabitDate}
                 />
               )}
 
@@ -2943,6 +2982,7 @@ export default function App() {
                   logs={[]}
                   capacityMinutes={availableCapacityMinutes}
                   onToggleTask={handleToggleTask}
+                  onOpenDateInHabits={handleOpenDateInHabits}
                   onUpdateTaskProgress={(id, prog) => {
                     const updated = tasks.map(t => t.id === id ? { ...t, progressPercent: prog } : t);
                     updateTasksState(updated);
