@@ -46,7 +46,9 @@ export default function TaskSubtaskView({
   onUnmapSubtask,
   onOpenDedicatedTaskPage,
   onEditTask,
-  onExtendTask
+  onExtendTask,
+  selectedDate,
+  onSelectDate
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('ALL');
@@ -87,6 +89,32 @@ export default function TaskSubtaskView({
   let displayedTasks = activeParentTasks;
 
   const todayStr = getLocalDateString(new Date());
+  const effectiveDate = selectedDate || todayStr;
+  const isPastDateMode = effectiveDate !== todayStr;
+
+  const handleShiftDate = (days) => {
+    try {
+      const parts = effectiveDate.split('-');
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      d.setDate(d.getDate() + days);
+      const newDateStr = getLocalDateString(d);
+      if (onSelectDate) onSelectDate(newDateStr);
+    } catch (e) {}
+  };
+
+  const handleResetToToday = () => {
+    if (onSelectDate) onSelectDate(todayStr);
+  };
+
+  const formattedSelectedDate = (() => {
+    try {
+      const parts = effectiveDate.split('-');
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    } catch (e) {
+      return effectiveDate;
+    }
+  })();
 
   // Helper: Is task overall finished (Refers to tasks whose planned end date has passed OR 100% target count reached)
   const isTaskOverallFinished = (t) => {
@@ -285,6 +313,162 @@ export default function TaskSubtaskView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: selectedTaskObj ? '90px' : '20px' }}>
       
+      {/* 1. DATE TRAVEL & HISTORICAL MISSED DATES NAVIGATOR */}
+      <div 
+        className="glass-panel" 
+        style={{ 
+          padding: '12px 14px', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '8px',
+          background: isPastDateMode ? 'linear-gradient(135deg, #FFFBEB, #FEF3C7)' : 'linear-gradient(135deg, #FFFFFF, #F8FAFC)',
+          border: isPastDateMode ? '1.5px solid #F59E0B' : '1px solid #E2E8F0',
+          borderRadius: '14px',
+          boxShadow: isPastDateMode ? '0 4px 14px rgba(245, 158, 11, 0.12)' : '0 2px 8px rgba(15, 23, 42, 0.04)'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              backgroundColor: isPastDateMode ? '#D97706' : '#DC2626',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFFFFF'
+            }}>
+              <Calendar size={17} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>
+                  {formattedSelectedDate}
+                </span>
+                {isPastDateMode ? (
+                  <span style={{ 
+                    fontSize: '10px', 
+                    fontWeight: 800, 
+                    backgroundColor: '#FDE68A', 
+                    color: '#92400E', 
+                    padding: '2px 6px', 
+                    borderRadius: '4px',
+                    border: '1px solid #FCD34D'
+                  }}>
+                    Missed Date Log Mode
+                  </span>
+                ) : (
+                  <span style={{ 
+                    fontSize: '10px', 
+                    fontWeight: 800, 
+                    backgroundColor: '#DCFCE7', 
+                    color: '#15803D', 
+                    padding: '2px 6px', 
+                    borderRadius: '4px',
+                    border: '1px solid #86EFAC'
+                  }}>
+                    Today
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: '11px', color: isPastDateMode ? '#B45309' : '#64748B', fontWeight: 600 }}>
+                {isPastDateMode 
+                  ? "Changes & measures (including 0) will be recorded for this past date"
+                  : "Logging daily habits in real time"}
+              </div>
+            </div>
+          </div>
+
+          {/* Stepper & Date Picker Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              onClick={() => handleShiftDate(-1)}
+              style={{
+                background: '#FFFFFF',
+                border: '1px solid #CBD5E1',
+                borderRadius: '8px',
+                padding: '6px 10px',
+                fontSize: '12px',
+                fontWeight: 800,
+                color: '#334155',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+              title="Previous Day"
+            >
+              ‹ Prev
+            </button>
+
+            <input
+              type="date"
+              value={effectiveDate}
+              onChange={(e) => {
+                if (e.target.value && onSelectDate) {
+                  onSelectDate(e.target.value);
+                }
+              }}
+              style={{
+                background: '#FFFFFF',
+                border: '1px solid #CBD5E1',
+                borderRadius: '8px',
+                padding: '5px 8px',
+                fontSize: '12px',
+                fontWeight: 700,
+                color: '#0F172A',
+                cursor: 'pointer'
+              }}
+            />
+
+            <button
+              onClick={() => handleShiftDate(1)}
+              style={{
+                background: '#FFFFFF',
+                border: '1px solid #CBD5E1',
+                borderRadius: '8px',
+                padding: '6px 10px',
+                fontSize: '12px',
+                fontWeight: 800,
+                color: '#334155',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+              title="Next Day"
+            >
+              Next ›
+            </button>
+
+            {isPastDateMode && (
+              <button
+                onClick={handleResetToToday}
+                style={{
+                  background: '#2563EB',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '6px 12px',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  color: '#FFFFFF',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  boxShadow: '0 2px 6px rgba(37, 99, 235, 0.2)'
+                }}
+              >
+                Jump to Today
+              </button>
+            )}
+          </div>
+
+        </div>
+      </div>
+
       {/* FILTER & CONTROL TOOLBAR */}
       <div className="glass-panel" style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         
