@@ -827,7 +827,7 @@ export default function TaskSubtaskView({
                             <span style={{ fontSize: '12px', fontWeight: 800, color: '#334155' }}>Subtasks</span>
                             {subtaskTotalCount > 0 && (
                               <span style={{ background: '#FEF3C7', color: '#D97706', border: '1px solid #FDE68A', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                <CheckCircle2 size={12} color="#D97706" /> {subtaskRatioStr} ({subtaskProgPercent}%)
+                                <CheckCircle2 size={12} color="#D97706" /> {subtaskRatioStr}
                               </span>
                             )}
                           </div>
@@ -913,7 +913,7 @@ export default function TaskSubtaskView({
                                     ))}
                                   </div>
                                   <span style={{ fontSize: '12px', fontWeight: 800, color: isOpt ? '#7C3AED' : '#D97706' }}>
-                                    {childProg}% ({childDone}/{childTarget})
+                                    ({childDone}/{childTarget})
                                   </span>
 
                                   {/* Delete Child Subtask Button */}
