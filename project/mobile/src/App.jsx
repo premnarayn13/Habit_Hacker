@@ -666,6 +666,20 @@ export default function App() {
     // Preserve original subtask mappings
     let updatedTasks = [...rawTasks];
 
+    // 1. Automatic revoke on new day for tasks completed on previous days
+    updatedTasks = updatedTasks.map(task => {
+      const compDate = task.completedDate || (task.completedAt ? getLocalDateString(task.completedAt) : null);
+      if (compDate && compDate < todayStr && (task.isDoneToday || Number(task.loggedMeasureVal || 0) > 0)) {
+        return {
+          ...task,
+          isDoneToday: false,
+          loggedMeasureVal: 0,
+          lastMeasuredValue: Number(task.loggedMeasureVal || task.lastMeasuredValue || 0)
+        };
+      }
+      return task;
+    });
+
     // 2. Automated Parent Completion Driven by Child Subtasks
     updatedTasks = updatedTasks.map(task => {
       const childSubtasks = updatedTasks.filter(t => t.parentTaskId === task.id);
@@ -1096,11 +1110,6 @@ export default function App() {
         // Check if item is an event-based task or subhabit of an event-based parent
         const parent = item.parentTaskId ? fetchedItems.find(p => p.id === item.parentTaskId) : null;
         const isEventTask = item.trackingMode === 'count_event' || (parent && parent.trackingMode === 'count_event');
-
-        // Type 3 event count parent & subhabits persist beyond the calendar day until event finishes
-        if (isEventTask) {
-          return item;
-        }
 
         // For Type 1 and Type 2 tasks:
         // A task is completed TODAY if and only if it has an explicit completion / log for today's local date
@@ -1569,6 +1578,7 @@ export default function App() {
           isDoneToday: nextIsDone,
           completedBy: nextIsDone ? (currentUser?.email || 'Collaborator') : null,
           completedAt: nextIsDone ? new Date().toISOString() : null,
+          completedDate: nextIsDone ? getLocalDateString(new Date()) : null,
           lastMeasuredValue: measuredVal,
           loggedMeasureVal: cumulativeMeasure
         };
