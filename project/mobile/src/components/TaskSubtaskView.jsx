@@ -515,7 +515,7 @@ export default function TaskSubtaskView({
               : (isTaskDone ? '#F8FAFC' : '#FFFFFF');
 
             // Subtask completion stats for expanded dropdown section
-            const subtaskCompletedCount = childTasks.filter(c => c.isDoneToday || c.progressPercent >= 100 || (Number(c.currentCount || 0) > 0)).length;
+            const subtaskCompletedCount = childTasks.filter(c => c.isDoneToday || c.progressPercent >= 100).length;
             const subtaskTotalCount = childTasks.length;
             const subtaskRatioStr = `${subtaskCompletedCount}:${subtaskTotalCount} Completed`;
             const subtaskProgPercent = subtaskTotalCount > 0 ? Math.round((subtaskCompletedCount / subtaskTotalCount) * 100) : 0;
@@ -873,7 +873,7 @@ export default function TaskSubtaskView({
                                     onClick={(e) => handleCheckmarkClick(e, child)}
                                     style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
                                   >
-                                    {child.progressPercent >= 100 || child.isDoneToday || (Number(child.currentCount || 0) > 0) ? (
+                                    {child.progressPercent >= 100 || child.isDoneToday ? (
                                       <CheckCircle2 size={18} color={isOpt ? '#7C3AED' : '#D97706'} />
                                     ) : (
                                       <Circle size={18} color="#94A3B8" />
@@ -886,7 +886,7 @@ export default function TaskSubtaskView({
                                       <span style={{ 
                                         fontSize: '13px', 
                                         fontWeight: 800, 
-                                        color: child.progressPercent >= 100 || child.isDoneToday || (Number(child.currentCount || 0) > 0) ? '#475569' : (isOpt ? '#5B21B6' : '#0F172A')
+                                        color: child.progressPercent >= 100 || child.isDoneToday ? '#475569' : (isOpt ? '#5B21B6' : '#0F172A')
                                       }}>
                                         {child.title}
                                       </span>
