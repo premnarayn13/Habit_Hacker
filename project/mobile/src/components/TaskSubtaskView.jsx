@@ -852,12 +852,14 @@ export default function TaskSubtaskView({
                             const childProg = (child.progressPercent !== undefined && child.progressPercent !== null) ? child.progressPercent : (childTarget > 0 ? Math.round((childDone / childTarget) * 100) : 0);
                             const childHeatmapTiles = get7DayHeatmapTiles(child, []);
 
+                            const isOpt = !!child.isOptional;
+
                             return (
                               <div 
                                 key={child.id}
                                 style={{
-                                  background: '#FFFDF5',
-                                  border: '1px solid #FDE68A',
+                                  background: isOpt ? '#F5F3FF' : '#FFFDF5',
+                                  border: isOpt ? '1px solid #DDD6FE' : '1px solid #FDE68A',
                                   borderRadius: '8px',
                                   padding: '8px 12px',
                                   display: 'flex',
@@ -872,7 +874,7 @@ export default function TaskSubtaskView({
                                     style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
                                   >
                                     {child.progressPercent >= 100 || child.isDoneToday || (Number(child.currentCount || 0) > 0) ? (
-                                      <CheckCircle2 size={18} color="#D97706" />
+                                      <CheckCircle2 size={18} color={isOpt ? '#7C3AED' : '#D97706'} />
                                     ) : (
                                       <Circle size={18} color="#94A3B8" />
                                     )}
@@ -880,14 +882,27 @@ export default function TaskSubtaskView({
 
                                   <div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      <CornerDownRight size={13} color="#D97706" />
+                                      <CornerDownRight size={13} color={isOpt ? '#7C3AED' : '#D97706'} />
                                       <span style={{ 
                                         fontSize: '13px', 
                                         fontWeight: 800, 
-                                        color: child.progressPercent >= 100 || child.isDoneToday || (Number(child.currentCount || 0) > 0) ? '#475569' : '#0F172A'
+                                        color: child.progressPercent >= 100 || child.isDoneToday || (Number(child.currentCount || 0) > 0) ? '#475569' : (isOpt ? '#5B21B6' : '#0F172A')
                                       }}>
                                         {child.title}
                                       </span>
+                                      {isOpt && (
+                                        <span style={{ 
+                                          fontSize: '9px', 
+                                          fontWeight: 800, 
+                                          color: '#7C3AED', 
+                                          background: '#EDE9FE', 
+                                          border: '1px solid #DDD6FE', 
+                                          padding: '1px 5px', 
+                                          borderRadius: '4px' 
+                                        }}>
+                                          Optional
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -910,7 +925,7 @@ export default function TaskSubtaskView({
                                       />
                                     ))}
                                   </div>
-                                  <span style={{ fontSize: '12px', fontWeight: 800, color: '#D97706' }}>
+                                  <span style={{ fontSize: '12px', fontWeight: 800, color: isOpt ? '#7C3AED' : '#D97706' }}>
                                     {childProg}% ({childDone}/{childTarget})
                                   </span>
 
