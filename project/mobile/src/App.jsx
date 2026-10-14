@@ -1802,7 +1802,6 @@ export default function App() {
       collaborationService.syncTaskCompletionStatus(taskId, currentUser?.email || 'User', updatedTask.isDoneToday);
     }
 
-    const todayStr = getLocalDateString(new Date());
     const nowIso = new Date().toISOString();
 
     if (currentUser && updatedTask) {
