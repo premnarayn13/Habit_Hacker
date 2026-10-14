@@ -497,7 +497,7 @@ export default function TaskSubtaskView({
           };
 
           return displayedTasks.map(task => {
-            const isExpanded = expandedTasks[task.id] !== false;
+            const isExpanded = Boolean(expandedTasks[task.id]);
             const childTasks = tasks.filter(t => t.parentTaskId === task.id);
             const isSubtaskEntity = !!task.parentTaskId;
             const parentTaskObj = isSubtaskEntity ? tasks.find(pt => pt.id === task.parentTaskId) : null;
