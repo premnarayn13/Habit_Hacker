@@ -939,17 +939,17 @@ export default function TodayDashboard({
                             display: 'flex', 
                             alignItems: 'center', 
                             justify: 'space-between', 
-                            background: st.isDoneToday ? '#F0FDF4' : '#FFF', 
+                            background: st.isDoneToday ? '#F0FDF4' : (st.isOptional ? '#F5F3FF' : '#FFF'), 
                             padding: '6px 10px', 
                             borderRadius: '8px', 
-                            border: st.isDoneToday ? '1px solid #BBF7D0' : '1px solid #E2E8F0',
+                            border: st.isDoneToday ? '1px solid #BBF7D0' : (st.isOptional ? '1px solid #DDD6FE' : '1px solid #E2E8F0'),
                             cursor: 'pointer'
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            {st.isDoneToday ? <CheckCircle2 size={16} color="#16A34A" /> : <Circle size={16} color="#CBD5E1" />}
-                            <span style={{ fontSize: '11px', fontWeight: 800, color: st.isDoneToday ? '#16A34A' : '#0F172A', textDecoration: 'none' }}>
-                              {st.title} {st.isOptional && <span style={{ fontSize: '9px', color: '#94A3B8', fontStyle: 'italic' }}>(Optional)</span>}
+                            {st.isDoneToday ? <CheckCircle2 size={16} color="#16A34A" /> : <Circle size={16} color={st.isOptional ? '#A78BFA' : '#CBD5E1'} />}
+                            <span style={{ fontSize: '11px', fontWeight: 800, color: st.isDoneToday ? '#16A34A' : (st.isOptional ? '#5B21B6' : '#0F172A'), textDecoration: 'none' }}>
+                              {st.title} {st.isOptional && <span style={{ fontSize: '9px', fontWeight: 800, color: '#7C3AED', background: '#EDE9FE', border: '1px solid #DDD6FE', padding: '1px 5px', borderRadius: '4px', marginLeft: '4px' }}>Optional</span>}
                             </span>
                           </div>
 
@@ -1133,8 +1133,8 @@ export default function TodayDashboard({
                                   <button onClick={(e) => { e.stopPropagation(); handleInitiateTaskCompletion(st); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                                     {st.isDoneToday ? <CheckCircle2 size={13} color="#16A34A" /> : <Circle size={13} color="#CBD5E1" />}
                                   </button>
-                                  <span style={{ textDecoration: 'none', fontWeight: 600, color: st.isDoneToday ? '#16A34A' : '#0F172A' }}>
-                                    {st.title} {st.isOptional && <span style={{ fontSize: '8px', color: '#94A3B8' }}>(Opt)</span>}
+                                  <span style={{ textDecoration: 'none', fontWeight: 600, color: st.isDoneToday ? '#16A34A' : (st.isOptional ? '#5B21B6' : '#0F172A') }}>
+                                    {st.title} {st.isOptional && <span style={{ fontSize: '8px', color: '#7C3AED', fontWeight: 800, background: '#EDE9FE', border: '1px solid #DDD6FE', padding: '1px 4px', borderRadius: '4px', marginLeft: '3px' }}>Opt</span>}
                                   </span>
                                 </div>
                                 <span style={{ fontSize: '9px', color: '#94A3B8', fontWeight: 700 }}>
