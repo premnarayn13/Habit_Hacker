@@ -674,15 +674,15 @@ export default function App() {
         
         // Count mandatory vs total completed
         const mandatoryChildren = childSubtasks.filter(c => !c.isOptional);
-        const completedMandatoryCount = mandatoryChildren.filter(c => c.isDoneToday || c.progressPercent >= 100 || (Number(c.currentCount || 0) > 0)).length;
-        const totalCompletedCount = childSubtasks.filter(c => c.isDoneToday || c.progressPercent >= 100 || (Number(c.currentCount || 0) > 0)).length;
+        const completedMandatoryCount = mandatoryChildren.filter(c => c.isDoneToday || c.progressPercent >= 100).length;
+        const totalCompletedCount = childSubtasks.filter(c => c.isDoneToday || c.progressPercent >= 100).length;
         
-        // Parent completion: driven by mandatory subtasks (optional subtasks do NOT prevent completion)
+        // Parent completion: driven by mandatory subtasks completed today
         const parentDoneToday = isParentWithChildren 
           ? (mandatoryChildren.length > 0 ? completedMandatoryCount === mandatoryChildren.length : totalCompletedCount > 0)
           : (task.isDoneToday || task.progressPercent >= 100);
 
-        const subtaskProg = Math.round((totalCompletedCount / childSubtasks.length) * 100);
+        const subtaskProg = childSubtasks.length > 0 ? Math.round((totalCompletedCount / childSubtasks.length) * 100) : 0;
         const targetMax = task.targetCount || task.targetDayCount || task.targetEventCount || 45;
         
         let parentCurrent = task.currentCount || 0;
@@ -710,7 +710,7 @@ export default function App() {
           subtaskProgPercent: subtaskProg,
           subtaskCompletedCount: totalCompletedCount,
           subtaskTotalCount: childSubtasks.length,
-          isDoneToday: task.trackingMode === 'count_event' ? ((parentCurrent > 0) || parentDoneToday) : parentDoneToday,
+          isDoneToday: parentDoneToday,
           currentCount: parentCurrent,
           currentDayCount: parentCurrent,
           currentEventCount: parentCurrent,
