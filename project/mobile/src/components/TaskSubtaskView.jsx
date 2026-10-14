@@ -202,6 +202,52 @@ export default function TaskSubtaskView({
     }
   };
 
+  // Check whether an item is completed on the selected effectiveDate
+  const isItemDoneOnEffectiveDate = (item) => {
+    if (!item) return false;
+    if (!isPastDateMode) {
+      return item.isDoneToday || item.progressPercent >= 100;
+    }
+    const tLog = (taskLogs || []).find(l => {
+      const lDate = l.log_date || l.logged_date || l.entry_date;
+      return (l.task_id === item.id || l.taskId === item.id) && lDate === effectiveDate;
+    });
+    if (tLog && (tLog.is_successful || tLog.is_completed || tLog.isCompleted || tLog.status === 'COMPLETED' || tLog.measured_value !== undefined)) {
+      return true;
+    }
+    const sLog = (subtaskLogs || []).find(l => {
+      const lDate = l.log_date || l.logged_date || l.entry_date;
+      return (l.subtask_id === item.id || l.subtaskId === item.id) && lDate === effectiveDate;
+    });
+    if (sLog && (sLog.is_completed || sLog.isCompleted || sLog.status === 'COMPLETED' || sLog.measured_value !== undefined)) {
+      return true;
+    }
+    return false;
+  };
+
+  // Get logged measure value for an item on the selected effectiveDate
+  const getItemMeasureOnEffectiveDate = (item) => {
+    if (!item) return 0;
+    if (!isPastDateMode) {
+      return Number(item.loggedMeasureVal || 0);
+    }
+    const tLog = (taskLogs || []).find(l => {
+      const lDate = l.log_date || l.logged_date || l.entry_date;
+      return (l.task_id === item.id || l.taskId === item.id) && lDate === effectiveDate;
+    });
+    if (tLog && tLog.measured_value !== undefined && tLog.measured_value !== null) {
+      return Number(tLog.measured_value);
+    }
+    const sLog = (subtaskLogs || []).find(l => {
+      const lDate = l.log_date || l.logged_date || l.entry_date;
+      return (l.subtask_id === item.id || l.subtaskId === item.id) && lDate === effectiveDate;
+    });
+    if (sLog && sLog.measured_value !== undefined && sLog.measured_value !== null) {
+      return Number(sLog.measured_value);
+    }
+    return 0;
+  };
+
   // Intercept Task Completion for Measure Tracking and Parent Hierarchy
   const handleCheckmarkClick = (e, task) => {
     e.stopPropagation();
@@ -210,7 +256,7 @@ export default function TaskSubtaskView({
       alert("Parent task completion is driven automatically when all non-optional subtasks are completed.");
       return;
     }
-    const isDone = task.isDoneToday || task.progressPercent >= 100;
+    const isDone = isItemDoneOnEffectiveDate(task);
     
     // Check if task or habit is measure-based
     const hasMeasure = Boolean(
@@ -227,7 +273,12 @@ export default function TaskSubtaskView({
       setMeasureModalAction('TOGGLE');
       setMeasureInputValue(task.measureTarget || task.eventUnitTarget || '');
     } else {
-      onToggleTask(task.id);
+      if (task.parentTaskId) {
+        if (onToggleSubtask) onToggleSubtask(task.id, effectiveDate);
+        else onToggleTask(task.id, null, effectiveDate);
+      } else {
+        onToggleTask(task.id, null, effectiveDate);
+      }
     }
   };
 
@@ -245,17 +296,19 @@ export default function TaskSubtaskView({
       setMeasureModalAction('LOG_EVENT');
       setMeasureInputValue(task.eventUnitTarget || task.measureTarget || 10);
     } else {
-      onLogEventCount(task.id);
+      onLogEventCount(task.id, null, effectiveDate);
     }
   };
 
   const handleSaveMeasureAndComplete = () => {
     if (measureModalTask) {
-      const val = parseFloat(measureInputValue) || Number(measureModalTask.eventUnitTarget) || Number(measureModalTask.measureTarget) || 0;
+      const parsed = parseFloat(measureInputValue);
+      // Explicitly allow 0 as a valid measure value!
+      const val = !isNaN(parsed) ? parsed : (Number(measureModalTask.eventUnitTarget) || Number(measureModalTask.measureTarget) || 0);
       if (measureModalAction === 'LOG_EVENT') {
-        onLogEventCount(measureModalTask.id, val);
+        onLogEventCount(measureModalTask.id, val, effectiveDate);
       } else {
-        onToggleTask(measureModalTask.id, val);
+        onToggleTask(measureModalTask.id, val, effectiveDate);
       }
       setMeasureModalTask(null);
       setMeasureInputValue('');
@@ -685,7 +738,7 @@ export default function TaskSubtaskView({
             const childTasks = tasks.filter(t => t.parentTaskId === task.id);
             const isSubtaskEntity = !!task.parentTaskId;
             const parentTaskObj = isSubtaskEntity ? tasks.find(pt => pt.id === task.parentTaskId) : null;
-            const isTaskDone = task.isDoneToday || task.progressPercent >= 100;
+            const isTaskDone = isItemDoneOnEffectiveDate(task);
             const isSelected = selectedTaskId === task.id;
 
             // Calculations for Task Row KPI Badges
@@ -699,7 +752,7 @@ export default function TaskSubtaskView({
               : (isTaskDone ? '#F8FAFC' : '#FFFFFF');
 
             // Subtask completion stats for expanded dropdown section
-            const subtaskCompletedCount = childTasks.filter(c => c.isDoneToday || c.progressPercent >= 100).length;
+            const subtaskCompletedCount = childTasks.filter(c => isItemDoneOnEffectiveDate(c)).length;
             const subtaskTotalCount = childTasks.length;
             const subtaskRatioStr = `${subtaskCompletedCount}:${subtaskTotalCount} Completed`;
             const subtaskProgPercent = subtaskTotalCount > 0 ? Math.round((subtaskCompletedCount / subtaskTotalCount) * 100) : 0;
@@ -772,9 +825,10 @@ export default function TaskSubtaskView({
                         {/* Measure Target Pill (Applies to Type 1, Type 2, Type 3) */}
                         {(() => {
                           const isParent = childTasks && childTasks.length > 0;
+                          const loggedMeasure = getItemMeasureOnEffectiveDate(task);
                           const parentDailyMeasure = isParent 
-                            ? Math.max(calculateParentDailyMeasure(childTasks), Number(task.loggedMeasureVal || 0)) 
-                            : Number(task.loggedMeasureVal || 0);
+                            ? Math.max(calculateParentDailyMeasure(childTasks), loggedMeasure) 
+                            : loggedMeasure;
                           const childrenTargetSum = isParent ? childTasks.reduce((acc, c) => acc + Number(c.measureTarget || 0), 0) : 0;
                           const targetMeasure = isParent && childrenTargetSum > 0 ? childrenTargetSum : Number(task.measureTarget || 0);
                           const hasMeasure = task.hasMeasureTracking || targetMeasure > 0 || parentDailyMeasure > 0;
@@ -1032,7 +1086,8 @@ export default function TaskSubtaskView({
                           childTasks.map(child => {
                             const parentTarget = task.targetCount || task.targetDayCount || calculateSpanDays(task.plannedStart, task.plannedEnd) || 30;
                             const childTarget = child.targetCount || child.targetDayCount || parentTarget;
-                            const childDone = (child.currentCount !== undefined && child.currentCount !== null) ? child.currentCount : (child.isDoneToday ? childTarget : 0);
+                            const isChildDone = isItemDoneOnEffectiveDate(child);
+                            const childDone = (child.currentCount !== undefined && child.currentCount !== null) ? child.currentCount : (isChildDone ? childTarget : 0);
                             const childProg = (child.progressPercent !== undefined && child.progressPercent !== null) ? child.progressPercent : (childTarget > 0 ? Math.round((childDone / childTarget) * 100) : 0);
                             const childHeatmapTiles = get7DayHeatmapTiles(child, []);
 
@@ -1057,7 +1112,7 @@ export default function TaskSubtaskView({
                                     onClick={(e) => handleCheckmarkClick(e, child)}
                                     style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
                                   >
-                                    {child.progressPercent >= 100 || child.isDoneToday ? (
+                                    {isChildDone ? (
                                       <CheckCircle2 size={18} color={isOpt ? '#7C3AED' : '#D97706'} />
                                     ) : (
                                       <Circle size={18} color="#94A3B8" />
@@ -1070,7 +1125,7 @@ export default function TaskSubtaskView({
                                       <span style={{ 
                                         fontSize: '13px', 
                                         fontWeight: 800, 
-                                        color: child.progressPercent >= 100 || child.isDoneToday ? '#475569' : (isOpt ? '#5B21B6' : '#0F172A')
+                                        color: isChildDone ? '#475569' : (isOpt ? '#5B21B6' : '#0F172A')
                                       }}>
                                         {child.title}
                                       </span>
@@ -1442,7 +1497,9 @@ export default function TaskSubtaskView({
               </div>
               <div>
                 <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A' }}>
-                  {measureModalAction === 'LOG_EVENT' ? 'Log Event Measure' : 'Log Daily Measure'}
+                  {measureModalAction === 'LOG_EVENT' 
+                    ? 'Log Event Measure' 
+                    : (isPastDateMode ? `Log Measure for ${effectiveDate}` : 'Log Daily Measure')}
                 </h3>
                 <p style={{ fontSize: '12px', color: '#64748B' }}>{measureModalTask.title}</p>
               </div>
@@ -1452,19 +1509,56 @@ export default function TaskSubtaskView({
               <label style={{ fontSize: '12px', fontWeight: 800, color: '#475569', display: 'block', marginBottom: '6px' }}>
                 {measureModalAction === 'LOG_EVENT' 
                   ? `Enter measure for this event (${measureModalTask.measureUnit || 'units'}):` 
-                  : `Enter today's measure (${measureModalTask.measureUnit || 'units'}):`
+                  : (isPastDateMode ? `Enter measure for ${effectiveDate} (${measureModalTask.measureUnit || 'units'}, enter 0 for missed):` : `Enter today's measure (${measureModalTask.measureUnit || 'units'}):`)
                 }
               </label>
               <input 
                 type="number"
                 step="any"
                 autoFocus
-                placeholder={`e.g., ${measureModalTask.eventUnitTarget || measureModalTask.measureTarget || 10} ${measureModalTask.measureUnit || 'units'}`}
+                placeholder={`e.g., ${measureModalTask.eventUnitTarget || measureModalTask.measureTarget || 0} ${measureModalTask.measureUnit || 'units'}`}
                 value={measureInputValue}
                 onChange={(e) => setMeasureInputValue(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSaveMeasureAndComplete(); }}
                 style={{ width: '100%', height: '42px', borderRadius: '10px', paddingLeft: '14px', fontSize: '14px', border: '1.5px solid #2563EB', fontWeight: 700 }}
               />
+
+              <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setMeasureInputValue('0')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    background: '#F1F5F9',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '6px',
+                    color: '#475569',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Set to 0 (Missed)
+                </button>
+                {(measureModalTask.eventUnitTarget > 0 || measureModalTask.measureTarget > 0) && (
+                  <button
+                    type="button"
+                    onClick={() => setMeasureInputValue(String(measureModalTask.eventUnitTarget || measureModalTask.measureTarget))}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      background: '#EFF6FF',
+                      border: '1px solid #BFDBFE',
+                      borderRadius: '6px',
+                      color: '#2563EB',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Set to Target ({measureModalTask.eventUnitTarget || measureModalTask.measureTarget})
+                  </button>
+                )}
+              </div>
               {(measureModalTask.eventUnitTarget > 0 || measureModalTask.measureTarget > 0) && (
                 <div style={{ fontSize: '11px', color: '#64748B', marginTop: '6px' }}>
                   Target: {measureModalTask.eventUnitTarget || measureModalTask.measureTarget} {measureModalTask.measureUnit || 'units'} / event
