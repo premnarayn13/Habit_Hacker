@@ -124,7 +124,7 @@ export function calculateSubtaskContribution(subtask, isCompleted = false, event
     const unitMeasure = Number(subtask.lastMeasuredValue || subtask.eventUnitTarget || subtask.measureTarget || 10);
     const evCount = (eventCount !== undefined && eventCount !== null && Number(eventCount) > 0)
       ? Number(eventCount)
-      : ((isCompleted || subtask.isDoneToday || (Number(subtask.currentCount || 0) > 0)) ? Number(subtask.todayEventCount || subtask.currentCount || 1) : 0);
+      : ((isCompleted || subtask.isDoneToday) ? Number(subtask.todayEventCount || 1) : 0);
 
     if (evCount <= 0) return 0;
 
@@ -170,7 +170,7 @@ export function calculateParentDailyMeasure(childSubtasks = [], dayLogsMap = {})
       : (log.measured_value !== undefined ? log.measured_value : null);
     const isCompleted = log.isCompleted !== undefined 
       ? Boolean(log.isCompleted) 
-      : Boolean(st.isDoneToday || st.progressPercent >= 100 || (logVal !== null && logVal > 0) || (st.loggedMeasureVal && Number(st.loggedMeasureVal) > 0) || (Number(st.currentCount || 0) > 0));
+      : Boolean(st.isDoneToday || st.progressPercent >= 100 || (logVal !== null && logVal > 0) || (st.loggedMeasureVal && Number(st.loggedMeasureVal) > 0));
     const eventCount = log.eventCount !== undefined 
       ? Number(log.eventCount) 
       : (isCompleted ? Number(st.todayEventCount || st.currentCount || 1) : 0);

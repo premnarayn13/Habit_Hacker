@@ -508,9 +508,9 @@ export default function TaskDedicatedPageView({
 
   // Today's actual measure contribution:
   const todayChildContribution = directChildSubtasks.reduce((sum, st) => {
-    const isCompleted = st.isDoneToday || st.progressPercent >= 100 || (Number(st.currentCount || 0) > 0);
+    const isCompleted = st.isDoneToday || st.progressPercent >= 100;
     const evCount = st.trackingMode === 'count_event' 
-      ? Math.max(1, Number(st.todayEventCount || st.currentCount || (isCompleted ? 1 : 0))) 
+      ? Math.max(1, Number(st.todayEventCount || (isCompleted ? 1 : 0))) 
       : 0;
     return sum + calculateSubtaskContribution(st, isCompleted, evCount, avgMeasured, directChildSubtasks);
   }, 0);
@@ -524,7 +524,7 @@ export default function TaskDedicatedPageView({
         ? Number(currentTask.loggedMeasureVal)
         : (loggedTodayVal !== undefined 
             ? loggedTodayVal 
-            : ((currentTask.isDoneToday || Number(currentTask.currentCount || 0) > 0) ? (currentTask.lastMeasuredValue || measureTarget) : 0)));
+            : (currentTask.isDoneToday ? (currentTask.lastMeasuredValue || measureTarget) : 0)));
 
   // FULL TIMELINE DAY-BY-DAY DATA ENGINE (From plannedStart / Day 1 up to today / Day elapsedDays)
   const missedDaysRecordsList = getMissedDaysForTask({ ...currentTask, elapsedDays }, directChildSubtasks, elapsedDays, subtaskLogsByDate);
@@ -895,12 +895,12 @@ export default function TaskDedicatedPageView({
                 val = todayLogs.reduce((sum, el) => sum + Number(el.total_work_accumulated || el.measured_value || 0), 0);
               }
             }
-            if (val <= 0 && (currentTask.isDoneToday || (currentTask.todayEventCount || 0) > 0 || (currentTask.currentCount || 0) > 0)) {
+            if (val <= 0 && (currentTask.isDoneToday || (currentTask.todayEventCount || 0) > 0)) {
               val = Number(st.loggedMeasureVal || 0);
             }
           } else {
             val = Number(st.loggedMeasureVal || 0);
-            if (val <= 0 && (st.isDoneToday || st.progressPercent >= 100 || Number(st.currentCount || 0) > 0)) {
+            if (val <= 0 && (st.isDoneToday || st.progressPercent >= 100)) {
               val = Number(st.lastMeasuredValue || st.eventUnitTarget || st.measureTarget || 0);
             }
           }
@@ -1002,12 +1002,12 @@ export default function TaskDedicatedPageView({
           );
           if (todayLogs.length > 0) {
             val = todayLogs.reduce((sum, el) => sum + Number(el.total_work_accumulated || el.measured_value || 0), 0);
-          } else if (currentTask.isDoneToday || (currentTask.todayEventCount || 0) > 0 || (currentTask.currentCount || 0) > 0) {
+          } else if (currentTask.isDoneToday || (currentTask.todayEventCount || 0) > 0) {
             val = Number(currentTask.loggedMeasureVal || 0);
           }
         } else {
           val = Number(currentTask.loggedMeasureVal || 0);
-          if (val <= 0 && (currentTask.isDoneToday || Number(currentTask.currentCount || 0) > 0)) {
+          if (val <= 0 && currentTask.isDoneToday) {
             val = Number(currentTask.lastMeasuredValue || currentTask.eventUnitTarget || currentTask.measureTarget || 0);
           }
         }
@@ -1172,7 +1172,7 @@ export default function TaskDedicatedPageView({
               subtaskSegments
             };
           });
-        } else if (isToday && Number(currentTask.currentCount || 0) > 0) {
+        } else if (isToday && (currentTask.isDoneToday || (currentTask.todayEventCount || 0) > 0)) {
           eventCountToday = Number(currentTask.currentCount);
           events = Array.from({ length: eventCountToday }).map((_, evIdx) => {
             const curEvNum = evIdx + 1;
