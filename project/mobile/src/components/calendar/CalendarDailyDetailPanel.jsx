@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, Calendar as CalendarIcon, Clock, CheckCircle2, Circle, Flame, AlertCircle, BookOpen, Bell, Ruler, Plus, ArrowRight } from 'lucide-react';
 
-export default function CalendarDailyDetailPanel({ dateData, onClose, onSelectTask, onToggleTask, onRescheduleTask }) {
+export default function CalendarDailyDetailPanel({ dateData, onClose, onSelectTask, onToggleTask, onRescheduleTask, onOpenDateInHabits }) {
   if (!dateData) return null;
 
   const {
@@ -70,6 +70,53 @@ export default function CalendarDailyDetailPanel({ dateData, onClose, onSelectTa
 
         {/* Scrollable Panel Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Direct Link to Habits Page for this Specific Date */}
+          <button 
+            onClick={() => {
+              if (onOpenDateInHabits) {
+                onOpenDateInHabits(date);
+              }
+              if (onClose) onClose();
+            }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '12px 16px',
+              background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)',
+              border: '1.5px solid #93C5FD',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.08)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                backgroundColor: '#2563EB',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#FFFFFF'
+              }}>
+                <CalendarIcon size={18} />
+              </div>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#1E40AF' }}>
+                  Log & Update Habits For This Date
+                </div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#3B82F6' }}>
+                  Mark missed dates or update measures for {date}
+                </div>
+              </div>
+            </div>
+            <ArrowRight size={18} color="#2563EB" />
+          </button>
           
           {/* Workload & Capacity Card */}
           <div style={{
@@ -143,7 +190,7 @@ export default function CalendarDailyDetailPanel({ dateData, onClose, onSelectTa
                       <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>{t.category || 'General'} | {t.estimatedMinutes}m</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <button onClick={(e) => { e.stopPropagation(); onToggleTask && onToggleTask(t.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      <button onClick={(e) => { e.stopPropagation(); onToggleTask && onToggleTask(t.id, null, date); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                         {t.isCompleted ? <CheckCircle2 size={20} color="#16A34A" /> : <Circle size={20} color="#CBD5E1" />}
                       </button>
                       <button onClick={(e) => { e.stopPropagation(); onRescheduleTask && onRescheduleTask(t); }} style={{ background: '#FFF', border: '1px solid #CBD5E1', color: '#2563EB', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 800, cursor: 'pointer' }}>

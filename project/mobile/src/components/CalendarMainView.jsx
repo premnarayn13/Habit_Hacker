@@ -20,6 +20,7 @@ export default function CalendarMainView({
   logs = [], 
   capacityMinutes = 480,
   onToggleTask,
+  onOpenDateInHabits,
   onUpdateTaskProgress,
   onRescheduleTask
 }) {
@@ -361,6 +362,7 @@ export default function CalendarMainView({
           dateData={rawCalendarData.dateMap[selectedInspectDate]}
           onClose={() => setSelectedInspectDate(null)}
           onToggleTask={onToggleTask}
+          onOpenDateInHabits={onOpenDateInHabits}
           onRescheduleTask={(t) => setRescheduleTaskTarget(t)}
         />
       )}
