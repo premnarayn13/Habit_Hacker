@@ -1516,7 +1516,7 @@ export default function App() {
     planAdherenceRate: calculatedTaskRate
   };
 
-  const handleToggleTask = async (taskId, customMeasureValue = null) => {
+  const handleToggleTask = async (taskId, customMeasureValue = null, targetDate = null) => {
     // 1. Guard: Parent habits with subhabits CANNOT be manually marked completed!
     // Completion is driven exclusively by completing its subhabits.
     const childSubtasks = tasks.filter(t => t.parentTaskId === taskId);
@@ -1525,9 +1525,126 @@ export default function App() {
       return;
     }
 
+    const todayStr = getLocalDateString(new Date());
+    const effectiveDate = targetDate || todayStr;
+    const isEffectiveToday = effectiveDate === todayStr;
+    const currentUserId = (currentUser?.email || currentUser?.id || 'demo-user-123').toLowerCase().trim();
+
+    // -------------------------------------------------------------
+    // HISTORICAL PAST DATE LOGGING (User marking a missed date from calendar or habits page)
+    // -------------------------------------------------------------
+    if (!isEffectiveToday) {
+      const targetTask = tasks.find(t => t.id === taskId);
+      if (!targetTask) return;
+
+      const existingLog = (taskLogs || []).find(l => (l.task_id === taskId || l.taskId === taskId) && (l.logged_date === effectiveDate || l.log_date === effectiveDate));
+      const isCurrentlyDoneOnDate = existingLog && (existingLog.is_completed || existingLog.is_successful || Number(existingLog.measured_value || 0) > 0 || existingLog.measured_value === 0);
+
+      const targetCount = (targetTask.targetCount && targetTask.targetCount > 0) ? targetTask.targetCount : (targetTask.targetDayCount || 1);
+      const measuredVal = customMeasureValue !== null 
+        ? Number(customMeasureValue) 
+        : (targetTask.lastMeasuredValue || targetTask.measureTarget || 0);
+
+      const isMarkingComplete = (customMeasureValue !== null) || !isCurrentlyDoneOnDate;
+      const countDelta = isMarkingComplete ? (isCurrentlyDoneOnDate ? 0 : 1) : -1;
+      const nextCount = Math.max(0, (targetTask.currentCount || 0) + countDelta);
+      const nextProg = Math.min(100, Math.round((nextCount / Math.max(1, targetCount)) * 100));
+
+      const updatedTaskObj = {
+        ...targetTask,
+        currentCount: nextCount,
+        currentDayCount: nextCount,
+        progressPercent: nextProg,
+        lastMeasuredValue: measuredVal
+      };
+
+      const updatedTasksList = tasks.map(t => t.id === taskId ? updatedTaskObj : t);
+      updateTasksState(updatedTasksList);
+
+      // Update React taskLogs state
+      setTaskLogs(prev => {
+        const filtered = prev.filter(l => !((l.task_id === taskId || l.taskId === taskId) && (l.logged_date === effectiveDate || l.log_date === effectiveDate)));
+        if (isMarkingComplete) {
+          return [{
+            id: existingLog?.id || ('log-' + Date.now()),
+            task_id: taskId,
+            user_id: currentUserId,
+            logged_date: effectiveDate,
+            log_date: effectiveDate,
+            logged_at: new Date(effectiveDate + 'T12:00:00').toISOString(),
+            increment_value: 1,
+            measured_value: measuredVal,
+            is_completed: true,
+            is_successful: true
+          }, ...filtered];
+        }
+        return filtered;
+      });
+
+      // If it is a child subtask, also record in subtaskLogs state and subtask_logs table
+      if (targetTask.parentTaskId) {
+        setSubtaskLogs(prev => {
+          const filtered = prev.filter(sl => !((sl.subtask_id === taskId || sl.subtaskId === taskId) && (sl.log_date === effectiveDate || sl.logged_date === effectiveDate)));
+          if (isMarkingComplete) {
+            return [{
+              id: 'sublog-' + Date.now(),
+              subtask_id: taskId,
+              user_id: currentUserId,
+              log_date: effectiveDate,
+              created_at: new Date(effectiveDate + 'T12:00:00').toISOString(),
+              isCompleted: true,
+              is_completed: true,
+              measured_value: measuredVal
+            }, ...filtered];
+          }
+          return filtered;
+        });
+
+        if (currentUser) {
+          try {
+            if (isMarkingComplete) {
+              supabase.from('subtask_logs').insert([{
+                subtask_id: taskId,
+                user_id: currentUserId,
+                log_date: effectiveDate,
+                is_completed: true,
+                measured_value: measuredVal
+              }]).then(() => {});
+            } else {
+              supabase.from('subtask_logs').delete().eq('subtask_id', taskId).eq('log_date', effectiveDate).then(() => {});
+            }
+          } catch (e) {}
+        }
+      }
+
+      // Sync to Supabase task_logs and tasks table
+      if (currentUser) {
+        try {
+          supabase.from('tasks').update({
+            current_count: nextCount,
+            progress_percent: nextProg
+          }).eq('id', taskId).then(() => {});
+
+          if (isMarkingComplete) {
+            supabase.from('task_logs').insert([{
+              task_id: taskId,
+              user_id: currentUserId,
+              logged_date: effectiveDate,
+              log_date: effectiveDate,
+              logged_at: new Date(effectiveDate + 'T12:00:00').toISOString(),
+              increment_value: 1,
+              measured_value: measuredVal
+            }]).then(() => {});
+          } else {
+            supabase.from('task_logs').delete().eq('task_id', taskId).eq('logged_date', effectiveDate).then(() => {});
+          }
+        } catch (e) {}
+      }
+      return;
+    }
+
     let updatedTask = null;
     let eventTotalMeasure = 0;
-    const currentUserId = (currentUser?.email || currentUser?.id || 'demo-user-123').toLowerCase().trim();
 
     let newTasks = tasks.map(t => {
       if (t.id === taskId) {
