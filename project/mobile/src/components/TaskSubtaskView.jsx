@@ -890,19 +890,6 @@ export default function TaskSubtaskView({
                                       }}>
                                         {child.title}
                                       </span>
-                                      {isOpt && (
-                                        <span style={{ 
-                                          fontSize: '9px', 
-                                          fontWeight: 800, 
-                                          color: '#7C3AED', 
-                                          background: '#EDE9FE', 
-                                          border: '1px solid #DDD6FE', 
-                                          padding: '1px 5px', 
-                                          borderRadius: '4px' 
-                                        }}>
-                                          Optional
-                                        </span>
-                                      )}
                                     </div>
                                   </div>
                                 </div>
