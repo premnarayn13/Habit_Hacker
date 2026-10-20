@@ -820,41 +820,6 @@ export default function TaskSubtaskView({
                           {task.title}
                         </span>
 
-
-
-                        {/* Measure Target Pill (Applies to Type 1, Type 2, Type 3) */}
-                        {(() => {
-                          const isParent = childTasks && childTasks.length > 0;
-                          const loggedMeasure = getItemMeasureOnEffectiveDate(task);
-                          const parentDailyMeasure = isParent 
-                            ? Math.max(calculateParentDailyMeasure(childTasks), loggedMeasure) 
-                            : loggedMeasure;
-                          const childrenTargetSum = isParent ? childTasks.reduce((acc, c) => acc + Number(c.measureTarget || 0), 0) : 0;
-                          const targetMeasure = isParent && childrenTargetSum > 0 ? childrenTargetSum : Number(task.measureTarget || 0);
-                          const hasMeasure = task.hasMeasureTracking || targetMeasure > 0 || parentDailyMeasure > 0;
-
-                          if (!hasMeasure) return null;
-
-                          return (
-                            <span style={{ 
-                              fontSize: '10px', 
-                              fontWeight: 800, 
-                              color: parentDailyMeasure > 0 ? '#15803D' : '#BE185D', 
-                              background: parentDailyMeasure > 0 ? '#DCFCE7' : '#FDF2F8', 
-                              border: `1px solid ${parentDailyMeasure > 0 ? '#86EFAC' : '#FBCFE8'}`, 
-                              padding: '2px 7px', 
-                              borderRadius: '6px',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '3px'
-                            }}>
-                              <Ruler size={10} color={parentDailyMeasure > 0 ? '#15803D' : '#BE185D'} />
-                              {parentDailyMeasure > 0 ? `${parentDailyMeasure} / ` : ''}{targetMeasure > 0 ? targetMeasure : (task.measureTarget || 0)} {task.measureUnit || 'units'}
-                              {isParent && parentDailyMeasure > 0 && <span style={{ fontSize: '9px', color: '#166534', fontWeight: 800 }}>(subtasks)</span>}
-                            </span>
-                          );
-                        })()}
-
                         {/* Collaborator Pill */}
                         {task.collab && (
                           <span style={{ fontSize: '10px', color: '#7C3AED', fontWeight: 800, background: '#F3E8FF', border: '1px solid #DDD6FE', padding: '2px 7px', borderRadius: '6px' }}>
@@ -928,7 +893,42 @@ export default function TaskSubtaskView({
 
                   </div>
 
+                  {/* Measure Target Pill - Margined towards right corner of the box / fixed in right edge */}
+                  {(() => {
+                    const isParent = childTasks && childTasks.length > 0;
+                    const loggedMeasure = getItemMeasureOnEffectiveDate(task);
+                    const parentDailyMeasure = isParent 
+                      ? Math.max(calculateParentDailyMeasure(childTasks), loggedMeasure) 
+                      : loggedMeasure;
+                    const childrenTargetSum = isParent ? childTasks.reduce((acc, c) => acc + Number(c.measureTarget || 0), 0) : 0;
+                    const targetMeasure = isParent && childrenTargetSum > 0 ? childrenTargetSum : Number(task.measureTarget || 0);
+                    const hasMeasure = task.hasMeasureTracking || targetMeasure > 0 || parentDailyMeasure > 0;
 
+                    if (!hasMeasure) return null;
+
+                    return (
+                      <div style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', alignSelf: 'center' }}>
+                        <span style={{ 
+                          fontSize: '11px', 
+                          fontWeight: 800, 
+                          color: parentDailyMeasure > 0 ? '#15803D' : '#BE185D', 
+                          background: parentDailyMeasure > 0 ? '#DCFCE7' : '#FDF2F8', 
+                          border: `1px solid ${parentDailyMeasure > 0 ? '#86EFAC' : '#FBCFE8'}`, 
+                          padding: '3px 9px', 
+                          borderRadius: '8px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          <Ruler size={12} color={parentDailyMeasure > 0 ? '#15803D' : '#BE185D'} />
+                          {parentDailyMeasure > 0 ? `${parentDailyMeasure} / ` : ''}{targetMeasure > 0 ? targetMeasure : (task.measureTarget || 0)} {task.measureUnit || 'units'}
+                          {isParent && parentDailyMeasure > 0 && <span style={{ fontSize: '9px', color: '#166534', fontWeight: 800 }}>(subtasks)</span>}
+                        </span>
+                      </div>
+                    );
+                  })()}
 
                 </div>
 
@@ -1133,7 +1133,31 @@ export default function TaskSubtaskView({
                                   </div>
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto', flexShrink: 0 }}>
+                                  {/* Child Measure Target Pill fixed at right edge */}
+                                  {(() => {
+                                    const childMeasure = getItemMeasureOnEffectiveDate(child);
+                                    const hasChildMeasure = child.hasMeasureTracking || Number(child.measureTarget || 0) > 0 || childMeasure > 0;
+                                    if (!hasChildMeasure) return null;
+                                    return (
+                                      <span style={{ 
+                                        fontSize: '10px', 
+                                        fontWeight: 800, 
+                                        color: childMeasure > 0 ? '#15803D' : '#BE185D', 
+                                        background: childMeasure > 0 ? '#DCFCE7' : '#FDF2F8', 
+                                        border: `1px solid ${childMeasure > 0 ? '#86EFAC' : '#FBCFE8'}`, 
+                                        padding: '2px 7px', 
+                                        borderRadius: '5px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px',
+                                        whiteSpace: 'nowrap'
+                                      }}>
+                                        <Ruler size={10} color={childMeasure > 0 ? '#15803D' : '#BE185D'} />
+                                        {childMeasure > 0 ? `${childMeasure} / ` : ''}{child.measureTarget || 0} {child.measureUnit || 'units'}
+                                      </span>
+                                    );
+                                  })()}
                                   {/* Child 7-Day Mini Heatmap Log */}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                                     {childHeatmapTiles.map((cTile, cIdx) => (
