@@ -361,3 +361,89 @@ export function getMissedDaysForTask(task, childSubtasks = [], historyDaysCount 
 
   return missedDaysList.sort((a, b) => a.daysAgo - b.daysAgo);
 }
+
+/**
+ * Evaluates whether a task or subtask is actively scheduled for a specific date (e.g. today).
+ * Used by Today Dashboard and Schedule views to ensure tasks starting in the future
+ * (e.g. 1 month after today) or expired in the past do NOT appear on today's schedule.
+ */
+export function isTaskScheduledForDate(task, dateStr, allTasks = []) {
+  if (!task || task.isArchived) return false;
+
+  // 1. Resolve parent if child subtask
+  const parent = task.parentTaskId ? (allTasks.find(p => p.id === task.parentTaskId) || null) : null;
+
+  // 2. Resolve start date (subtask inherits parent's plannedStart if not independently set)
+  const rawStart = task.plannedStart || task.startDate || task.start_date 
+    || (parent ? (parent.plannedStart || parent.startDate || parent.start_date) : null)
+    || (task.created_at ? getLocalDateString(task.created_at) : null);
+  const start = rawStart ? (rawStart.includes('T') ? getLocalDateString(rawStart) : rawStart) : null;
+
+  // 3. If start date is in the future relative to dateStr, it is NOT scheduled yet
+  if (start && start > dateStr) {
+    return false;
+  }
+
+  // 4. Resolve end date (subtask inherits parent's plannedEnd if not independently set)
+  const rawEnd = task.plannedEnd || task.endDate || task.end_date || task.deadline
+    || (parent ? (parent.plannedEnd || parent.endDate || parent.end_date || parent.deadline) : null)
+    || null;
+  const end = rawEnd ? (rawEnd.includes('T') ? getLocalDateString(rawEnd) : rawEnd) : null;
+
+  // 5. If task schedule window ended before dateStr and task is not recurring
+  const repeatRule = String(task.repeatRule || task.recurrencePattern || (parent ? (parent.repeatRule || parent.recurrencePattern) : '') || 'DAILY').toUpperCase();
+
+  if (end && end < dateStr && repeatRule === 'NONE') {
+    return false;
+  }
+
+  // 6. Recurrence frequency evaluation
+  if (repeatRule === 'NONE') {
+    // One-time only task: only active between start and end (or on start/end date)
+    if (start && end) {
+      return start <= dateStr && dateStr <= end;
+    }
+    if (start) {
+      return start === dateStr;
+    }
+    if (end) {
+      return end === dateStr;
+    }
+    return true;
+  }
+
+  if (repeatRule === 'WEEKLY') {
+    if (start) {
+      const startDay = new Date(start + 'T12:00:00').getDay();
+      const currentDay = new Date(dateStr + 'T12:00:00').getDay();
+      if (startDay !== currentDay) return false;
+    }
+    return true;
+  }
+
+  if (repeatRule === 'EVERY_2_DAYS' && start) {
+    const diffDays = Math.round((new Date(dateStr + 'T12:00:00') - new Date(start + 'T12:00:00')) / 86400000);
+    return diffDays >= 0 && diffDays % 2 === 0;
+  }
+
+  if (repeatRule === 'EVERY_3_DAYS' && start) {
+    const diffDays = Math.round((new Date(dateStr + 'T12:00:00') - new Date(start + 'T12:00:00')) / 86400000);
+    return diffDays >= 0 && diffDays % 3 === 0;
+  }
+
+  if (repeatRule === 'INTERVAL' && start) {
+    const interval = Number(task.customIntervalDays || (parent ? parent.customIntervalDays : 1)) || 1;
+    const diffDays = Math.round((new Date(dateStr + 'T12:00:00') - new Date(start + 'T12:00:00')) / 86400000);
+    return diffDays >= 0 && diffDays % interval === 0;
+  }
+
+  if (repeatRule === 'MONTHLY' && start) {
+    const startDayOfMonth = parseInt(start.split('-')[2], 10);
+    const currentDayOfMonth = parseInt(dateStr.split('-')[2], 10);
+    return startDayOfMonth === currentDayOfMonth;
+  }
+
+  // Standard active task or daily recurring task
+  return true;
+}
+

@@ -45,7 +45,8 @@ import {
   calculateParentDailyMeasure, 
   calculateParentCompletionStatus,
   getLocalDateString,
-  parseLocalDate
+  parseLocalDate,
+  isTaskScheduledForDate
 } from '../lib/taskHierarchyEngine';
 import TodayMeasureEditModal from './TodayMeasureEditModal';
 
@@ -181,14 +182,29 @@ export default function TodayDashboard({
     day: 'numeric'
   });
 
-  // Derive Contextual Tasks for Selected Date (reflects past logs if viewing historical days)
+  // Derive Contextual Tasks for Selected Date (reflects past logs if viewing historical days and filters for scheduled date)
   const contextualTasks = useMemo(() => {
+    // 1. Filter only tasks that are scheduled/assigned for selectedDateStr
+    const scheduledTasks = (tasks || []).filter(t => {
+      if (!t || t.isArchived) return false;
+
+      // If looking at a past day, check if this task had an explicit log recorded on that past day
+      if (isPastDay) {
+        const hasLog = (taskLogs || []).some(l => (l.task_id === t.id || l.taskId === t.id) && (l.logged_date === selectedDateStr || l.log_date === selectedDateStr))
+          || (subtaskLogs || []).some(l => (l.subtask_id === t.id || l.subtaskId === t.id || l.task_id === t.id) && (l.logged_date === selectedDateStr || l.log_date === selectedDateStr))
+          || (eventLogs || []).some(el => (el.task_id === t.id || el.taskId === t.id) && (el.completion_date === selectedDateStr || el.log_date === selectedDateStr));
+        if (hasLog) return true;
+      }
+
+      return isTaskScheduledForDate(t, selectedDateStr, tasks);
+    });
+
     if (isViewingToday) {
-      return tasks || [];
+      return scheduledTasks;
     }
 
     if (isPastDay) {
-      return (tasks || []).map(t => {
+      return scheduledTasks.map(t => {
         if (t.parentTaskId) {
           // Subtask: look up in subtask_logs and task_logs for selectedDateStr
           const subLog = (subtaskLogs || []).find(l => {
@@ -236,7 +252,7 @@ export default function TodayDashboard({
     }
 
     // Future scheduled date
-    return (tasks || []).map(t => ({
+    return scheduledTasks.map(t => ({
       ...t,
       isDoneToday: false,
       loggedMeasureVal: 0
