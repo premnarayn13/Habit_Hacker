@@ -366,96 +366,107 @@ export default function TaskSubtaskView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: selectedTaskObj ? '90px' : '20px' }}>
       
-      {/* 1. DATE TRAVEL & HISTORICAL MISSED DATES NAVIGATOR */}
+      {/* 1. DATE TRAVEL & HISTORICAL MISSED DATES NAVIGATOR (Single Line, No Duplicate Date) */}
       <div 
         className="glass-panel" 
         style={{ 
-          padding: '12px 14px', 
+          padding: '8px 12px', 
           display: 'flex', 
-          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
           gap: '8px',
           background: isPastDateMode ? 'linear-gradient(135deg, #FFFBEB, #FEF3C7)' : 'linear-gradient(135deg, #FFFFFF, #F8FAFC)',
           border: isPastDateMode ? '1.5px solid #F59E0B' : '1px solid #E2E8F0',
-          borderRadius: '14px',
-          boxShadow: isPastDateMode ? '0 4px 14px rgba(245, 158, 11, 0.12)' : '0 2px 8px rgba(15, 23, 42, 0.04)'
+          borderRadius: '12px',
+          boxShadow: isPastDateMode ? '0 2px 8px rgba(245, 158, 11, 0.10)' : '0 2px 6px rgba(15, 23, 42, 0.03)',
+          width: '100%',
+          boxSizing: 'border-box'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{
+        {/* Left / Center: Navigation Arrow + Clickable Date Picker + Navigation Arrow */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
+          <button
+            onClick={() => handleShiftDate(-1)}
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid #CBD5E1',
+              borderRadius: '8px',
               width: '32px',
               height: '32px',
-              borderRadius: '8px',
-              backgroundColor: isPastDateMode ? '#D97706' : '#DC2626',
+              padding: 0,
+              fontSize: '15px',
+              fontWeight: 800,
+              color: '#334155',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#FFFFFF'
-            }}>
-              <Calendar size={17} />
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A' }}>
-                  {formattedSelectedDate}
-                </span>
-                {isPastDateMode ? (
-                  <span style={{ 
-                    fontSize: '10px', 
-                    fontWeight: 800, 
-                    backgroundColor: '#FDE68A', 
-                    color: '#92400E', 
-                    padding: '2px 6px', 
-                    borderRadius: '4px',
-                    border: '1px solid #FCD34D'
-                  }}>
-                    Missed Date Log Mode
-                  </span>
-                ) : (
-                  <span style={{ 
-                    fontSize: '10px', 
-                    fontWeight: 800, 
-                    backgroundColor: '#DCFCE7', 
-                    color: '#15803D', 
-                    padding: '2px 6px', 
-                    borderRadius: '4px',
-                    border: '1px solid #86EFAC'
-                  }}>
-                    Today
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: '11px', color: isPastDateMode ? '#B45309' : '#64748B', fontWeight: 600 }}>
-                {isPastDateMode 
-                  ? "Changes & measures (including 0) will be recorded for this past date"
-                  : "Logging daily habits in real time"}
-              </div>
-            </div>
-          </div>
+              flexShrink: 0
+            }}
+            title="Previous Day"
+          >
+            ‹
+          </button>
 
-          {/* Stepper & Date Picker Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <button
-              onClick={() => handleShiftDate(-1)}
+          {/* Unified Date Button: Displays the formatted date with a hidden date input over it */}
+          <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', flex: 1, minWidth: 0, justifyContent: 'center' }}>
+            <div 
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 10px',
                 background: '#FFFFFF',
                 border: '1px solid #CBD5E1',
                 borderRadius: '8px',
-                padding: '6px 10px',
-                fontSize: '12px',
-                fontWeight: 800,
-                color: '#334155',
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
+                width: '100%',
+                justifyContent: 'center',
+                boxSizing: 'border-box',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden'
               }}
-              title="Previous Day"
             >
-              ‹ Prev
-            </button>
+              <Calendar size={15} color={isPastDateMode ? '#D97706' : '#DC2626'} style={{ flexShrink: 0 }} />
+              <span style={{ 
+                fontSize: '13px', 
+                fontWeight: 800, 
+                color: isPastDateMode ? '#92400E' : '#0F172A',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {formattedSelectedDate}
+              </span>
+              {isPastDateMode ? (
+                <span style={{ 
+                  fontSize: '9px', 
+                  fontWeight: 800, 
+                  backgroundColor: '#FDE68A', 
+                  color: '#92400E', 
+                  padding: '1px 5px', 
+                  borderRadius: '4px',
+                  border: '1px solid #FCD34D',
+                  flexShrink: 0
+                }}>
+                  Missed
+                </span>
+              ) : (
+                <span style={{ 
+                  fontSize: '9px', 
+                  fontWeight: 800, 
+                  backgroundColor: '#DCFCE7', 
+                  color: '#15803D', 
+                  padding: '1px 5px', 
+                  borderRadius: '4px',
+                  border: '1px solid #86EFAC',
+                  flexShrink: 0
+                }}>
+                  Today
+                </span>
+              )}
+            </div>
 
+            {/* Invisible native date input on top of the button for native picker interaction without displaying duplicate date text */}
             <input
               type="date"
               value={effectiveDate}
@@ -465,61 +476,66 @@ export default function TaskSubtaskView({
                 }
               }}
               style={{
-                background: '#FFFFFF',
-                border: '1px solid #CBD5E1',
-                borderRadius: '8px',
-                padding: '5px 8px',
-                fontSize: '12px',
-                fontWeight: 700,
-                color: '#0F172A',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                opacity: 0,
                 cursor: 'pointer'
               }}
+              title="Click to pick a specific date"
             />
-
-            <button
-              onClick={() => handleShiftDate(1)}
-              style={{
-                background: '#FFFFFF',
-                border: '1px solid #CBD5E1',
-                borderRadius: '8px',
-                padding: '6px 10px',
-                fontSize: '12px',
-                fontWeight: 800,
-                color: '#334155',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
-              title="Next Day"
-            >
-              Next ›
-            </button>
-
-            {isPastDateMode && (
-              <button
-                onClick={handleResetToToday}
-                style={{
-                  background: '#2563EB',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '6px 12px',
-                  fontSize: '11px',
-                  fontWeight: 800,
-                  color: '#FFFFFF',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  boxShadow: '0 2px 6px rgba(37, 99, 235, 0.2)'
-                }}
-              >
-                Jump to Today
-              </button>
-            )}
           </div>
 
+          <button
+            onClick={() => handleShiftDate(1)}
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid #CBD5E1',
+              borderRadius: '8px',
+              width: '32px',
+              height: '32px',
+              padding: 0,
+              fontSize: '15px',
+              fontWeight: 800,
+              color: '#334155',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}
+            title="Next Day"
+          >
+            ›
+          </button>
         </div>
+
+        {/* Right side: Jump to Today button if in past date mode */}
+        {isPastDateMode && (
+          <button
+            onClick={handleResetToToday}
+            style={{
+              background: '#2563EB',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '6px 10px',
+              fontSize: '11px',
+              fontWeight: 800,
+              color: '#FFFFFF',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              flexShrink: 0,
+              whiteSpace: 'nowrap',
+              boxShadow: '0 2px 4px rgba(37, 99, 235, 0.15)'
+            }}
+          >
+            Today
+          </button>
+        )}
       </div>
 
       {/* FILTER & CONTROL TOOLBAR */}
@@ -948,40 +964,52 @@ export default function TaskSubtaskView({
                     onClick={(e) => e.stopPropagation()}
                   >
                     
-                    {/* DROPDOWN TOP BAR: 7-DAY HEATMAP, PROGRESS %, DAY COUNT RATIO & OPEN BUTTON */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', background: '#FFFFFF', padding: '10px 12px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-                      
-                      {/* DYNAMIC REAL-TIME 7-TILE HEATMAP */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', marginRight: '4px' }}>7-DAY LOG:</span>
-                        {heatmapTiles.map((tile, idx) => (
-                          <div 
-                            key={idx} 
-                            style={{
-                              width: '12px',
-                              height: '12px',
-                              borderRadius: '3px',
-                              background: tile.isComplete ? '#22C55E' : '#CBD5E1',
-                              boxShadow: tile.isComplete ? '0 0 6px rgba(34, 197, 94, 0.4)' : 'none',
-                              transition: 'all 0.2s ease'
-                            }}
-                            title={tile.isComplete ? `${tile.date} (${tile.label}): Completed${tile.logValue > 1 ? ` (${tile.logValue} ${task.measureUnit || 'units'})` : ''}` : `${tile.date} (${tile.label}): Missed`}
-                          />
-                        ))}
+                    {/* DROPDOWN TOP BAR: 7-DAY HEATMAP, PROGRESS %, DAY COUNT RATIO & ACTION BUTTONS */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      background: '#FFFFFF',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #E2E8F0',
+                      boxSizing: 'border-box',
+                      width: '100%',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', width: '100%' }}>
+                        {/* DYNAMIC REAL-TIME 7-TILE HEATMAP */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', marginRight: '4px' }}>7-DAY LOG:</span>
+                          {heatmapTiles.map((tile, idx) => (
+                            <div 
+                              key={idx} 
+                              style={{
+                                width: '12px',
+                                height: '12px',
+                                borderRadius: '3px',
+                                background: tile.isComplete ? '#22C55E' : '#CBD5E1',
+                                boxShadow: tile.isComplete ? '0 0 6px rgba(34, 197, 94, 0.4)' : 'none',
+                                transition: 'all 0.2s ease'
+                              }}
+                              title={tile.isComplete ? `${tile.date} (${tile.label}): Completed${tile.logValue > 1 ? ` (${tile.logValue} ${task.measureUnit || 'units'})` : ''}` : `${tile.date} (${tile.label}): Missed`}
+                            />
+                          ))}
+                        </div>
+
+                        {/* TOTAL PERCENTAGE & DAY COUNT RATIO */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto', flexShrink: 0 }}>
+                          <span style={{ fontSize: '15px', fontWeight: 900, color: isSubtaskEntity ? '#D97706' : '#DC2626' }}>
+                            {calculatedProgPercent}%
+                          </span>
+                          <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B' }}>
+                            ({countRatioStr} Days)
+                          </span>
+                        </div>
                       </div>
 
-                      {/* INDEPENDENT PROGRESS PERCENTAGE & COMPLETED/TOTAL RATIO */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '16px', fontWeight: 900, color: isSubtaskEntity ? '#D97706' : '#DC2626' }}>
-                          {calculatedProgPercent}%
-                        </span>
-                        <span style={{ fontSize: '12px', fontWeight: 800, color: '#64748B' }}>
-                          ({countRatioStr} Days)
-                        </span>
-                      </div>
-
-                      {/* 1-CLICK DEDICATED PAGE OPEN BUTTON & EXTEND DEADLINE BUTTON */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {/* ACTION BUTTONS (Extend, Open, Delete) */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', flexWrap: 'wrap', borderTop: '1px dashed #E2E8F0', paddingTop: '6px', width: '100%' }}>
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
@@ -996,7 +1024,7 @@ export default function TaskSubtaskView({
                             background: '#FEF3C7',
                             color: '#B45309',
                             border: '1px solid #FDE68A',
-                            padding: '4px 10px',
+                            padding: '3px 8px',
                             borderRadius: '6px',
                             fontSize: '11px',
                             fontWeight: 800,
@@ -1006,7 +1034,7 @@ export default function TaskSubtaskView({
                             gap: '4px'
                           }}
                         >
-                          <Calendar size={13} color="#B45309" /> Extend
+                          <Calendar size={12} color="#B45309" /> Extend
                         </button>
 
                         <button 
@@ -1016,7 +1044,7 @@ export default function TaskSubtaskView({
                             background: '#EFF6FF',
                             color: '#2563EB',
                             border: '1px solid #BFDBFE',
-                            padding: '4px 10px',
+                            padding: '3px 8px',
                             borderRadius: '6px',
                             fontSize: '11px',
                             fontWeight: 800,
@@ -1026,7 +1054,7 @@ export default function TaskSubtaskView({
                             gap: '4px'
                           }}
                         >
-                          <ExternalLink size={13} color="#2563EB" /> Open
+                          <ExternalLink size={12} color="#2563EB" /> Open
                         </button>
 
                         <button 
@@ -1042,7 +1070,7 @@ export default function TaskSubtaskView({
                             background: '#FEF2F2',
                             color: '#DC2626',
                             border: '1px solid #FCA5A5',
-                            padding: '4px 10px',
+                            padding: '3px 8px',
                             borderRadius: '6px',
                             fontSize: '11px',
                             fontWeight: 800,
@@ -1052,7 +1080,7 @@ export default function TaskSubtaskView({
                             gap: '4px'
                           }}
                         >
-                          <Trash2 size={13} color="#DC2626" /> Delete
+                          <Trash2 size={12} color="#DC2626" /> Delete
                         </button>
                       </div>
                     </div>
@@ -1107,10 +1135,10 @@ export default function TaskSubtaskView({
                                   gap: '10px'
                                 }}
                               >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, overflow: 'hidden' }}>
                                   <button 
                                     onClick={(e) => handleCheckmarkClick(e, child)}
-                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
                                   >
                                     {isChildDone ? (
                                       <CheckCircle2 size={18} color={isOpt ? '#7C3AED' : '#D97706'} />
@@ -1119,17 +1147,18 @@ export default function TaskSubtaskView({
                                     )}
                                   </button>
 
-                                  <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      <CornerDownRight size={13} color={isOpt ? '#7C3AED' : '#D97706'} />
-                                      <span style={{ 
-                                        fontSize: '13px', 
-                                        fontWeight: 800, 
-                                        color: isChildDone ? '#475569' : (isOpt ? '#5B21B6' : '#0F172A')
-                                      }}>
-                                        {child.title}
-                                      </span>
-                                    </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                                    <CornerDownRight size={13} color={isOpt ? '#7C3AED' : '#D97706'} style={{ flexShrink: 0 }} />
+                                    <span style={{ 
+                                      fontSize: '13px', 
+                                      fontWeight: 800, 
+                                      color: isChildDone ? '#475569' : (isOpt ? '#5B21B6' : '#0F172A'),
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap'
+                                    }}>
+                                      {child.title}
+                                    </span>
                                   </div>
                                 </div>
 
