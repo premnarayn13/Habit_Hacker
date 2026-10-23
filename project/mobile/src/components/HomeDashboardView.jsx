@@ -818,9 +818,6 @@ export default function HomeDashboardView({
             <h3 style={{ fontSize: '16px', fontWeight: 900, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
               <Grid size={18} color="#DC2626" /> Master System KPI Scorecard
             </h3>
-            <p style={{ fontSize: '12px', color: '#64748B', margin: '2px 0 0 0', fontWeight: 500 }}>
-              Dynamic database inventory calculations (Finished, Active, History, Pending, Standalone, Subtasks & Archive)
-            </p>
           </div>
           <button 
             onClick={() => onNavigateToTab?.('tasks')}
@@ -837,65 +834,55 @@ export default function HomeDashboardView({
           <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#F0FDF4', borderRadius: '14px', border: '1px solid #BBF7D0', borderLeft: '4px solid #16A34A', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#15803D', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>COMPLETED HABITS</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#16A34A', marginTop: '2px' }}>{stats.completedTasksCount}</div>
-            <span style={{ fontSize: '11px', color: '#166534', fontWeight: 600 }}>Habits that have reached planned end date / finished</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#EFF6FF', borderRadius: '14px', border: '1px solid #BFDBFE', borderLeft: '4px solid #2563EB', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#1E40AF', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ACTIVE HABITS</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#2563EB', marginTop: '2px' }}>{stats.activeTasksCount}</div>
-            <span style={{ fontSize: '11px', color: '#1D4ED8', fontWeight: 600 }}>Habits yet to reach planned end date</span>
           </div>
 
           {/* ROW 2: Total Habits History vs Pending Today */}
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #CBD5E1', borderLeft: '4px solid #0F172A', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#475569', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>TOTAL HABITS (HISTORY)</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#0F172A', marginTop: '2px' }}>{stats.totalAllTasks}</div>
-            <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>All historical habits (incl. active & archive)</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#FFFBEB', borderRadius: '14px', border: '1px solid #FDE68A', borderLeft: '4px solid #D97706', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#B45309', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>PENDING HABITS TODAY</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#D97706', marginTop: '2px' }}>{stats.pendingTasksCount}</div>
-            <span style={{ fontSize: '11px', color: '#92400E', fontWeight: 600 }}>Habits scheduled for today pending completion</span>
           </div>
 
           {/* ROW 3: Active Standalone Habits vs Optional Subhabits */}
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F5F3FF', borderRadius: '14px', border: '1px solid #DDD6FE', borderLeft: '4px solid #8B5CF6', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#6D28D9', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ACTIVE STANDALONE HABITS</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#7C3AED', marginTop: '2px' }}>{stats.standaloneTasksCount}</div>
-            <span style={{ fontSize: '11px', color: '#5B21B6', fontWeight: 600 }}>Active habits with no end date reached & no subhabits</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F8FAFC', borderRadius: '14px', border: '1px solid #E2E8F0', borderLeft: '4px solid #64748B', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#475569', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>OPTIONAL SUBHABITS COUNT</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#475569', marginTop: '2px' }}>{stats.totalOptionalSubtasks}</div>
-            <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>Total optional subhabits across active habits</span>
           </div>
 
           {/* ROW 4: Archived Habits (In Pause) vs Mandatory Subhabits */}
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#FEF2F2', borderRadius: '14px', border: '1px solid #FECACA', borderLeft: '4px solid #DC2626', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ARCHIVED HABITS (IN PAUSE)</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>{stats.archivedCount ?? 0}</div>
-            <span style={{ fontSize: '11px', color: '#991B1B', fontWeight: 600 }}>Habits currently in archive / pause state</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#FEF2F2', borderRadius: '14px', border: '1px solid #FCA5A5', borderLeft: '4px solid #B91C1C', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>MANDATORY SUBHABITS COUNT</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#B91C1C', marginTop: '2px' }}>{stats.totalMandatorySubtasks}</div>
-            <span style={{ fontSize: '11px', color: '#7F1D1D', fontWeight: 600 }}>Mandatory required subhabits across habits</span>
           </div>
 
           {/* ROW 5: Active Parent Tasks vs Today Completion Pace */}
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '14px 16px', background: '#F0F9FF', borderRadius: '14px', border: '1px solid #BAE6FD', borderLeft: '4px solid #0284C7', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#0369A1', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>ACTIVE PARENT TASKS</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#0284C7', marginTop: '2px' }}>{stats.totalParents}</div>
-            <span style={{ fontSize: '11px', color: '#075985', fontWeight: 600 }}>Active parent tasks with child subtasks</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '14px 16px', background: '#F0FDF4', borderRadius: '14px', border: '1px solid #BBF7D0', borderLeft: '4px solid #15803D', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#166534', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>TODAY COMPLETION PACE</span>
             <div style={{ fontSize: '24px', fontWeight: 900, color: '#15803D', marginTop: '2px' }}>{stats.completionRate}%</div>
-            <span style={{ fontSize: '11px', color: '#14532D', fontWeight: 600 }}>Completion pace for scheduled target</span>
           </div>
 
         </div>
@@ -954,9 +941,6 @@ export default function HomeDashboardView({
             <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Layers size={18} color="#DC2626" /> Habit Hierarchy Health & Dependency Status
             </h3>
-            <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
-              Parent habit completion rules (Optional subhabits do not block parent completion).
-            </p>
           </div>
           <button 
             onClick={() => onNavigateToTab?.('tasks')}
@@ -977,9 +961,6 @@ export default function HomeDashboardView({
             <div style={{ height: '8px', borderRadius: '4px', background: '#DCFCE7', overflow: 'hidden' }}>
               <div style={{ width: `${Math.round((stats.completedParents / Math.max(stats.totalParents, 1)) * 100)}%`, height: '100%', background: '#16A34A', borderRadius: '4px' }} />
             </div>
-            <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, marginTop: '4px', display: 'block' }}>
-              All mandatory subhabits checked
-            </span>
           </div>
 
           <div style={{ padding: '12px', background: '#FEF2F2', borderRadius: '12px', border: '1px solid #FCA5A5' }}>
@@ -990,9 +971,6 @@ export default function HomeDashboardView({
             <div style={{ height: '8px', borderRadius: '4px', background: '#FEE2E2', overflow: 'hidden' }}>
               <div style={{ width: `${Math.round((stats.blockedParents / Math.max(stats.totalParents, 1)) * 100)}%`, height: '100%', background: '#DC2626', borderRadius: '4px' }} />
             </div>
-            <span style={{ fontSize: '10px', color: '#EF4444', fontWeight: 700, marginTop: '4px', display: 'block' }}>
-              Waiting on mandatory subhabits
-            </span>
           </div>
 
           <div style={{ padding: '12px', background: '#EFF6FF', borderRadius: '12px', border: '1px solid #BFDBFE' }}>
@@ -1003,9 +981,6 @@ export default function HomeDashboardView({
             <div style={{ height: '8px', borderRadius: '4px', background: '#DBEAFE', overflow: 'hidden' }}>
               <div style={{ width: `${stats.mandatorySubtaskRate}%`, height: '100%', background: '#2563EB', borderRadius: '4px' }} />
             </div>
-            <span style={{ fontSize: '10px', color: '#3B82F6', fontWeight: 700, marginTop: '4px', display: 'block' }}>
-              {stats.completedMandatorySubtasks} / {stats.totalMandatorySubtasks} Mandatory Done
-            </span>
           </div>
 
           <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
@@ -1016,9 +991,6 @@ export default function HomeDashboardView({
             <div style={{ height: '8px', borderRadius: '4px', background: '#E2E8F0', overflow: 'hidden' }}>
               <div style={{ width: `${stats.optionalSubtaskRate}%`, height: '100%', background: '#64748B', borderRadius: '4px' }} />
             </div>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, marginTop: '4px', display: 'block' }}>
-              {stats.completedOptionalSubtasks} / {stats.totalOptionalSubtasks} Optional (Non-blocking)
-            </span>
           </div>
 
         </div>
@@ -1109,9 +1081,6 @@ export default function HomeDashboardView({
             <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <PieChart size={18} color="#DC2626" /> Task Type Distribution & Performance Matrix
             </h3>
-            <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
-              Performance breakdown across multi-modal tracking engines (Date Range, Day Count, Event Count).
-            </p>
           </div>
           <button 
             onClick={() => onNavigateToTab?.('tasks')}
@@ -1254,9 +1223,6 @@ export default function HomeDashboardView({
             <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Bookmark size={18} color="#DC2626" /> Category Intelligence & Effort Allocation
             </h3>
-            <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
-              System effort concentration, category completion health, and priority matrix.
-            </p>
           </div>
           <button 
             onClick={() => onNavigateToTab?.('analytics')}
@@ -1402,9 +1368,6 @@ export default function HomeDashboardView({
             <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Flame size={18} color="#DC2626" /> Consistency Heatmap, Streaks & Momentum
             </h3>
-            <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
-              12-week activity matrix and habit streak compliance performance.
-            </p>
           </div>
           <button 
             onClick={() => onNavigateToTab?.('heatmaps')}
@@ -1421,7 +1384,6 @@ export default function HomeDashboardView({
             <span style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Flame size={20} color="#DC2626" /> {stats.streaks.current} <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>Days</span>
             </span>
-            <span style={{ fontSize: '10px', color: '#DC2626', fontWeight: 700, display: 'block' }}>{stats.streaks.toRecordText}</span>
           </div>
 
           <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
@@ -1429,7 +1391,6 @@ export default function HomeDashboardView({
             <span style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A' }}>
               {stats.streaks.longest} <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>Days</span>
             </span>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 600, display: 'block' }}>Personal record</span>
           </div>
 
           <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
@@ -1437,7 +1398,6 @@ export default function HomeDashboardView({
             <span style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A' }}>
               {stats.streaks.average} <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 700 }}>Days</span>
             </span>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 600, display: 'block' }}>System baseline</span>
           </div>
 
           <div style={{ padding: '12px', background: '#F0FDF4', borderRadius: '12px', border: '1px solid #BBF7D0' }}>
@@ -1445,7 +1405,6 @@ export default function HomeDashboardView({
             <span style={{ fontSize: '16px', fontWeight: 900, color: '#16A34A', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
               <TrendingUp size={16} /> ↑ {stats.streaks.momentumPts} pts
             </span>
-            <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>Active momentum</span>
           </div>
         </div>
 
@@ -1516,9 +1475,6 @@ export default function HomeDashboardView({
               <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                 <Activity size={18} color="#DC2626" /> Measured Work & Event-Count Intelligence
               </h3>
-              <p style={{ fontSize: '12px', color: '#64748B', margin: '2px 0 0 0' }}>
-                Accumulated units, dynamic metric tracking, live event accumulation, and segmented milestone history.
-              </p>
             </div>
             <button 
               onClick={() => onNavigateToTab?.('analytics')}
@@ -1541,25 +1497,21 @@ export default function HomeDashboardView({
                   <div style={{ padding: '12px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
                     <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>QUESTIONS SOLVED</span>
                     <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.questionsSolved}</span>
-                    <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 18% vs prev period</span>
                   </div>
 
                   <div style={{ padding: '12px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
                     <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>PAGES READ</span>
                     <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.pagesRead}</span>
-                    <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 9% vs prev period</span>
                   </div>
 
                   <div style={{ padding: '12px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
                     <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>EXERCISE MINS</span>
                     <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.exerciseMins}m</span>
-                    <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>→ Stable</span>
                   </div>
 
                   <div style={{ padding: '12px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
                     <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 700, display: 'block' }}>STUDY HOURS</span>
                     <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.measures.studyHours}h</span>
-                    <span style={{ fontSize: '10px', color: '#16A34A', fontWeight: 700, display: 'block' }}>↑ 14% vs prev period</span>
                   </div>
                 </div>
 
@@ -1714,9 +1666,6 @@ export default function HomeDashboardView({
             <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <AlertTriangle size={18} color="#D97706" /> Current Workload Health & Backlog Growth
             </h3>
-            <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
-              Differentiating active, pending, overdue, blocked, and backlog expansion trends.
-            </p>
           </div>
           <button 
             onClick={() => onNavigateToTab?.('today')}
@@ -1732,37 +1681,31 @@ export default function HomeDashboardView({
           <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>ACTIVE WORKLOAD</span>
             <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.activeTasksCount}</span>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 600 }}>Active tasks</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('today')} style={{ padding: '10px 12px', background: '#FFFBEB', borderRadius: '10px', border: '1px solid #FDE68A', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#B45309', fontWeight: 800, display: 'block' }}>PENDING WORK</span>
             <span style={{ fontSize: '20px', fontWeight: 900, color: '#D97706' }}>{stats.pendingTasksCount}</span>
-            <span style={{ fontSize: '10px', color: '#B45309', fontWeight: 600 }}>Due tasks</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#FEF2F2', borderRadius: '10px', border: '1px solid #FCA5A5', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 800, display: 'block' }}>OVERDUE TASKS</span>
             <span style={{ fontSize: '20px', fontWeight: 900, color: '#DC2626' }}>{stats.overdueCount}</span>
-            <span style={{ fontSize: '10px', color: '#DC2626', fontWeight: 700 }}>Past planned end</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#FEF2F2', borderRadius: '10px', border: '1px solid #FCA5A5', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 800, display: 'block' }}>BLOCKED PARENTS</span>
             <span style={{ fontSize: '20px', fontWeight: 900, color: '#DC2626' }}>{stats.blockedParents}</span>
-            <span style={{ fontSize: '10px', color: '#991B1B', fontWeight: 600 }}>Waiting on subtasks</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('tasks')} style={{ padding: '10px 12px', background: '#EFF6FF', borderRadius: '10px', border: '1px solid #BFDBFE', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#1E40AF', fontWeight: 800, display: 'block' }}>PENDING REQ. SUBS</span>
             <span style={{ fontSize: '20px', fontWeight: 900, color: '#2563EB' }}>{stats.totalMandatorySubtasks - stats.completedMandatorySubtasks}</span>
-            <span style={{ fontSize: '10px', color: '#2563EB', fontWeight: 600 }}>Required subtasks</span>
           </div>
 
           <div onClick={() => onNavigateToTab?.('calendar')} style={{ padding: '10px 12px', background: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0', cursor: 'pointer' }}>
             <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 800, display: 'block' }}>UPCOMING</span>
             <span style={{ fontSize: '20px', fontWeight: 900, color: '#0F172A' }}>{stats.upcomingCount}</span>
-            <span style={{ fontSize: '10px', color: '#64748B', fontWeight: 600 }}>Future scheduled</span>
           </div>
 
         </div>
@@ -1824,9 +1767,6 @@ export default function HomeDashboardView({
             <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
               <Clock size={18} color="#DC2626" /> Missed Activity, Recurring Routines & Upcoming Schedule
             </h3>
-            <p style={{ fontSize: '12px', color: '#64748B', margin: '2px 0 0 0' }}>
-              Historical missed logs, routine adherence %, chronological upcoming workload, and early completion badges.
-            </p>
           </div>
           <button 
             onClick={() => onNavigateToTab?.('calendar')}
@@ -1999,9 +1939,6 @@ export default function HomeDashboardView({
             <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
               <Sparkles size={20} color="#DC2626" /> Master Productivity Score & System Insights
             </h3>
-            <p style={{ fontSize: '12px', color: '#64748B', margin: '2px 0 0 0' }}>
-              Deterministic 0-100 productivity score, time patterns, aging work warning, and AI insights.
-            </p>
           </div>
           <button 
             onClick={() => onNavigateToTab?.('analytics')}

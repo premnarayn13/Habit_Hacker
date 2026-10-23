@@ -335,31 +335,26 @@ export default function AnalyticsIntelligenceView({
         <div style={{ background: '#FFF', padding: '14px', borderRadius: '16px', border: '1px solid #E2E8F0', borderLeft: '4px solid #2563EB' }}>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Execution Reliability</span>
           <div style={{ fontSize: '22px', fontWeight: 900, color: '#2563EB', marginTop: '2px' }}>{scorecard.executionReliabilityIndex ?? 0}%</div>
-          <span style={{ fontSize: '9px', fontWeight: 800, color: '#16A34A' }}>High Consistency</span>
         </div>
 
         <div style={{ background: '#FFF', padding: '14px', borderRadius: '16px', border: '1px solid #E2E8F0', borderLeft: '4px solid #DC2626' }}>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Focus Fatigue Index</span>
           <div style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>{scorecard.focusFatigueMultiplier ?? 1.0}x</div>
-          <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B' }}>Capacity Load Factor</span>
         </div>
 
         <div style={{ background: '#FFF', padding: '14px', borderRadius: '16px', border: '1px solid #E2E8F0', borderLeft: '4px solid #16A34A' }}>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Subtask Efficiency</span>
           <div style={{ fontSize: '22px', fontWeight: 900, color: '#16A34A', marginTop: '2px' }}>{scorecard.subtaskEfficiencyRatio ?? 0}%</div>
-          <span style={{ fontSize: '9px', fontWeight: 800, color: '#16A34A' }}>Parent Shield Ratio</span>
         </div>
 
         <div style={{ background: '#FFF', padding: '14px', borderRadius: '16px', border: '1px solid #E2E8F0', borderLeft: '4px solid #D97706' }}>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Daily Context Switches</span>
           <div style={{ fontSize: '22px', fontWeight: 900, color: '#0F172A', marginTop: '2px' }}>{intel.contextSwitchingStrainIndex?.avgTasksPerDay ?? 0}/d</div>
-          <span style={{ fontSize: '9px', fontWeight: 800, color: '#2563EB' }}>Optimal Density</span>
         </div>
 
         <div style={{ background: '#FFF', padding: '14px', borderRadius: '16px', border: '1px solid #E2E8F0', borderLeft: '4px solid #DC2626' }}>
           <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block' }}>Stagnation Risk</span>
           <div style={{ fontSize: '22px', fontWeight: 900, color: '#DC2626', marginTop: '2px' }}>{scorecard.stagnationRiskCount ?? 0} Tasks</div>
-          <span style={{ fontSize: '9px', fontWeight: 800, color: '#64748B' }}>&gt;14d Untouched</span>
         </div>
       </div>
 
