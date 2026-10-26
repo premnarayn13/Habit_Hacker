@@ -202,24 +202,51 @@ export default function TaskSubtaskView({
     }
   };
 
+  const getCleanDate = (l) => {
+    if (!l) return null;
+    const ts = l.completion_timestamp || l.logged_at || l.created_at;
+    if (ts) {
+      const localD = getLocalDateString(ts);
+      if (localD) return localD;
+    }
+    if (l.logged_date) return getLocalDateString(l.logged_date);
+    if (l.log_date) return getLocalDateString(l.log_date);
+    if (l.completion_date) return getLocalDateString(l.completion_date);
+    if (l.entry_date) return getLocalDateString(l.entry_date);
+    if (l.date) return getLocalDateString(l.date);
+    return null;
+  };
+
+  const isLogCompleted = (l) => {
+    if (!l) return false;
+    if (l.is_successful === true || l.is_completed === true || l.isCompleted === true) return true;
+    if (l.is_successful === false || l.is_completed === false || l.isCompleted === false) return false;
+    if (l.status === 'COMPLETED' || l.completion_status === 'DONE') return true;
+    if (Number(l.measured_value || 0) > 0 || Number(l.increment_value || 0) > 0 || Number(l.event_count || 0) > 0) return true;
+    return true;
+  };
+
   // Check whether an item is completed on the selected effectiveDate
   const isItemDoneOnEffectiveDate = (item) => {
     if (!item) return false;
     if (!isPastDateMode) {
       return item.isDoneToday || item.progressPercent >= 100;
     }
+    const isDirectItemCompleted = item.completedDate === effectiveDate || (item.completedAt && getLocalDateString(item.completedAt) === effectiveDate);
+    if (isDirectItemCompleted) return true;
+
     const tLog = (taskLogs || []).find(l => {
-      const lDate = l.log_date || l.logged_date || l.entry_date;
+      const lDate = getCleanDate(l);
       return (l.task_id === item.id || l.taskId === item.id) && lDate === effectiveDate;
     });
-    if (tLog && (tLog.is_successful || tLog.is_completed || tLog.isCompleted || tLog.status === 'COMPLETED' || tLog.measured_value !== undefined)) {
+    if (tLog && isLogCompleted(tLog)) {
       return true;
     }
     const sLog = (subtaskLogs || []).find(l => {
-      const lDate = l.log_date || l.logged_date || l.entry_date;
+      const lDate = getCleanDate(l);
       return (l.subtask_id === item.id || l.subtaskId === item.id) && lDate === effectiveDate;
     });
-    if (sLog && (sLog.is_completed || sLog.isCompleted || sLog.status === 'COMPLETED' || sLog.measured_value !== undefined)) {
+    if (sLog && isLogCompleted(sLog)) {
       return true;
     }
     return false;
@@ -232,14 +259,14 @@ export default function TaskSubtaskView({
       return Number(item.loggedMeasureVal || 0);
     }
     const tLog = (taskLogs || []).find(l => {
-      const lDate = l.log_date || l.logged_date || l.entry_date;
+      const lDate = getCleanDate(l);
       return (l.task_id === item.id || l.taskId === item.id) && lDate === effectiveDate;
     });
     if (tLog && tLog.measured_value !== undefined && tLog.measured_value !== null) {
       return Number(tLog.measured_value);
     }
     const sLog = (subtaskLogs || []).find(l => {
-      const lDate = l.log_date || l.logged_date || l.entry_date;
+      const lDate = getCleanDate(l);
       return (l.subtask_id === item.id || l.subtaskId === item.id) && lDate === effectiveDate;
     });
     if (sLog && sLog.measured_value !== undefined && sLog.measured_value !== null) {
@@ -691,50 +718,65 @@ export default function TaskSubtaskView({
               const dayLabel = offset === 0 ? 'Today' : `${offset}d`;
 
               let isComplete = false;
+              let isPartial = false;
+              let partialCount = 0;
+              let totalCount = 0;
               let logValue = 0;
 
-              // 1. Direct match in taskLogs
-              const tLog = (taskLogs || []).find(l => {
-                const lDate = l.log_date || l.logged_date || l.entry_date;
-                return (l.task_id === item.id || l.taskId === item.id) && lDate === dStr;
-              });
-              if (tLog && (tLog.is_successful || tLog.is_completed || tLog.isCompleted || Number(tLog.measured_value) > 0)) {
+              // Direct completion attribute on the item itself
+              const isDirectItemCompleted = item.completedDate === dStr || (item.completedAt && getLocalDateString(item.completedAt) === dStr);
+              if (isDirectItemCompleted) {
                 isComplete = true;
-                logValue = Number(tLog.measured_value || 1);
               }
 
-              // 2. Direct match in subtaskLogs
+              // 1. Match in taskLogs
+              const tLog = (taskLogs || []).find(l => {
+                const lDate = getCleanDate(l);
+                return (l.task_id === item.id || l.taskId === item.id) && lDate === dStr;
+              });
+              if (tLog && isLogCompleted(tLog)) {
+                isComplete = true;
+                logValue = Number(tLog.measured_value || tLog.increment_value || 1);
+              }
+
+              // 2. Match in subtaskLogs
               if (!isComplete) {
                 const sLog = (subtaskLogs || []).find(l => {
-                  const lDate = l.log_date || l.logged_date || l.entry_date;
+                  const lDate = getCleanDate(l);
                   return (l.subtask_id === item.id || l.subtaskId === item.id) && lDate === dStr;
                 });
-                if (sLog && (sLog.is_completed || sLog.isCompleted || Number(sLog.measured_value) > 0)) {
+                if (sLog && isLogCompleted(sLog)) {
                   isComplete = true;
-                  logValue = Number(sLog.measured_value || 1);
+                  logValue = Number(sLog.measured_value || sLog.event_count || 1);
                 }
               }
 
-              // 3. For parent task with children: check if children were completed on dStr
-              if (!isComplete && children.length > 0) {
+              // 3. For parent task with children: check children completed on dStr
+              if (children.length > 0) {
                 const mandatoryChildren = children.filter(c => !c.isOptional);
                 const targetChildren = mandatoryChildren.length > 0 ? mandatoryChildren : children;
-                const allChildrenDone = targetChildren.length > 0 && targetChildren.every(child => {
+                totalCount = targetChildren.length;
+                partialCount = targetChildren.filter(child => {
                   return (subtaskLogs || []).some(l => {
-                    const lDate = l.log_date || l.logged_date || l.entry_date;
-                    return (l.subtask_id === child.id || l.subtaskId === child.id) && lDate === dStr && (l.is_completed || l.isCompleted || Number(l.measured_value) > 0);
+                    const lDate = getCleanDate(l);
+                    return (l.subtask_id === child.id || l.subtaskId === child.id || l.task_id === child.id || l.taskId === child.id) && lDate === dStr && isLogCompleted(l);
                   }) || (taskLogs || []).some(l => {
-                    const lDate = l.log_date || l.logged_date || l.entry_date;
-                    return (l.task_id === child.id || l.taskId === child.id) && lDate === dStr && (l.is_successful || l.is_completed || l.isCompleted || Number(l.measured_value) > 0);
-                  });
-                });
-                if (allChildrenDone) {
+                    const lDate = getCleanDate(l);
+                    return (l.task_id === child.id || l.taskId === child.id) && lDate === dStr && isLogCompleted(l);
+                  }) || (child.completedDate === dStr || (child.completedAt && getLocalDateString(child.completedAt) === dStr));
+                }).length;
+
+                if (totalCount > 0 && partialCount === totalCount) {
                   isComplete = true;
+                  isPartial = false;
+                } else if (partialCount > 0) {
+                  isComplete = false;
+                  isPartial = true;
                 }
               }
 
               // 4. Fallback for Today (offset === 0)
-              if (offset === 0 && !isComplete && isItemDoneToday) {
+              if (offset === 0 && !isComplete && !isPartial && isItemDoneToday) {
                 isComplete = true;
               }
 
@@ -742,6 +784,9 @@ export default function TaskSubtaskView({
                 label: dayLabel,
                 date: dStr,
                 isComplete,
+                isPartial,
+                partialCount,
+                totalCount,
                 logValue
               });
             }
@@ -946,11 +991,17 @@ export default function TaskSubtaskView({
                               width: '12px',
                               height: '12px',
                               borderRadius: '3px',
-                              background: tile.isComplete ? '#22C55E' : '#CBD5E1',
-                              boxShadow: tile.isComplete ? '0 0 6px rgba(34, 197, 94, 0.4)' : 'none',
+                              background: tile.isComplete ? '#22C55E' : (tile.isPartial ? '#F59E0B' : '#CBD5E1'),
+                              boxShadow: tile.isComplete 
+                                ? '0 0 6px rgba(34, 197, 94, 0.4)' 
+                                : (tile.isPartial ? '0 0 6px rgba(245, 158, 11, 0.4)' : 'none'),
                               transition: 'all 0.2s ease'
                             }}
-                            title={tile.isComplete ? `${tile.date} (${tile.label}): Completed${tile.logValue > 1 ? ` (${tile.logValue} ${task.measureUnit || 'units'})` : ''}` : `${tile.date} (${tile.label}): Missed`}
+                            title={tile.isComplete 
+                              ? `${tile.date} (${tile.label}): Completed${tile.logValue > 1 ? ` (${tile.logValue} ${task.measureUnit || 'units'})` : ''}` 
+                              : (tile.isPartial 
+                                  ? `${tile.date} (${tile.label}): ${tile.partialCount}/${tile.totalCount} Subhabits Completed` 
+                                  : `${tile.date} (${tile.label}): Missed`)}
                           />
                         ))}
                       </div>
