@@ -964,51 +964,48 @@ export default function TaskSubtaskView({
                     onClick={(e) => e.stopPropagation()}
                   >
                     
-                    {/* DROPDOWN TOP BAR: 7-DAY HEATMAP, PROGRESS %, DAY COUNT RATIO & ACTION BUTTONS */}
+                    {/* DROPDOWN TOP BAR: 5-DAY HEATMAP, PROGRESS %, DAY COUNT RATIO */}
                     <div style={{
                       display: 'flex',
-                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
                       gap: '8px',
                       background: '#FFFFFF',
-                      padding: '10px 12px',
+                      padding: '8px 12px',
                       borderRadius: '8px',
                       border: '1px solid #E2E8F0',
                       boxSizing: 'border-box',
-                      width: '100%',
-                      overflow: 'hidden'
+                      width: '100%'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', width: '100%' }}>
-                        {/* DYNAMIC REAL-TIME 7-TILE HEATMAP */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', marginRight: '4px' }}>5-DAY LOG:</span>
-                          {heatmapTiles.map((tile, idx) => (
-                            <div 
-                              key={idx} 
-                              style={{
-                                width: '12px',
-                                height: '12px',
-                                borderRadius: '3px',
-                                background: tile.isComplete ? '#22C55E' : '#CBD5E1',
-                                boxShadow: tile.isComplete ? '0 0 6px rgba(34, 197, 94, 0.4)' : 'none',
-                                transition: 'all 0.2s ease'
-                              }}
-                              title={tile.isComplete ? `${tile.date} (${tile.label}): Completed${tile.logValue > 1 ? ` (${tile.logValue} ${task.measureUnit || 'units'})` : ''}` : `${tile.date} (${tile.label}): Missed`}
-                            />
-                          ))}
-                        </div>
-
-                        {/* TOTAL PERCENTAGE & DAY COUNT RATIO */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto', flexShrink: 0 }}>
-                          <span style={{ fontSize: '15px', fontWeight: 900, color: isSubtaskEntity ? '#D97706' : '#DC2626' }}>
-                            {calculatedProgPercent}%
-                          </span>
-                          <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B' }}>
-                            ({countRatioStr} Days)
-                          </span>
-                        </div>
+                      {/* DYNAMIC REAL-TIME 5-TILE HEATMAP */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', marginRight: '4px' }}>5-DAY LOG:</span>
+                        {heatmapTiles.map((tile, idx) => (
+                          <div 
+                            key={idx} 
+                            style={{
+                              width: '12px',
+                              height: '12px',
+                              borderRadius: '3px',
+                              background: tile.isComplete ? '#22C55E' : '#CBD5E1',
+                              boxShadow: tile.isComplete ? '0 0 6px rgba(34, 197, 94, 0.4)' : 'none',
+                              transition: 'all 0.2s ease'
+                            }}
+                            title={tile.isComplete ? `${tile.date} (${tile.label}): Completed${tile.logValue > 1 ? ` (${tile.logValue} ${task.measureUnit || 'units'})` : ''}` : `${tile.date} (${tile.label}): Missed`}
+                          />
+                        ))}
                       </div>
 
-                      {/* ACTION BUTTONS REMOVED */}
+                      {/* TOTAL PERCENTAGE & DAY COUNT RATIO */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto', flexShrink: 0 }}>
+                        <span style={{ fontSize: '15px', fontWeight: 900, color: isSubtaskEntity ? '#D97706' : '#DC2626' }}>
+                          {calculatedProgPercent}%
+                        </span>
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748B' }}>
+                          ({countRatioStr} Days)
+                        </span>
+                      </div>
                     </div>
 
                     {/* CHILD SUBTASKS SECTION FOR MAIN TASKS */}
