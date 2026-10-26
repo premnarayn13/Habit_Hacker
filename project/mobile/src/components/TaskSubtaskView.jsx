@@ -1051,30 +1051,7 @@ export default function TaskSubtaskView({
                                 </div>
 
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto', flexShrink: 0 }}>
-                                  {/* Child Measure Target Pill fixed at right edge */}
-                                  {(() => {
-                                    const childMeasure = getItemMeasureOnEffectiveDate(child);
-                                    const hasChildMeasure = child.hasMeasureTracking || Number(child.measureTarget || 0) > 0 || childMeasure > 0;
-                                    if (!hasChildMeasure) return null;
-                                    return (
-                                      <span style={{ 
-                                        fontSize: '10px', 
-                                        fontWeight: 800, 
-                                        color: childMeasure > 0 ? '#15803D' : '#BE185D', 
-                                        background: childMeasure > 0 ? '#DCFCE7' : '#FDF2F8', 
-                                        border: `1px solid ${childMeasure > 0 ? '#86EFAC' : '#FBCFE8'}`, 
-                                        padding: '2px 7px', 
-                                        borderRadius: '5px',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '3px',
-                                        whiteSpace: 'nowrap'
-                                      }}>
-                                        <Ruler size={10} color={childMeasure > 0 ? '#15803D' : '#BE185D'} />
-                                        {childMeasure > 0 ? `${childMeasure} / ` : ''}{child.measureTarget || 0} {child.measureUnit || 'units'}
-                                      </span>
-                                    );
-                                  })()}
+
                                   {/* Child 7-Day Mini Heatmap Log */}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                                     {childHeatmapTiles.map((cTile, cIdx) => (
