@@ -1047,6 +1047,7 @@ export default function TaskSubtaskView({
 
                                   {/* Child 5-Day Mini Heatmap Log */}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                    <span style={{ fontSize: '9px', fontWeight: 800, color: '#94A3B8', marginRight: '1px' }}>5D:</span>
                                     {childHeatmapTiles.map((cTile, cIdx) => (
                                       <div
                                         key={cIdx}
