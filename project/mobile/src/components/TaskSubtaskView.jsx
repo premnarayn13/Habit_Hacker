@@ -684,7 +684,7 @@ export default function TaskSubtaskView({
             const isItemDoneToday = item.isDoneToday || item.progressPercent >= 100;
 
             const tiles = [];
-            for (let offset = -6; offset <= 0; offset++) {
+            for (let offset = -4; offset <= 0; offset++) {
               const d = new Date(today);
               d.setDate(today.getDate() + offset);
               const dStr = getLocalDateString(d);
