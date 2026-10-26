@@ -24,7 +24,7 @@ import {
   ExternalLink,
   Paperclip
 } from 'lucide-react';
-import { isParentTaskWithChildren, canManuallyCompleteTask, calculateParentDailyMeasure, getLocalDateString } from '../lib/taskHierarchyEngine';
+import { isParentTaskWithChildren, canManuallyCompleteTask, getLocalDateString } from '../lib/taskHierarchyEngine';
 
 export default function TaskSubtaskView({ 
   tasks, 
@@ -796,9 +796,7 @@ export default function TaskSubtaskView({
               >
                 
                 {/* Main Card Header */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '220px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
                     
                     {/* Accordion Expand / Collapse Dropdown Chevron */}
                     <button 
@@ -906,11 +904,6 @@ export default function TaskSubtaskView({
                         </div>
                       )}
                     </div>
-
-                  </div>
-
-                  {/* Measure Target Pill removed */}
-
                 </div>
 
                 {/* Subtasks & Analytics Accordion Dropdown Section (Visible when expanded) */}
