@@ -773,7 +773,7 @@ export default function TaskSubtaskView({
             const subtaskRatioStr = `${subtaskCompletedCount}:${subtaskTotalCount} Completed`;
             const subtaskProgPercent = subtaskTotalCount > 0 ? Math.round((subtaskCompletedCount / subtaskTotalCount) * 100) : 0;
 
-            // DYNAMIC REAL-TIME FULL 7-TILE HEATMAP LOG (Driven by real database logs)
+            // DYNAMIC REAL-TIME FULL 5-TILE HEATMAP LOG (Driven by real database logs)
             const heatmapTiles = get7DayHeatmapTiles(task, childTasks);
 
             return (
