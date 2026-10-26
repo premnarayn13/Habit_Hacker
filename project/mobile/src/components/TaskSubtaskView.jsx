@@ -1008,35 +1008,7 @@ export default function TaskSubtaskView({
                         </div>
                       </div>
 
-                      {/* ACTION BUTTONS (Delete) */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', flexWrap: 'wrap', borderTop: '1px dashed #E2E8F0', paddingTop: '6px', width: '100%' }}>
-
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm(`Are you sure you want to delete "${task.title}"? This cannot be undone.`)) {
-                              if (onDeleteTask) onDeleteTask(task.id);
-                              if (selectedTaskId === task.id) setSelectedTaskId(null);
-                            }
-                          }}
-                          title="Delete Task"
-                          style={{
-                            background: '#FEF2F2',
-                            color: '#DC2626',
-                            border: '1px solid #FCA5A5',
-                            padding: '3px 8px',
-                            borderRadius: '6px',
-                            fontSize: '11px',
-                            fontWeight: 800,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          <Trash2 size={12} color="#DC2626" /> Delete
-                        </button>
-                      </div>
+                      {/* ACTION BUTTONS REMOVED */}
                     </div>
 
                     {/* CHILD SUBTASKS SECTION FOR MAIN TASKS */}
