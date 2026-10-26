@@ -528,13 +528,16 @@ export function computeAnalyticsIntelligenceData({
     targetDate.setDate(targetDate.getDate() - (14 - dayNum));
     const targetDateStr = targetDate.toISOString().split('T')[0];
 
-    const dayLogs = windowedTaskLogs.filter(l => (l.log_date || l.logged_date || l.entry_date) === targetDateStr);
+    const getDateStr = (l) => l.log_date || l.logged_date || l.entry_date || (l.logged_at ? l.logged_at.split('T')[0] : null) || (l.created_at ? l.created_at.split('T')[0] : null);
+    const dayTaskLogs = windowedTaskLogs.filter(l => getDateStr(l) === targetDateStr);
+    const daySubLogs = windowedSubtaskLogs.filter(l => getDateStr(l) === targetDateStr);
+    const dayLogs = [...dayTaskLogs, ...daySubLogs];
     let completionRate = 0;
     let workloadMins = 0;
     let measureVal = 0;
 
     if (dayLogs.length > 0) {
-      const completedCount = dayLogs.filter(l => l.is_completed || l.is_successful || l.isCompleted).length;
+      const completedCount = dayLogs.filter(l => l.is_completed || l.is_successful || l.isCompleted || Number(l.measured_value || 0) > 0 || Number(l.increment_value || 0) > 0).length;
       completionRate = Math.round((completedCount / dayLogs.length) * 100);
       workloadMins = dayLogs.reduce((acc, curr) => acc + Number(curr.workload_mins || 30), 0);
       measureVal = dayLogs.reduce((acc, curr) => acc + Number(curr.measured_value || 0), 0);
