@@ -678,7 +678,7 @@ export default function TaskSubtaskView({
             </div>
           </div>
         ) : (() => {
-          const get7DayHeatmapTiles = (item, children = []) => {
+          const get5DayHeatmapTiles = (item, children = []) => {
             const today = new Date();
             const todayStr = getLocalDateString(today);
             const isItemDoneToday = item.isDoneToday || item.progressPercent >= 100;
@@ -774,7 +774,7 @@ export default function TaskSubtaskView({
             const subtaskProgPercent = subtaskTotalCount > 0 ? Math.round((subtaskCompletedCount / subtaskTotalCount) * 100) : 0;
 
             // DYNAMIC REAL-TIME FULL 5-TILE HEATMAP LOG (Driven by real database logs)
-            const heatmapTiles = get7DayHeatmapTiles(task, childTasks);
+            const heatmapTiles = get5DayHeatmapTiles(task, childTasks);
 
             return (
               <div 
@@ -1005,7 +1005,7 @@ export default function TaskSubtaskView({
                             const isChildDone = isItemDoneOnEffectiveDate(child);
                             const childDone = (child.currentCount !== undefined && child.currentCount !== null) ? child.currentCount : (isChildDone ? childTarget : 0);
                             const childProg = (child.progressPercent !== undefined && child.progressPercent !== null) ? child.progressPercent : (childTarget > 0 ? Math.round((childDone / childTarget) * 100) : 0);
-                            const childHeatmapTiles = get7DayHeatmapTiles(child, []);
+                            const childHeatmapTiles = get5DayHeatmapTiles(child, []);
 
                             const isOpt = !!child.isOptional;
 
