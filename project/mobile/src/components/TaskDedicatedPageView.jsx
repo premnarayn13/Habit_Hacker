@@ -556,6 +556,9 @@ export default function TaskDedicatedPageView({
     // For TODAY (daysAgo === 0), status is strictly dictated by currentTask.isDoneToday
     let isMissedDay = false;
     let isCompletedDay = false;
+    let isPartialDay = false;
+    let doneMandatory = 0;
+    let totalMandatory = 0;
 
     if (daysAgo === 0) {
       isCompletedDay = Boolean(currentTask.isDoneToday || (currentTask.todayEventCount || 0) > 0);
@@ -575,6 +578,16 @@ export default function TaskDedicatedPageView({
           isMissedDay = true;
         }
       } else if (directChildSubtasks.length > 0) {
+        const mandatoryChildren = directChildSubtasks.filter(c => !c.isOptional);
+        const targetChildren = mandatoryChildren.length > 0 ? mandatoryChildren : directChildSubtasks;
+        totalMandatory = targetChildren.length;
+        doneMandatory = targetChildren.filter(c => {
+          if (daySubLogs && daySubLogs[c.id]?.isCompleted) return true;
+          return (subtaskLogs || []).some(l => (l.subtask_id === c.id || l.subtaskId === c.id || l.task_id === c.id || l.taskId === c.id) && getCleanDate(l) === dateStr && (l.is_completed || l.isCompleted || Number(l.measured_value) > 0 || Number(l.increment_value) > 0));
+        }).length;
+        const allDone = totalMandatory > 0 && doneMandatory === totalMandatory;
+        const isPartial = !allDone && doneMandatory > 0;
+
         if (dayPLog) {
           if (dayPLog.is_successful === true || (dayPLog.is_successful !== false && (dayPLog.increment_value > 0 || dayPLog.measured_value > 0))) {
             isCompletedDay = true;
@@ -583,16 +596,14 @@ export default function TaskDedicatedPageView({
             isCompletedDay = false;
             isMissedDay = true;
           }
-        } else if (daySubLogs && Object.keys(daySubLogs).length > 0) {
-          const mandatoryChildren = directChildSubtasks.filter(c => !c.isOptional);
-          const allDone = mandatoryChildren.length > 0 && mandatoryChildren.every(c => daySubLogs[c.id]?.isCompleted);
-          if (allDone) {
-            isCompletedDay = true;
-            isMissedDay = false;
-          } else {
-            isCompletedDay = false;
-            isMissedDay = true;
-          }
+        } else if (allDone) {
+          isCompletedDay = true;
+          isMissedDay = false;
+        } else if (isPartial) {
+          // PARTIALLY COMPLETED DAY: e.g. 3/5 subhabits completed!
+          isCompletedDay = false;
+          isMissedDay = false;
+          isPartialDay = true;
         } else {
           isMissedDay = true;
           isCompletedDay = false;
@@ -637,8 +648,8 @@ export default function TaskDedicatedPageView({
       } else if (dayEvLog && Number(dayEvLog.total_work_accumulated) > 0) {
         // Event day with recorded total work
         dailyDeltaMeasure = Number(dayEvLog.total_work_accumulated);
-      } else if (isCompletedDay && logsByDate[dateStr] !== undefined && logsByDate[dateStr] > 0) {
-        // Day with subtask logs
+      } else if (logsByDate[dateStr] !== undefined && logsByDate[dateStr] > 0) {
+        // Day with subtask logs (accumulates even if parent habit was partially completed, e.g. 3/5 subhabits done)
         dailyDeltaMeasure = logsByDate[dateStr];
       } else {
         dailyDeltaMeasure = 0;
@@ -709,6 +720,10 @@ export default function TaskDedicatedPageView({
       weekdayStr,
       isCompletedDay,
       isMissedDay,
+      isPartialDay: Boolean(isPartialDay),
+      completedChildCount: doneMandatory,
+      totalChildCount: totalMandatory,
+      subtaskRatioStr: totalMandatory > 0 ? `${doneMandatory}/${totalMandatory}` : null,
       dailyDeltaMeasure,
       actualCumulativeVal: runningCumulativeActualMeasure,
       expectedTargetVal: expectedTargetValAtDay
@@ -2408,6 +2423,9 @@ export default function TaskDedicatedPageView({
               <span style={{ color: '#EA580C', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ width: '12px', height: '4px', background: '#EA580C', borderRadius: '2px' }} /> Actual
               </span>
+              <span style={{ color: '#D97706', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '8px', height: '8px', background: '#F59E0B', borderRadius: '50%' }} /> Partial Subtasks
+              </span>
               <span style={{ color: '#16A34A', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <span style={{ width: '12px', height: '3px', background: '#16A34A', borderStyle: 'dashed' }} /> Target
               </span>
@@ -2551,6 +2569,7 @@ export default function TaskDedicatedPageView({
             i === 0 || 
             i === numDays - 1 || 
             p.isMissedDay || 
+            p.isPartialDay ||
             (i % stepSize === 0)
           );
 
@@ -2651,17 +2670,19 @@ export default function TaskDedicatedPageView({
                       points={actualPolylinePoints}
                     />
 
-                    {/* Node Markers & Data Labels on Sampled Days & Missed Days (Gray dot for missed, Orange for completed) */}
+                    {/* Node Markers & Data Labels on Sampled Days & Missed Days (Gray dot for missed, Orange for completed, Amber for partial subhabits) */}
                     {sampledPoints.map((p, i) => (
                       <g key={i}>
                         <circle 
                           cx={p.x} 
                           cy={p.yActual} 
-                          r={p.isMissedDay ? "4.5" : "5.5"} 
-                          fill={p.isMissedDay ? "#94A3B8" : "#EA580C"} 
+                          r={p.isPartialDay ? "6" : (p.isMissedDay ? "4.5" : "5.5")} 
+                          fill={p.isPartialDay ? "#F59E0B" : (p.isMissedDay ? "#94A3B8" : "#EA580C")} 
                           stroke="#FFFFFF" 
                           strokeWidth="2" 
-                        />
+                        >
+                          <title>{`${p.dateStr} (${p.monthDayStr}): ${p.isCompletedDay ? 'Fully Completed' : (p.isPartialDay ? `Partially Completed (${p.subtaskRatioStr} subhabits)` : 'Missed')} • Cumulative: ${p.actualCumulativeVal} ${measureUnit}${p.dailyDeltaMeasure > 0 ? ` (+${p.dailyDeltaMeasure} today)` : ''}`}</title>
+                        </circle>
                         {/* Cumulative Value Text Label above Node */}
                         <text 
                           x={p.x} 
@@ -2669,7 +2690,7 @@ export default function TaskDedicatedPageView({
                           textAnchor="middle" 
                           fontSize="9" 
                           fontWeight="900" 
-                          fill={p.isMissedDay ? "#64748B" : "#C2410C"}
+                          fill={p.isPartialDay ? "#D97706" : (p.isMissedDay ? "#64748B" : "#C2410C")}
                         >
                           {p.actualCumulativeVal}
                         </text>
@@ -3430,7 +3451,7 @@ export default function TaskDedicatedPageView({
                 const targetPolylinePoints = points.map(p => `${p.x},${p.yTarget}`).join(' ');
                 const polygonPoints = `20,340 ${actualPolylinePoints} 980,340 20,340`;
 
-                const sampledPoints = points.filter((p, i) => i === 0 || i === numDays - 1 || p.isMissedDay || (i % stepSize === 0));
+                const sampledPoints = points.filter((p, i) => i === 0 || i === numDays - 1 || p.isMissedDay || p.isPartialDay || (i % stepSize === 0));
                 const numLabels = Math.min(12, sampledPoints.length);
                 const labelPoints = Array.from({ length: numLabels }).map((_, lIdx) => {
                   const pIdx = Math.round(lIdx * (sampledPoints.length - 1) / Math.max(1, numLabels - 1));
@@ -3467,8 +3488,24 @@ export default function TaskDedicatedPageView({
                         <polyline fill="none" stroke="#EA580C" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" points={actualPolylinePoints} />
                         {sampledPoints.map((p, i) => (
                           <g key={i}>
-                            <circle cx={p.x} cy={p.yActual} r={p.isMissedDay ? "6" : "7.5"} fill={p.isMissedDay ? "#94A3B8" : "#EA580C"} stroke="#FFF" strokeWidth="2.5" />
-                            <text x={p.x} y={p.yActual - 10} textAnchor="middle" fontSize="12" fontWeight="900" fill={p.isMissedDay ? "#64748B" : "#C2410C"}>
+                            <circle 
+                              cx={p.x} 
+                              cy={p.yActual} 
+                              r={p.isPartialDay ? "7" : (p.isMissedDay ? "6" : "7.5")} 
+                              fill={p.isPartialDay ? "#F59E0B" : (p.isMissedDay ? "#94A3B8" : "#EA580C")} 
+                              stroke="#FFF" 
+                              strokeWidth="2.5" 
+                            >
+                              <title>{`${p.dateStr} (${p.monthDayStr}): ${p.isCompletedDay ? 'Fully Completed' : (p.isPartialDay ? `Partially Completed (${p.subtaskRatioStr} subhabits)` : 'Missed')} • Cumulative: ${p.actualCumulativeVal} ${measureUnit}${p.dailyDeltaMeasure > 0 ? ` (+${p.dailyDeltaMeasure} today)` : ''}`}</title>
+                            </circle>
+                            <text 
+                              x={p.x} 
+                              y={p.yActual - 10} 
+                              textAnchor="middle" 
+                              fontSize="12" 
+                              fontWeight="900" 
+                              fill={p.isPartialDay ? "#D97706" : (p.isMissedDay ? "#64748B" : "#C2410C")}
+                            >
                               {p.actualCumulativeVal}
                             </text>
                           </g>
