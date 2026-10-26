@@ -980,7 +980,7 @@ export default function TaskSubtaskView({
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', width: '100%' }}>
                         {/* DYNAMIC REAL-TIME 7-TILE HEATMAP */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', marginRight: '4px' }}>7-DAY LOG:</span>
+                          <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748B', marginRight: '4px' }}>5-DAY LOG:</span>
                           {heatmapTiles.map((tile, idx) => (
                             <div 
                               key={idx} 
