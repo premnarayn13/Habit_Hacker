@@ -1008,28 +1008,8 @@ export default function TaskSubtaskView({
                         </div>
                       </div>
 
-                      {/* ACTION BUTTONS (Open, Delete) */}
+                      {/* ACTION BUTTONS (Delete) */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', flexWrap: 'wrap', borderTop: '1px dashed #E2E8F0', paddingTop: '6px', width: '100%' }}>
-
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); if (onOpenDedicatedTaskPage) onOpenDedicatedTaskPage(task); }}
-                          title="Open Dedicated Task Analytics Page"
-                          style={{
-                            background: '#EFF6FF',
-                            color: '#2563EB',
-                            border: '1px solid #BFDBFE',
-                            padding: '3px 8px',
-                            borderRadius: '6px',
-                            fontSize: '11px',
-                            fontWeight: 800,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          <ExternalLink size={12} color="#2563EB" /> Open
-                        </button>
 
                         <button 
                           onClick={(e) => {
