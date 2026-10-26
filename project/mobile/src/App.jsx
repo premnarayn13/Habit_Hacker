@@ -910,24 +910,42 @@ export default function App() {
         dbSubtasks = subRes.data;
       } catch (e) {}
 
-      // 6. Fetch historical logs early so daily completion status can be verified against today's logs
+      // 6. Fetch historical logs early so daily completion status can be verified against logs
       let dbTaskLogs = [];
       let dbSubtaskLogs = [];
       let dbEventLogs = [];
       try {
-        const { data: tLogs } = await supabase.from('task_logs').select('*').eq('user_id', queryEmail);
+        const allAccessibleIds = [
+          ...(dbTasks || []).map(t => t.id),
+          ...(dbSubtasks || []).map(s => s.id)
+        ].filter(Boolean);
+
+        // Fetch logs for user by email OR by userId OR by accessible task/subtask IDs
+        let tQuery = supabase.from('task_logs').select('*');
+        if (allAccessibleIds.length > 0) {
+          tQuery = tQuery.or(`user_id.eq.${queryEmail},user_id.eq.${userId},task_id.in.(${allAccessibleIds.slice(0, 100).join(',')})`);
+        } else {
+          tQuery = tQuery.or(`user_id.eq.${queryEmail},user_id.eq.${userId}`);
+        }
+        const { data: tLogs } = await tQuery;
         if (tLogs) {
           dbTaskLogs = tLogs;
           setTaskLogs(tLogs);
         }
 
-        const { data: sLogs } = await supabase.from('subtask_logs').select('*').eq('user_id', queryEmail);
+        let sQuery = supabase.from('subtask_logs').select('*');
+        if (allAccessibleIds.length > 0) {
+          sQuery = sQuery.or(`user_id.eq.${queryEmail},user_id.eq.${userId},subtask_id.in.(${allAccessibleIds.slice(0, 100).join(',')}),parent_task_id.in.(${allAccessibleIds.slice(0, 100).join(',')})`);
+        } else {
+          sQuery = sQuery.or(`user_id.eq.${queryEmail},user_id.eq.${userId}`);
+        }
+        const { data: sLogs } = await sQuery;
         if (sLogs) {
           dbSubtaskLogs = sLogs;
           setSubtaskLogs(sLogs);
         }
 
-        const { data: eLogs } = await supabase.from('event_logs').select('*').eq('user_id', queryEmail);
+        const { data: eLogs } = await supabase.from('event_logs').select('*').or(`user_id.eq.${queryEmail},user_id.eq.${userId}`);
         if (eLogs) {
           dbEventLogs = eLogs;
           setEventLogs(eLogs);
@@ -1931,6 +1949,8 @@ export default function App() {
                 log_date: todayStr,
                 logged_at: nowIso,
                 increment_value: 1,
+                is_completed: true,
+                is_successful: true,
                 measured_value: updatedTask.loggedMeasureVal || 0
               }]);
             }
