@@ -1052,7 +1052,7 @@ export default function TaskSubtaskView({
 
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto', flexShrink: 0 }}>
 
-                                  {/* Child 7-Day Mini Heatmap Log */}
+                                  {/* Child 5-Day Mini Heatmap Log */}
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                                     {childHeatmapTiles.map((cTile, cIdx) => (
                                       <div
