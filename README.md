@@ -1,10 +1,12 @@
-# ⚡ HABIT HACKER : PERSONAL DISCIPLINE & QUANTITATIVE HABIT OPERATING SYSTEM
+# Habit Hacker
 
 <div align="center">
 
 <br />
 
-<img src="project/mobile/public/HabitHackerImage.png" width="125" height="125" alt="Habit Hacker Emblem" style="border-radius: 26px; box-shadow: 0 10px 30px rgba(220, 38, 38, 0.4); border: 2px solid rgba(239, 68, 68, 0.5);" />
+<img src="project/mobile/public/HabitHackerImage.png" width="150" height="150" alt="Habit Hacker Emblem" style="border-radius: 28px; box-shadow: 0 12px 35px rgba(220, 38, 38, 0.45); border: 2.5px solid rgba(239, 68, 68, 0.55);" />
+
+<br />
 
 ### *Deterministic Discipline. Hierarchical Goal Engineering. Algorithmic Accountability.*
 
@@ -12,7 +14,7 @@
 
 <br />
 
-[![Production App](https://img.shields.io/badge/Production_App-habit--hacker--kohl.vercel.app-dc2626?style=for-the-badge&logo=vercel)](https://habit-hacker-kohl.vercel.app/)
+[![Production App](https://img.shields.io/badge/🚀_Production_App-habit--hacker--kohl.vercel.app-dc2626?style=for-the-badge&logo=vercel)](https://habit-hacker-kohl.vercel.app/)
 [![React](https://img.shields.io/badge/React-18.3.1-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.2-6DB33F?style=for-the-badge&logo=springboot)](https://spring.io/)
@@ -22,7 +24,7 @@
 
 <br />
 
-🌐 **Live Production Deployment**: [https://habit-hacker-kohl.vercel.app/](https://habit-hacker-kohl.vercel.app/)
+🌐 **Live Application URL**: [https://habit-hacker-kohl.vercel.app/](https://habit-hacker-kohl.vercel.app/)
 
 ---
 
@@ -30,79 +32,104 @@
 
 ## 🏛️ Vision & Operating Ideology
 
-Standard habit trackers fail because they treat human development as a collection of isolated, binary checkboxes. In reality, sustained performance requires **structural decomposition, numerical verification, and adaptive lifecycle management**:
-- Running 10 kilometers cannot be evaluated identically to drinking a glass of water.
-- Complex pursuits (e.g. Master's research, engineering sprints, marathon training) cannot be checked off as single items without fulfilling their structural sub-habits.
-- Human life is dynamic: a rigid binary tracker breaks when an unexpected disruption occurs, whereas a mathematical engine accommodates backdating, deadline extensions, and uncapped quantitative over-achievement.
+Standard habit trackers suffer from a fundamental design flaw: **they reduce complex human pursuits into binary checkboxes**. In real life, sustained performance requires **structural decomposition, numerical verification, and adaptive lifecycle management**:
 
-**Habit Hacker** converts vague personal intentions into an explicit, deterministic engineering framework. By enforcing hierarchical parent-child constraints, weighted discipline metrics ($0 - 100$), multi-modal execution schemas, offline operational continuity, and AI-driven coaching, Habit Hacker provides an uncompromised operating system for personal mastery.
+- Running 10 kilometers is fundamentally different from a binary tick for drinking water.
+- Complex pursuits (e.g., Master's research, engineering sprints, marathon training) cannot be completed as single checkboxes without fulfilling their structural sub-habits first.
+- Human life is dynamic: a rigid tracker breaks when an unexpected disruption occurs, whereas an engineering-grade system accommodates **backdating**, **deadline extensions**, and **uncapped quantitative over-achievement**.
 
----
-
-## ⚙️ Core Operational Conditions
-
-Habit Hacker is built around **six mathematical and architectural invariants**:
-
-### 1. The Parent-Child Invariant (Strict Mechanical Locking)
-A parent habit that contains mandatory subtasks cannot be completed via manual override. Completion is strictly computed:
-$$\text{Parent Completed}(t) = \begin{cases} \text{true} & \text{if } \forall s \in \mathcal{S}_{\text{mandatory}}, \ \text{Completed}(s, t) = \text{true} \\ \text{false} & \text{otherwise} \end{cases}$$
-Direct manual toggling of the parent habit is disabled in the UI whenever $\mathcal{S}_{\text{mandatory}} \neq \emptyset$.
-
-### 2. Multi-Modal Execution Typology
-Every commitment is governed by one of three deterministic mathematical structures:
-1. **Fixed Calendar Window (`end_date`)**: Bound to explicit $[\text{Start Date}, \text{End Date}]$ limits with daily recurrence checks.
-2. **Flexible Target Day Window (`count_days`)**: Defined by fulfilling $K$ active days within a calendar span $D \ge K$.
-3. **Cumulative Event Cycles (`count_event`)**: Quantified by target repetition units $E_{\text{target}}$ distributed across arbitrary intervals.
-
-### 3. Quantitative Measure Conservation
-Habits track continuous physical units (`km`, `pages`, `liters`, `sets`, `minutes`). Logged measurements are never capped at $100\%$ in analytical history; if an athlete targets $10\text{ km}$ and logs $14\text{ km}$, the system records the raw $14\text{ km}$ ($140\%$ volume) while capping the binary completion milestone at $1.0$.
-
-### 4. Zero-Friction Local Execution
-Discipline cannot depend on cellular signal. The application operates as an autonomous, local-first engine. Mutations commit instantly to local persistent storage and enqueue background synchronization vectors for cloud reconciliation.
-
-### 5. Algorithmic Productivity Index ($0 - 100$)
-Gamified streaks are replaced with a composite productivity metric that penalizes inconsistency, rewards momentum, and calculates true workload adherence.
-
-### 6. Archival and Hygiene Invariant
-To prevent cognitive overload from stagnant commitments, completed or inactive habits automatically undergo soft-archival after 5 days of inactivity, moving to the secure Vault while preserving all historical completion logs.
+**Habit Hacker** converts vague personal intentions into an explicit, deterministic execution framework. By enforcing hierarchical parent-child constraints, weighted discipline metrics ($0 - 100$), multi-modal execution schemas, offline operational continuity, and AI-driven coaching, Habit Hacker provides an uncompromised operating system for personal mastery.
 
 ---
 
-## 🎯 Target Use Cases & Applications
+## ⚖️ Core Conditions & Operating Principles
 
-| Domain | Profile | Concrete Operational Implementation |
+Habit Hacker is governed by **five non-negotiable operational conditions**:
+
+### Condition 1: Strict Hierarchical Accountability
+> *A parent goal cannot be marked completed if its mandatory building blocks (subhabits) are unfulfilled.*
+- If a habit contains mandatory subhabits, the parent habit is **mechanically locked**.
+- The parent habit automatically marks itself completed if and only if **100% of its mandatory subhabits** are logged as done for that day.
+- Optional subhabits award bonus progress without preventing daily parent completion.
+
+### Condition 2: Multi-Modal Execution Models
+> *One tracking structure cannot fit all goals.*
+Habit Hacker provides three distinct mathematical execution models:
+1. **Date-Range Schedule (Type 1)**: Bound by explicit start and end dates with real-time deadline indicator badges and day spans.
+2. **Count of Days Challenge (Type 2)**: Defined by completing an active day count target within a flexible window span (e.g. *30 Active Workout Days within a 45-day window*).
+3. **Event Repetition Cycles (Type 3)**: Driven by quantitative event milestones that span across days until the target cycle is fulfilled (e.g. *Solve 100 System Design Questions in sets of 10*).
+
+### Condition 3: Quantitative Metric Tracking
+> *Execution is measurable.*
+- Habits and subhabits support numerical measure tracking (e.g., `km`, `pages`, `liters`, `rounds`, `minutes`).
+- Parent habit measure values are computed from the exact mathematical sum or average of its active subhabits.
+
+### Condition 4: Offline-First Autonomy
+> *Your discipline should never pause because your internet connection dropped.*
+- Habit Hacker executes as an autonomous Progressive Web App (PWA).
+- Every creation, toggle, note, and measure updates local storage immediately.
+- When internet connectivity resumes, changes seamlessly reconcile with the cloud PostgreSQL database.
+
+### Condition 5: Deterministic Productivity Index (0 - 100)
+> *No inflated or arbitrary streak gamification.*
+- Your discipline score is derived mathematically from your active streak length, task completion volume, subtask ratio, and workload adherence.
+
+---
+
+## 💼 Target Use Cases & Applications
+
+| User Domain | User Profile | Real-World Operational Workflow |
 | :--- | :--- | :--- |
 | 🎓 **Academic & Research** | PhD Candidates, Competitive Exam Aspirants | Break down syllabus modules into chapters (subhabits); log pages read, theorem proofs, and mock tests with numerical tracking. |
 | 💻 **Software Engineering** | Full-Stack Engineers, System Architects | Track sprint initiatives; establish daily LeetCode/Codeforces quotas; log deep work focus blocks and attach design specs. |
-| 🏋️ **Athletics & Physical Conditioning** | Endurance Athletes, Powerlifters | Track marathon preparation cycles with exact mileage (`km`), gym split sets, hydration targets (`liters`), and macro consistency. |
-| ✍️ **Creative & Knowledge Work** | Writers, Technical Authors, Content Leads | Monitor daily manuscript output (`words`), revision passes, and publication schedules across multi-week milestones. |
-| 👥 **Team & Peer Collaboration** | Study Groups, Co-Founders, Accountability Partners | Share parent habits with peer collaborators; enforce shared accountability where member logs contribute to shared project targets. |
+| 🏋️ **Athletics & Fitness** | Endurance Athletes, Powerlifters | Track marathon preparation cycles with exact mileage (`km`), gym split sets, hydration targets (`liters`), and macro consistency. |
+| ✍️ **Knowledge & Writing** | Authors, Technical Writers, Content Leads | Monitor daily manuscript output (`words`), revision passes, and publication schedules across multi-week milestones. |
+| 👥 **Teams & Accountability** | Study Groups, Co-Founders, Partners | Share parent habits with peer collaborators; enforce shared accountability where member logs contribute to shared project targets. |
+
+---
+
+## 🌟 Visual Suite & Application Capabilities
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                     HABIT HACKER SUITE                                      │
+├───────────────────────┬───────────────────────┬───────────────────────┬─────────────────────┤
+│  ⚡ TODAY COMMAND     │  🌳 HABIT HIERARCHY   │  📊 ANALYTICS MATRIX  │  📖 PRIVATE VAULT   │
+│                       │                       │                       │                     │
+│ • One-Tap Fast Toggle │ • 3 Tracking Modes    │ • Activity Heatmaps   │ • Encrypted Diary   │
+│ • Inline Measure Step │ • Parent-Child Lock   │ • Composite Score 0-100│ • Floating Scratch │
+│ • Historical Date Nav │ • Subtask Unmapping   │ • Spring AI Coach     │ • Emotional Tags    │
+│ • Subtask Drawers     │ • File Attachments    │ • Trajectory Curves   │ • Markdown Support  │
+└───────────────────────┴───────────────────────┴───────────────────────┴─────────────────────┘
+```
 
 ---
 
 ## 📱 Progressive Web App (PWA) Implementation
 
-Habit Hacker is specifically architected as a Progressive Web App (PWA) rather than a packaged native binary or simple web wrapper for concrete technical reasons:
+Habit Hacker is purposefully engineered as an installable Progressive Web App (PWA) rather than a packaged app-store binary or simple website wrapper.
 
 ```
-+-----------------------------------------------------------------------+
-|                       PWA Runtime Architecture                        |
-+-----------------------------------------------------------------------+
-|  [User Screen]  ->  Desktop / iOS / Android Home Screen Launch        |
-|                            |                                          |
-|  [App Shell]    ->  Vite Cache-First Service Worker (Zero Latency)    |
-|                            |                                          |
-|  [Storage]      ->  IndexedDB + LocalStorage (Autonomous Execution)   |
-|                            |                                          |
-|  [Sync Engine]  ->  Bidirectional REST / Supabase Sync on Reconnect   |
-+-----------------------------------------------------------------------+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          PWA RUNTIME ARCHITECTURE                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   [User Screen]  ───▶  Desktop / iOS / Android Home Screen Launch           │
+│                                │                                            │
+│   [App Shell]    ───▶  Vite Cache-First Service Worker (Zero Latency)       │
+│                                │                                            │
+│   [Local Store]  ───▶  IndexedDB + LocalStorage (Autonomous Execution)      │
+│                                │                                            │
+│   [Sync Engine]  ───▶  Bidirectional Supabase REST Sync on Reconnect        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Why Habit Hacker Uses PWA:
-- **Instant Cross-Device Installation**: Bypasses centralized app store gatekeeping. Installs seamlessly as a native application on Windows, macOS, Linux, iOS, and Android directly from the browser URL.
-- **Hardware-Accelerated UI Shell**: Pre-caches HTML, CSS, JavaScript chunks, fonts, and static assets via Workbox service worker caching. The application shell loads in under $300\text{ ms}$ even on cold starts.
-- **Full Display Autonomy**: Runs in `standalone` display mode without browser address bars, chrome, or navigation tabs, presenting an immersive native software experience.
-- **Dynamic Background Synchronization**: Enqueues habit status updates, notes, and completions during signal outages and flushes them when network connectivity is detected.
+- **Instant Cross-Device Installation**: Bypasses centralized app store gatekeeping. Installs as a standalone native-feel app on Windows, macOS, Linux, iOS, and Android directly from the browser URL.
+- **Hardware-Accelerated UI Shell**: Pre-caches HTML, CSS, JavaScript chunks, icons, and fonts via Workbox service worker caching. The application shell loads in under **300ms** even on cold starts.
+- **Standalone Display Mode**: Runs in `display: standalone` without browser address bars, chrome, or navigation tabs, presenting an immersive desktop/mobile application environment.
+- **Dynamic Background Synchronization**: Enqueues habit status updates, notes, and completions during signal outages and flushes them the moment connectivity returns.
 
 ---
 
@@ -113,20 +140,20 @@ Habit Hacker solves network volatility through a resilient, three-tier local-to-
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as User Interface
-    participant Local as Local Storage & Cache
+    actor User as User Action
+    participant Local as Local Cache & Offline DB
     participant Queue as Mutation Sync Queue
-    participant Cloud as Supabase / Spring Boot
+    participant Cloud as Supabase & Spring Boot
 
     User->>Local: Toggle Habit / Log Measure
     Local->>User: Instant UI Re-render (0ms Latency)
     Local->>Queue: Push Mutation Action Packet
     alt Internet Connected
-        Queue->>Cloud: POST/PUT Entity Mutation
+        Queue->>Cloud: POST/PUT Remote DB Entity
         Cloud-->>Queue: HTTP 200 OK (Sync Acknowledged)
         Queue->>Local: Mark Packet Reconciled
     else Offline / Signal Loss
-        Queue->>Queue: Retain Packet with Exponential Backoff
+        Queue->>Queue: Retain Packet Locally
         Note over Queue: Retains full chronological sequence
         User->>Cloud: Network Restored Event
         Queue->>Cloud: Sequential Batch Flush
@@ -134,7 +161,7 @@ sequenceDiagram
     end
 ```
 
-### Storage Resilience & Multi-Account Isolation:
+### Storage Resilience & Account Isolation:
 1. **Per-Account Key Namespacing**: Offline records and local logs are partitioned by the authenticated user's unique identity (`habit_hacker_user_{uid}_tasks`). Switching accounts clears in-memory state and loads that account's specific cached dataset.
 2. **Idempotent Timestamp Reconciliation**: In collisions between local offline edits and remote database updates, the most recent verified cryptographic timestamp wins (`updated_at` ordering).
 3. **Optimistic UI Engine**: Every action (habit toggle, subtask expansion, note creation, measure increment) triggers an optimistic state transition instantly. If cloud submission encounters an authorization or network error, the UI rolls back cleanly with an alert.
@@ -147,11 +174,11 @@ Habit Hacker organizes all productivity workflows into ten specialized interface
 
 ```
                                 [APPLICATION SUITE]
-                                         |
-     +-----------------+-----------------+-----------------+-----------------+
-     |                 |                 |                 |                 |
+                                         │
+     ┌─────────────────┬─────────────────┼─────────────────┬─────────────────┐
+     │                 │                 │                 │                 │
 [1. Dashboard]   [2. Today Hub]   [3. Directory]   [4. Habit Info]   [5. Calendar]
-     |                 |                 |                 |                 |
+     │                 │                 │                 │                 │
 [6. Heatmaps]    [7. AI Coach]    [8. Diary Vault] [9. Planner]      [10. Settings]
 ```
 
@@ -228,11 +255,11 @@ Configuration interface for system preferences and peer connectivity:
 Habit Hacker provides full operational control over how commitments evolve over time:
 
 ```
-[Create Habit] ---> [Active Execution] ---> [5-Day Inactivity] ---> [Auto-Archived]
-      ^                      |                                           |
-      |                      +---> [Manual Edit / Extend]                v
-      |                      |                                     [Vault Storage]
-      +-- [Restore Habit] <--+-------------------------------------------+
+[Create Habit] ───▶ [Active Execution] ───▶ [5-Day Inactivity] ───▶ [Auto-Archived]
+      ▲                      │                                            │
+      │                      ├───▶ [Manual Edit / Extend]                 ▼
+      │                      │                                      [Vault Storage]
+      └── [Restore Habit] ◀──┴────────────────────────────────────────────┘
 ```
 
 ### 1. Backdating & Retrospective Entry
@@ -272,33 +299,32 @@ The core distinguishing feature of Habit Hacker is its rigorous mathematical eng
 ### 1. The Three Primary Habit Types
 
 ```
-+---------------------------------------------------------------------------------------+
-|                                Habit Execution Typology                               |
-+---------------------+-------------------------------+---------------------------------+
-| Type 1: end_date    | Type 2: count_days            | Type 3: count_event             |
-+---------------------+-------------------------------+---------------------------------+
-| Calendar Range      | Active Day Target             | Repetition Cycle Target         |
-| Window: [Start, End]| K active days in span D       | Total units: E_target           |
-| Toggle: Daily       | Target: K <= D                | Cumulative: Crosses days        |
-+---------------------+-------------------------------+---------------------------------+
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   HABIT EXECUTION TYPOLOGY                                  │
+├─────────────────────────┬─────────────────────────────┬─────────────────────────────────────┤
+│   Type 1: end_date      │   Type 2: count_days        │   Type 3: count_event               │
+├─────────────────────────┼─────────────────────────────┼─────────────────────────────────────┤
+│ • Calendar Range Bound  │ • Active Day Target         │ • Repetition Cycle Target           │
+│ • Window: [Start, End]  │ • K active days in span D   │ • Total target units: E_target      │
+│ • Daily Toggle Cycle    │ • Constraint: K <= D        │ • Cumulative: Spans across days     │
+└─────────────────────────┴─────────────────────────────┴─────────────────────────────────────┘
 ```
 
 #### Model A: Calendar Window (`end_date`)
 - **Parameters**: Start Date $T_{\text{start}}$, End Date $T_{\text{end}}$.
-- **Span**: $D = \text{datediff}(T_{\text{end}}, T_{\text{start}}) + 1$.
+- **Span Calculation**: $\text{Day Span } D = (T_{\text{end}} - T_{\text{start}}) + 1\text{ days}$.
 - **Completion Check**: Evaluated daily. Binary status for each calendar day $t \in [T_{\text{start}}, T_{\text{end}}]$.
 
 #### Model B: Target Day Count (`count_days`)
 - **Parameters**: Target Days $K$, Start Date $T_{\text{start}}$, End Date $T_{\text{end}}$.
-- **Span Constraint**: $D \ge K$.
-- **Progress Metric**:
-  $$\text{Progress}_{\text{count\_days}} = \frac{\sum_{t=T_{\text{start}}}^{T_{\text{current}}} \mathbb{I}(\text{ActiveDay}(t))}{K}$$
-  where $\mathbb{I}$ is the indicator function ($1$ if completed on day $t$, $0$ otherwise).
+- **Constraint Rule**: Total window span $D \ge K$.
+- **Progress Ratio**:
+  $$\text{Progress} = \frac{\text{Total Completed Days to Date}}{K}$$
 
 #### Model C: Repetition Event Cycles (`count_event`)
 - **Parameters**: Total Event Target $E_{\text{target}}$, Unit Target per Event $U_{\text{target}}$.
-- **Progress Metric**:
-  $$\text{Progress}_{\text{count\_event}} = \frac{\sum_{i=1}^{N_{\text{events}}} E_i}{E_{\text{target}}}$$
+- **Progress Ratio**:
+  $$\text{Progress} = \frac{\text{Total Cumulative Events Completed}}{E_{\text{target}}}$$
 
 ---
 
@@ -308,66 +334,121 @@ When a parent habit has subordinate children, its daily measure and completion s
 
 ```mermaid
 graph TD
-    Parent["Parent Habit (Total Measure M_parent)"]
-    M1["Subtask 1 (Mandatory, Measurable: M1)"]
-    M2["Subtask 2 (Mandatory, Non-Event: M_non_event)"]
-    O1["Subtask 3 (Optional: M3)"]
+    Parent["Parent Habit<br/>(Target Measure)"]
+    M1["Subtask 1<br/>(Mandatory, Measurable)"]
+    M2["Subtask 2<br/>(Mandatory, Non-Event)"]
+    O1["Subtask 3<br/>(Optional Task)"]
 
-    M1 -->|Contributes M1| Parent
-    M2 -->|Contributes M_non_event| Parent
-    O1 -->|Bonus Measure (Does not block completion)| Parent
+    M1 -->|"Contributes Measured Value"| Parent
+    M2 -->|"Contributes Average Share"| Parent
+    O1 -->|"Bonus Progress - Non-Blocking"| Parent
 ```
 
 #### Subtask Classification:
-1. **Mandatory Measurable Subtask ($s \in \mathcal{S}_{\text{meas}}$)**: Possesses an explicit target $M_s$.
-2. **Mandatory Non-Event Subtask ($s \in \mathcal{S}_{\text{non-event}}$)**: Checkbox subtask without unique numeric units.
-3. **Optional Subtask ($s \in \mathcal{S}_{\text{opt}}$)**: Marked optional; contributes to numerical measure and bonus progress, but its absence does not prevent parent completion.
+1. **Mandatory Measurable Subtask**: Possesses an explicit target number $M_s$.
+2. **Mandatory Non-Event Subtask**: Checkbox subtask without unique numeric units.
+3. **Optional Subtask**: Contributes to numerical measure and bonus progress, but its incomplete state never blocks parent completion.
 
-#### The Non-Event Measure Average ($\bar{M}_{\text{non-event}}$):
-To equitably distribute progress when a parent habit has a quantitative goal but some subtasks are simple checkboxes:
-$$\bar{M}_{\text{non-event}} = \begin{cases} \dfrac{\sum_{i \in \mathcal{S}_{\text{meas}}} M_i}{|\mathcal{S}_{\text{meas}}|} & \text{if } |\mathcal{S}_{\text{meas}}| > 0 \\[1em] \dfrac{M_{\text{parent}}}{|\mathcal{S}_{\text{mandatory}}|} & \text{otherwise} \end{cases}$$
+#### The Parent Habit Completion Invariant:
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    PARENT HABIT COMPLETION INVARIANT                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   IF (Mandatory Subtasks Count == 0) THEN                                   │
+│       Parent Completion = Manual Toggle Allowed                             │
+│   ELSE                                                                      │
+│       Parent Completion = Mechanically Locked (Manual toggle disabled)      │
+│       IF (All Mandatory Subtasks Completed for Today == TRUE) THEN          │
+│           Parent Status = AUTOMATICALLY COMPLETED                           │
+│       ELSE                                                                  │
+│           Parent Status = INCOMPLETE                                        │
+│       END IF                                                                │
+│   END IF                                                                    │
+│                                                                             │
+│   • Optional Subtasks: Contribute to measure and bonus progress %           │
+│     without blocking parent completion.                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
-#### Daily Parent Measure Aggregation:
-The parent habit's measure value for day $t$ is calculated by:
-$$M_{\text{parent}}(t) = \sum_{s \in \mathcal{S}_{\text{meas}}} \text{Value}_s(t) + \sum_{s \in \mathcal{S}_{\text{non-event}}} \Big(\mathbb{I}(\text{Done}_s(t)) \times \bar{M}_{\text{non-event}}\Big) + \sum_{s \in \mathcal{S}_{\text{opt}}} \text{Value}_s(t)$$
+#### Non-Event Measure Average Sharing:
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     NON-EVENT MEASURE AVERAGE SHARING                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   When a parent habit has a quantitative measure target (e.g. 50 units)     │
+│   and contains a mixture of measurable and non-event subtasks:              │
+│                                                                             │
+│   Case 1: At least one subtask has a defined numeric measure target:        │
+│           Non-Event Share = Average(Measurable Subtask Targets)             │
+│                                                                             │
+│   Case 2: No subtasks have numeric measure targets:                         │
+│           Non-Event Share = Parent Target Measure / Total Mandatory Subtasks│
+│                                                                             │
+│   Total Parent Measure = Sum(Measurable Subtasks Logged)                    │
+│                        + Sum(Non-Event Completed × Non-Event Share)         │
+│                        + Sum(Optional Subtasks Logged)                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 #### Uncapped Measure Principle:
-If an athlete sets a subtask goal of $5\text{ km}$ and logs $8\text{ km}$:
-- $\text{Value}_s(t) = 8\text{ km}$.
-- Parent receives the full $8\text{ km}$ contribution.
-- $\text{Progress Ratio} = \frac{8}{5} = 1.60$ ($160\%$).
-- Binary milestone satisfaction is capped at $\min(1.0, 1.60) = 1.0$.
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         UNCAPPED MEASURE LOGGING                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   Target: 10 km   |   User Logs: 14 km                                      │
+│                                                                             │
+│   • Analytical Volume Recorded: 14 km (140% true physical achievement)       │
+│   • Milestone Completion Ratio: Min(1.0, 1.40) = 100% (Status: Completed)   │
+│   • Over-achievement is never trimmed or discarded in performance history.  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-### 3. Productivity & Discipline Index Formula ($0 - 100$)
+### 3. Productivity & Discipline Index Formula (0 - 100)
 
-Habit Hacker does not rely on simplistic streak counters. The overarching **Productivity Score** displayed on the Dashboard is a mathematically balanced composite index:
-
-$$\mathbf{Productivity\ Score} = \text{round}\Big( (C_{\text{rate}} \times 0.40) + (K_{\text{score}} \times 0.30) + (M_{\text{score}} \times 0.15) + (D_{\text{score}} \times 0.15) \Big)$$
+Habit Hacker replaces superficial streaks with a mathematically balanced composite index:
 
 ```
-+-----------------------------------------------------------------------+
-|                    Productivity Index Weight Matrix                   |
-+-----------------------------------------------------------------------+
-|  [Completion Rate]      40%  ===================>                     |
-|  [Consistency Score]    30%  =============>                           |
-|  [Momentum Score]       15%  =======>                                 |
-|  [Discipline Score]     15%  =======>                                 |
-+-----------------------------------------------------------------------+
-|  Total Composite Index: 100%                                          |
-+-----------------------------------------------------------------------+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                   COMPOSITE PRODUCTIVITY SCORE (0 - 100)                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   Productivity Score = Round(                                               │
+│       (Completion Rate  × 0.40) +                                           │
+│       (Consistency Score × 0.30) +                                          │
+│       (Momentum Score   × 0.15) +                                           │
+│       (Discipline Score × 0.15)                                             │
+│   )                                                                         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    PRODUCTIVITY INDEX WEIGHT MATRIX                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  [Completion Rate]      40%  ===================>                           │
+│  [Consistency Score]    30%  =============>                                 │
+│  [Momentum Score]       15%  =======>                                       │
+│  [Discipline Score]     15%  =======>                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Total Composite Index: 100%                                                │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 #### Detailed Metric Component Breakdown:
 
 1. **Completion Rate ($C_{\text{rate}}$, Weight: $40\%$)**:
    The percentage of scheduled active commitments successfully satisfied within the selected evaluation window:
-   $$C_{\text{rate}} = \frac{N_{\text{completed}}}{N_{\text{scheduled}}} \times 100$$
+   $$C_{\text{rate}} = \frac{\text{Completed Habits}}{\text{Scheduled Habits}} \times 100$$
 
 2. **Consistency Score ($K_{\text{score}}$, Weight: $30\%$)**:
    The macro ratio of all historical habit executions against all historical scheduled opportunities:
-   $$K_{\text{score}} = \frac{\sum \text{Historical Completed Opportunities}}{\sum \text{Historical Scheduled Opportunities}} \times 100$$
+   $$K_{\text{score}} = \frac{\text{Total Historical Completed Opportunities}}{\text{Total Historical Scheduled Opportunities}} \times 100$$
 
 3. **Momentum Score ($M_{\text{score}}$, Weight: $15\%$)**:
    Measures kinetic execution velocity by factoring current active streak into completion volume:
@@ -375,7 +456,7 @@ $$\mathbf{Productivity\ Score} = \text{round}\Big( (C_{\text{rate}} \times 0.40)
 
 4. **Discipline Score ($D_{\text{score}}$, Weight: $15\%$)**:
    Evaluates target adherence by measuring the proportion of high-priority habits and mandatory subtasks fulfilled without skips:
-   $$D_{\text{score}} = \frac{N_{\text{mandatory fulfilled}}}{N_{\text{mandatory total}}} \times 100$$
+   $$D_{\text{score}} = \frac{\text{Mandatory Subhabits Fulfilled}}{\text{Total Mandatory Subhabits}} \times 100$$
 
 ---
 
@@ -384,14 +465,14 @@ $$\mathbf{Productivity\ Score} = \text{round}\Big( (C_{\text{rate}} \times 0.40)
 Habit Hacker enforces strict zero-trust data segregation through **Supabase PostgreSQL Row Level Security (RLS)**:
 
 ```
-[Incoming Request] ---> [JWT Auth Bearer Token] ---> [PostgreSQL Engine]
-                                                           |
+[Incoming Request] ───▶ [JWT Auth Bearer Token] ───▶ [PostgreSQL Engine]
+                                                           │
                                              [RLS Policy Evaluation]
-                                                           |
-                      +------------------------------------+------------------------------------+
-                      |                                                                         |
+                                                           │
+                      ┌────────────────────────────────────┴────────────────────────────────────┐
+                      │                                                                         │
         auth.uid() = user_id                                                    auth.uid() != user_id
-                      |                                                                         |
+                      │                                                                         │
              [PERMIT: Read / Write]                                                    [DENY: HTTP 403 / 0 Rows]
 ```
 
@@ -493,18 +574,18 @@ erDiagram
 ## 💻 Technology Stack & Runtime Infrastructure
 
 ```
-+---------------------------------------------------------------------------------------+
-|                                    TECHNOLOGY STACK                                   |
-+-------------------+-----------------------------------+-------------------------------+
-| Layer             | Technologies                      | Architectural Role            |
-+-------------------+-----------------------------------+-------------------------------+
-| Frontend PWA      | React 18, Vite 5, Tailwind CSS    | Client SPA, PWA Service Worker|
-| Icons & Visuals   | Lucide React, Canvas Confetti     | Vector UI, Micro-interactions |
-| Backend API       | Spring Boot 3.2, Java 17          | REST API, Async Jobs, AI Core |
-| AI Intelligence   | Spring AI, OpenAI / Gemini API    | Discipline Coaching & Prompts |
-| Database & Auth   | Supabase PostgreSQL 15, GoTrue    | Relational DB, Auth, RLS      |
-| Cloud Hosting     | Vercel (Frontend), Render (API)   | Edge CDN, Containerized Cloud |
-+-------------------+-----------------------------------+-------------------------------+
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                       TECHNOLOGY STACK                                      │
+├─────────────────────┬─────────────────────────────────┬─────────────────────────────────────┤
+│ Layer               │ Technologies                    │ Architectural Role                  │
+├─────────────────────┼─────────────────────────────────┼─────────────────────────────────────┤
+│ Frontend PWA        │ React 18, Vite 5, Tailwind CSS  │ Client SPA, PWA Service Worker      │
+│ Icons & Visuals     │ Lucide React, Canvas Confetti   │ Vector UI, Micro-interactions       │
+│ Backend API         │ Spring Boot 3.2, Java 17        │ REST API, Async Jobs, AI Core       │
+│ AI Intelligence     │ Spring AI, OpenAI / Gemini API  │ Discipline Coaching & Prompts       │
+│ Database & Auth     │ Supabase PostgreSQL 15, GoTrue  │ Relational DB, Auth, RLS            │
+│ Cloud Hosting       │ Vercel (Frontend), Render (API) │ Edge CDN, Containerized Cloud       │
+└─────────────────────┴─────────────────────────────────┴─────────────────────────────────────┘
 ```
 
 ---
@@ -558,18 +639,18 @@ Open your Supabase Project Dashboard -> **SQL Editor**, and run the migration sc
 Habit Hacker is architected for zero-maintenance serverless edge hosting:
 
 ```
-+-------------------------+            +-------------------------+
-|   Vercel Edge Network   |            |   Render Cloud Engine   |
-|  (Frontend PWA Bundle)  |            |  (Spring Boot REST API) |
-+------------+------------+            +------------+------------+
-             |                                      |
-             +------------------+-------------------+
-                                |
-                                v
-               +----------------------------------+
-               |     Supabase Managed Cloud       |
-               |  PostgreSQL 15 + RLS + GoTrue    |
-               +----------------------------------+
+┌─────────────────────────┐            ┌─────────────────────────┐
+│   Vercel Edge Network   │            │   Render Cloud Engine   │
+│  (Frontend PWA Bundle)  │            │  (Spring Boot REST API) │
+└────────────┬────────────┘            └────────────┬────────────┘
+             │                                      │
+             └──────────────────┬───────────────────┘
+                                │
+                                ▼
+               ┌──────────────────────────────────┐
+               │     Supabase Managed Cloud       │
+               │  PostgreSQL 15 + RLS + GoTrue    │
+               └──────────────────────────────────┘
 ```
 
 - **Frontend Deployment (Vercel)**: Automatically built and deployed on every push to `main` via `project/mobile/vite.config.js` and `vercel.json`. Edge caching guarantees global low latency.
