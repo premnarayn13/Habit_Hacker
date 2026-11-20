@@ -305,3 +305,4 @@ CREATE POLICY "diary_security_config_access_policy" ON public.diary_security_con
     FOR ALL TO anon, authenticated
     USING (true)
     WITH CHECK (true);
+
