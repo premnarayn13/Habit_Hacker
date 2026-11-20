@@ -1130,23 +1130,15 @@ export default function App() {
         const parent = item.parentTaskId ? fetchedItems.find(p => p.id === item.parentTaskId) : null;
         const isEventTask = item.trackingMode === 'count_event' || (parent && parent.trackingMode === 'count_event');
 
-        // For Type 1 and Type 2 tasks:
-        // A task is completed TODAY if and only if it has an explicit completion / log for today's local date
+        // Event-based tasks do NOT reset daily
+        if (isEventTask) return item;
+
+        // A task is from a previous day ONLY if it has an explicit completedDate/completedAt that is strictly before today
         const compDate = item.completedDate || (item.completedAt ? getLocalDateString(item.completedAt) : null);
-        
-        const hasTodayTaskLog = (dbTaskLogs || []).some(l => 
-          (l.task_id === item.id || l.taskId === item.id) && 
-          (l.logged_date === todayDateStr || (l.logged_at && getLocalDateString(l.logged_at) === todayDateStr))
-        );
-        const hasTodaySubtaskLog = (dbSubtaskLogs || []).some(sl => 
-          (sl.subtask_id === item.id || sl.subtaskId === item.id) && 
-          (sl.log_date === todayDateStr || (sl.created_at && getLocalDateString(sl.created_at) === todayDateStr))
-        );
+        const isFromPreviousDay = compDate && compDate < todayDateStr;
 
-        const isLoggedToday = hasTodayTaskLog || hasTodaySubtaskLog || (compDate === todayDateStr);
-
-        // If marked completed or has non-zero loggedMeasureVal, but was done on a previous day (not today):
-        if ((item.isDoneToday || Number(item.loggedMeasureVal || 0) > 0) && !isLoggedToday) {
+        // Reset ONLY tasks that were completed on an earlier calendar day (not today)
+        if (isFromPreviousDay && (item.isDoneToday || Number(item.loggedMeasureVal || 0) > 0)) {
           previousDayTasksToReset.push(item.id);
           return {
             ...item,
@@ -1926,6 +1918,27 @@ export default function App() {
           await supabase.from('subtasks').update(subPayload).eq('id', taskId);
         } catch (e) {}
 
+        // If it is a subtask, also sync the parent habit's calculated completion to Supabase
+        if (updatedTask.parentTaskId) {
+          const parent = newTasks.find(p => p.id === updatedTask.parentTaskId);
+          if (parent) {
+            try {
+              const parentPayload = {
+                current_count: parent.currentCount,
+                progress_percent: parent.progressPercent,
+                is_done_today: parent.isDoneToday,
+                completed_at: parent.isDoneToday ? (parent.completedAt || nowIso) : null,
+                status: parent.isDoneToday ? 'COMPLETED' : 'INBOX'
+              };
+              if (parent.loggedMeasureVal !== undefined) {
+                parentPayload.logged_measure_val = parent.loggedMeasureVal;
+                parentPayload.last_measured_value = parent.lastMeasuredValue || parent.loggedMeasureVal;
+              }
+              await supabase.from('tasks').update(parentPayload).eq('id', parent.id);
+            } catch (pErr) {}
+          }
+        }
+
         if (updatedTask.isDoneToday) {
           // COMPLETED or MEASURE EDITED: Log to task_logs and state
           try {
@@ -2509,42 +2522,9 @@ export default function App() {
   };
 
   const handleToggleSubtask = (subtaskId, targetDate = null) => {
-    const todayStr = getLocalDateString(new Date());
-    const isHistorical = targetDate && targetDate !== todayStr;
-    if (isHistorical) {
-      const targetSub = subtasks.find(s => s.id === subtaskId) || tasks.find(t => t.id === subtaskId);
-      const existingLog = (subtaskLogs || []).find(l => (l.subtask_id === subtaskId || l.subtaskId === subtaskId) && (l.log_date === targetDate || l.logged_date === targetDate));
-      const newStatus = existingLog?.status === 'COMPLETED' ? 'PLANNED' : 'COMPLETED';
-      const targetVal = targetSub?.targetValue || targetSub?.targetCount || 1;
-      const newLog = {
-        id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'sublog-' + Date.now(),
-        subtask_id: subtaskId,
-        subtaskId: subtaskId,
-        log_date: targetDate,
-        logged_date: targetDate,
-        status: newStatus,
-        is_completed: newStatus === 'COMPLETED',
-        isCompleted: newStatus === 'COMPLETED',
-        completedValue: newStatus === 'COMPLETED' ? targetVal : 0,
-        measured_value: newStatus === 'COMPLETED' ? targetVal : 0,
-        created_at: new Date().toISOString()
-      };
-      const updatedLogs = [...(subtaskLogs || []).filter(l => !((l.subtask_id === subtaskId || l.subtaskId === subtaskId) && (l.log_date === targetDate || l.logged_date === targetDate))), newLog];
-      setSubtaskLogs(updatedLogs);
-      if (currentUser?.email) {
-        try {
-          localStorage.setItem('hh_subtask_logs_' + currentUser.email.toLowerCase(), JSON.stringify(updatedLogs));
-        } catch (e) {}
-      }
-      return;
-    }
-    setSubtasks(prev => prev.map(s => {
-      if (s.id === subtaskId) {
-        const nextStatus = s.status === 'COMPLETED' ? 'PLANNED' : 'COMPLETED';
-        return { ...s, status: nextStatus, completedValue: nextStatus === 'COMPLETED' ? s.targetValue : 0 };
-      }
-      return s;
-    }));
+    // Forward directly to handleToggleTask to ensure complete hierarchy completion,
+    // metrics calculation, database persistence to Supabase tasks/subtasks/logs, and localStorage syncing!
+    return handleToggleTask(subtaskId, null, targetDate);
   };
 
   const handleUpdateSubtaskCount = (subtaskId, delta) => {
