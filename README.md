@@ -286,34 +286,35 @@ Target: 10 km   |   User Logs: 14 km
 
 ### 3. How the Productivity Score is Calculated (0 - 100)
 
-Instead of a simple streak number, Habit Hacker calculates a composite score on your Dashboard:
+Instead of relying on arbitrary gamified streaks, Habit Hacker evaluates discipline using a multi-factor composite index:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                 PRODUCTIVITY SCORE FORMULA (0 - 100 INDEX)                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   Productivity Score = Round(                                               │
-│       (Completion Rate  × 0.40) +                                           │
-│       (Consistency Score × 0.30) +                                          │
-│       (Momentum Score   × 0.15) +                                           │
-│       (Discipline Score × 0.15)                                             │
-│   )                                                                         │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+```text
+Productivity Score = Round(
+    (Completion Rate   × 0.40) +
+    (Consistency Score × 0.30) +
+    (Momentum Score    × 0.15) +
+    (Discipline Score  × 0.15)
+)
 ```
 
+| Metric Component | Weight | Mathematical Formula | Exact Operational Meaning |
+| :--- | :-: | :--- | :--- |
+| **Completion Rate ($C_{\text{rate}}$)** | **40%** | $\frac{\text{Completed Habits}}{\text{Scheduled Habits}} \times 100$ | Proportion of today's scheduled commitments fulfilled before midnight. |
+| **Consistency Score ($K_{\text{score}}$)** | **30%** | $\frac{\text{Total Historical Done}}{\text{Total Historical Scheduled}} \times 100$ | Long-term macro execution ratio across the user's entire commitment timeline. |
+| **Momentum Score ($M_{\text{score}}$)** | **15%** | $\min(100, \text{round}(C_{\text{rate}} \times 0.70 + \text{Streak Bonus}))$ | Kinetic velocity bonus ($+30$ points when active streak $> 0$ days). |
+| **Discipline Score ($D_{\text{score}}$)** | **15%** | $\frac{\text{Mandatory Subtasks Fulfilled}}{\text{Total Mandatory Subtasks}} \times 100$ | Adherence to non-negotiable core subtasks without skipping or cutting corners. |
+
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                       WEIGHT DISTRIBUTION BREAKDOWN                         │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  🎯 Completion Rate (40%) : (Today's Completed Habits / Scheduled) × 100    │
-│  📈 Consistency Rate (30%): (Total Historical Done / Total Scheduled) × 100 │
-│  🔥 Momentum Rate (15%)   : Min(100, (Completion Rate × 0.7) + Streak Bonus)│
-│  ⭐ Discipline Rate (15%) : (Mandatory Subhabits Done / Total Mandatory) × 100│
-├─────────────────────────────────────────────────────────────────────────────┤
-│  Total Score = 100%                                                         │
-└─────────────────────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------------+
+|                    PRODUCTIVITY WEIGHT DISTRIBUTION                   |
++-----------------------------------------------------------------------+
+|  [Completion Rate]    40%  =========================>                 |
+|  [Consistency Score]  30%  ==================>                        |
+|  [Momentum Score]     15%  =========>                                 |
+|  [Discipline Score]   15%  =========>                                 |
++-----------------------------------------------------------------------+
+|  Total Composite Index: 100%                                          |
++-----------------------------------------------------------------------+
 ```
 
 ---
