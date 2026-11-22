@@ -137,9 +137,9 @@ sequenceDiagram
 
 ## 📐 Mathematical Model & Measure Calculations
 
-Habit Hacker uses an exact mathematical engine to evaluate habit completion and performance.
+Habit Hacker uses an exact mathematical engine to evaluate habit completion and progress.
 
-### 1. The 3 Habit Execution Types
+### Habit Execution Types
 
 | Model | Schema Identifier | Mathematical Definition & Constraints | Practical Real-World Example |
 | :--- | :--- | :--- | :--- |
@@ -149,7 +149,7 @@ Habit Hacker uses an exact mathematical engine to evaluate habit completion and 
 
 ---
 
-### 2. Subtask Contribution & Hierarchy Rules
+### Subtask Contribution & Hierarchy Rules
 
 When a habit has subhabits, parent completion is **computed**, not checked manually:
 
