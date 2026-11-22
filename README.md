@@ -78,28 +78,12 @@ Most habit trackers treat human habits as simple binary checkboxes. **Habit Hack
 
 ## 📱 Why We Built Habit Hacker as a PWA
 
-Habit Hacker is engineered as a **Progressive Web App (PWA)** for instant cross-platform execution without app-store friction:
+Habit Hacker is engineered as a Progressive Web App (PWA) to deliver a native app experience without app-store friction:
 
-| Core Pillar | Technical Implementation | Practical Benefit |
-| :--- | :--- | :--- |
-| **Instant Cross-Device Install** | Web App Manifest + Service Worker prompt | Install on Windows, macOS, Android, and iOS directly from URL |
-| **Sub-300ms Startup** | Workbox Cache-First offline asset storage | Zero latency boot; opens instantly even on slow 2G or offline |
-| **Immersive Standalone UI** | Display mode configured to `standalone` | Native app feel without address bars, navigation tabs, or chrome |
-| **Resilient Local Mutations** | Optimistic UI + IndexedDB / LocalStorage queue | Instant 0ms logging; automatically syncs when network reconnects |
-
-```
-+-----------------------------------------------------------------------+
-|                       PWA RUNTIME ARCHITECTURE                        |
-+-----------------------------------------------------------------------+
-|  [User Display]  -->  Desktop / iOS / Android Home Screen Launch      |
-|                             |                                         |
-|  [App Shell]     -->  Vite Cache-First Service Worker (Zero Latency)  |
-|                             |                                         |
-|  [Local Store]   -->  IndexedDB + LocalStorage (Autonomous Engine)    |
-|                             |                                         |
-|  [Sync Engine]   -->  Bidirectional Supabase REST Sync on Reconnect   |
-+-----------------------------------------------------------------------+
-```
+- **1-Tap Installation**: Install directly from your browser onto Windows, macOS, Android, or iOS with no app-store barriers.
+- **Sub-300ms Startup**: Workbox service workers cache assets locally, ensuring near-instant launches even on weak 2G or offline.
+- **Standalone Window**: Runs borderless without browser address bars, tabs, or chrome for maximum focus.
+- **Local-First Mutations**: Every habit toggle and note persists instantly to local storage and syncs automatically when reconnected.
 
 ---
 
