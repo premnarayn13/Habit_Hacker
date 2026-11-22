@@ -363,7 +363,7 @@ HabitHacker/
 │   │   └── package.json         # Frontend dependencies & scripts
 │   └── sql/                     # PostgreSQL database migrations
 │       ├── 01_CREATE_TABLES.sql # Primary database tables & relational keys
-│       └── 22_ENABLE_RLS.sql    # Row Level Security policies & security advisor fixes
+│       └── 22_ENABLE_RLS_AND_SECURITY_ADVISOR_FIX.sql # Row Level Security policies & security advisor fixes
 ├── backend/                     # Spring Boot 3 Java API
 │   ├── src/main/java/           # REST controllers, Spring AI intelligence, service layer
 │   └── pom.xml                  # Maven dependencies & build definitions
