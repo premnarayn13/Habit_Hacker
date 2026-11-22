@@ -222,18 +222,11 @@ Habit Hacker uses an exact mathematical engine to evaluate habit completion and 
 
 ### 1. The 3 Habit Execution Types
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                   THE 3 HABIT TYPES                                         │
-├─────────────────────────┬─────────────────────────────┬─────────────────────────────────────┤
-│ 📅 TYPE 1: end_date     │ 🎯 TYPE 2: count_days       │ 🔁 TYPE 3: count_event              │
-├─────────────────────────┼─────────────────────────────┼─────────────────────────────────────┤
-│ • Fixed Calendar Span   │ • Active Day Target         │ • Repetition Event Cycle            │
-│ • Example: Jan 1 to 31  │ • Example: 20 workout days  │ • Example: Solve 100 questions in   │
-│ • Evaluated every day   │   within a 30-day window    │   sets of 10                        │
-│ • Daily binary check    │ • Progress = Done Days / K  │ • Progress = Events Done / Target   │
-└─────────────────────────┴─────────────────────────────┴─────────────────────────────────────┘
-```
+| Model | Schema Identifier | Mathematical Definition & Constraints | Practical Real-World Example |
+| :--- | :--- | :--- | :--- |
+| **Type 1** | **`end_date`** | Bound to calendar window $[T_{\text{start}}, T_{\text{end}}]$. Span $D = (T_{\text{end}} - T_{\text{start}}) + 1$. Evaluated daily as a binary or measured checkpoint. | 30-day exam preparation sprint from Oct 1 to Oct 30. |
+| **Type 2** | **`count_days`** | Active target days $K$ within span $D$ where $K \le D$. Progress $= \text{Completed Days} / K$. Preserves consistency even with rest days. | 20 gym workout sessions scheduled across a 30-day period. |
+| **Type 3** | **`count_event`** | Repetition event cycle with cumulative units $E_{\text{target}}$. Progress $= \text{Events Completed} / E_{\text{target}}$. Spans across multiple days. | Solve 100 System Design problems in batches of 5. |
 
 ---
 
@@ -254,22 +247,22 @@ graph TD
 ```
 
 #### Rule A: Mechanical Locking of Parent Habits
-```
-IF Habit has Mandatory Subtasks THEN
-    Parent Habit Manual Checkbox = LOCKED
+```text
+IF Parent Habit has Mandatory Subtasks THEN
+    Parent Habit Direct Toggle = LOCKED
     IF All Mandatory Subtasks Completed Today == TRUE THEN
         Parent Habit Status = AUTOMATICALLY COMPLETED
     ELSE
         Parent Habit Status = INCOMPLETE
     END IF
 ELSE
-    Parent Habit Manual Checkbox = UNLOCKED (Direct 1-tap toggle)
+    Parent Habit Direct Toggle = UNLOCKED (Direct manual one-tap check)
 END IF
 ```
 
 #### Rule B: Non-Event Average Measure Sharing
-When a parent habit has a quantitative target (e.g. 50 units) and has non-event (checkbox) subtasks:
-```
+When a parent habit has a quantitative target (e.g. 50 units) and has checkbox (non-event) subtasks:
+```text
 Case 1: At least one subtask has a defined numeric target:
         Non-Event Share = Average(Measurable Subtask Targets)
 
@@ -282,11 +275,11 @@ Total Parent Progress = Sum(Measurable Subtasks Done)
 ```
 
 #### Rule C: Uncapped Measure Tracking
-```
+```text
 Target: 10 km   |   User Logs: 14 km
-• Stored History  : 14 km (140% true volume preserved in analytics)
-• Milestone Status: 100% Completed (Capped at 1.0 for milestone status)
-• Over-achievement is never lost or truncated.
+• Stored History  : 14 km (140% true physical volume preserved in analytics)
+• Milestone Status: 100% Completed (Capped at 1.0 for binary daily milestone)
+• Over-achievement is never trimmed or discarded in performance history.
 ```
 
 ---
