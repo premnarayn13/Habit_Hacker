@@ -35,16 +35,16 @@
 Most habit trackers treat human habits as simple binary checkboxes. **Habit Hacker** is built around three realistic principles:
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                 THE 3 CORE DIFFERENCES                                      │
-├─────────────────────────┬─────────────────────────────┬─────────────────────────────────────┤
-│ 🌳 HIERARCHICAL GOALS   │ 📐 QUANTITATIVE MEASURES    │ 🔄 RESILIENT REALITY                │
-├─────────────────────────┼─────────────────────────────┼─────────────────────────────────────┤
-│ Big habits require      │ Checkboxes are not enough.  │ Life happens. Habit Hacker supports │
-│ sub-habits. Parent goals│ Log exact km, pages, reps,  │ backdating missed days, extending   │
-│ lock until mandatory    │ and minutes with uncapped   │ deadlines, and auto-archiving stale │
-│ subtasks are finished.  │ volume tracking.            │ habits to keep focus sharp.         │
-└─────────────────────────┴─────────────────────────────┴─────────────────────────────────────┘
++---------------------------------------------------------------------------------------------+
+|                                   THE 3 CORE DIFFERENCES                                    |
++---------------------------+-----------------------------+-----------------------------------+
+| 1. HIERARCHICAL GOALS     | 2. QUANTITATIVE MEASURES    | 3. RESILIENT REALITY              |
++---------------------------+-----------------------------+-----------------------------------+
+| Big habits require        | Checkboxes are not enough.  | Life happens. Habit Hacker        |
+| sub-habits. Parent goals  | Log exact km, pages, reps,  | supports backdating missed days,  |
+| lock until all mandatory  | and minutes with uncapped   | extending deadlines, and auto-    |
+| subtasks are finished.    | volume tracking.            | archiving stale habits.           |
++---------------------------+-----------------------------+-----------------------------------+
 ```
 
 ### 🥊 Comparison: Habit Hacker vs Traditional Trackers
@@ -78,26 +78,27 @@ Most habit trackers treat human habits as simple binary checkboxes. **Habit Hack
 
 ## 📱 Why We Built Habit Hacker as a PWA
 
-Habit Hacker is engineered as a **Progressive Web App (PWA)** for instant access and zero app-store friction:
+Habit Hacker is engineered as a **Progressive Web App (PWA)** for instant cross-platform execution without app-store friction:
+
+| Core Pillar | Technical Implementation | Practical Benefit |
+| :--- | :--- | :--- |
+| **Instant Cross-Device Install** | Web App Manifest + Service Worker prompt | Install on Windows, macOS, Android, and iOS directly from URL |
+| **Sub-300ms Startup** | Workbox Cache-First offline asset storage | Zero latency boot; opens instantly even on slow 2G or offline |
+| **Immersive Standalone UI** | Display mode configured to `standalone` | Native app feel without address bars, navigation tabs, or chrome |
+| **Resilient Local Mutations** | Optimistic UI + IndexedDB / LocalStorage queue | Instant 0ms logging; automatically syncs when network reconnects |
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                             WHY PWA FOR HABIT HACKER                        │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  📲 Zero App-Store Friction : Install on Windows, Mac, Android, and iOS     │
-│                               directly from the browser in 1 tap.           │
-│                                                                             │
-│  ⚡ Sub-300ms Startup       : Workbox service workers cache assets locally. │
-│                               Opens instantly even on 2G or offline.       │
-│                                                                             │
-│  🖥️ Native App Experience   : Runs in standalone window mode without web    │
-│                               address bars, toolbars, or browser chrome.    │
-│                                                                             │
-│  🔄 Resilient Offline Sync  : Track habits anywhere. Mutations save locally │
-│                               and automatically sync to Supabase on reconnect.│
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------------+
+|                       PWA RUNTIME ARCHITECTURE                        |
++-----------------------------------------------------------------------+
+|  [User Display]  -->  Desktop / iOS / Android Home Screen Launch      |
+|                             |                                         |
+|  [App Shell]     -->  Vite Cache-First Service Worker (Zero Latency)  |
+|                             |                                         |
+|  [Local Store]   -->  IndexedDB + LocalStorage (Autonomous Engine)    |
+|                             |                                         |
+|  [Sync Engine]   -->  Bidirectional Supabase REST Sync on Reconnect  |
++-----------------------------------------------------------------------+
 ```
 
 ---
