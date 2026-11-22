@@ -63,15 +63,16 @@ Most habit trackers treat human habits as simple binary checkboxes. **Habit Hack
 
 ---
 
-## 🎯 Target Use Cases
+## 💻 Tech Stack Overview
 
-| Persona | Daily Challenge | How Habit Hacker Solves It |
+| Layer | Technology | Architectural Role in Habit Hacker |
 | :--- | :--- | :--- |
-| 🎓 **Students & Scholars** | Huge exam syllabus with complex modules | Break subjects into chapter subhabits; log pages read and practice questions daily. |
-| 💻 **Developers & Creators** | Sprint goals, LeetCode, side-project work | Track coding routines, attach design specs, and analyze weekly productivity velocity. |
-| 🏃 **Athletes & Fitness** | Training programs with varied workout targets | Track exact mileage (`km`), sets, reps, and hydration (`L`) with no ceiling caps. |
-| ✍️ **Writers & Thinkers** | Inconsistent daily writing & reflection | Write in the Markdown diary vault, track word counts, and tag emotional focus states. |
-| 👥 **Accountability Teams** | Teammates losing momentum without visibility | Add collaborators to parent habits to track joint progress with live completion badges. |
+| **Frontend PWA** | React 18, Vite 5, Tailwind CSS | High-performance reactive UI, touch gesture optimization |
+| **Mobile & PWA Engine** | Workbox Service Worker | Local asset caching, offline execution, home-screen install |
+| **Backend REST API** | Spring Boot 3.2, Java 17 | Core REST endpoints, analytical jobs, user account services |
+| **AI Intelligence** | Spring AI, Gemini / OpenAI API | Personalized discipline coaching, pattern detection |
+| **Database & Auth** | Supabase PostgreSQL 15, GoTrue | Relational integrity, Row Level Security (RLS), JWT tokens |
+| **Cloud Hosting** | Vercel (Web), Render (Backend) | Global edge CDN caching, containerized cloud backend |
 
 ---
 
@@ -208,38 +209,6 @@ Your command hub for configuration:
 - **Cloud Sync Health**: Real-time indicator of connection status and pending offline updates.
 - **Dark & Light Themes**: High-contrast modern themes designed for high readability.
 - **Data Export**: Export your complete habit tree, subtasks, and diary entries as JSON anytime.
-
----
-
-## 🛠️ Complete Task Lifecycle Management
-
-Habit Hacker gives you complete control over how habits evolve:
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           HABIT LIFECYCLE CONTROLS                          │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ⏮️ Backdate Missed Days    : Step into past days using the top date bar to │
-│                               backfill missed workouts or reading sessions. │
-│                                                                             │
-│  ⏳ Extend Deadlines        : Easily adjust end dates when schedules shift  │
-│                               without resetting your existing streaks.      │
-│                                                                             │
-│  ✏️ Edit & Reprioritize     : Adjust measure units, priorities, or titles   │
-│                               on the fly.                                   │
-│                                                                             │
-│  📦 5-Day Auto-Archive      : Finished or inactive habits move to the Vault │
-│                               after 5 days to keep your Today list clean.   │
-│                                                                             │
-│  🔓 Restore from Vault      : Reopen any archived habit back to active with │
-│                               a single click.                               │
-│                                                                             │
-│  ✂️ Unmap Subtasks          : Promote a growing subtask into its own        │
-│                               independent parent habit with full history.   │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
 
 ---
 
@@ -446,23 +415,6 @@ Habit Hacker protects all user data with database-level isolation:
 
 ---
 
-## 💻 Tech Stack Overview
-
-```
-┌─────────────────────┬─────────────────────────────────┬─────────────────────────────────────┐
-│ Layer               │ Technology                      │ Role in Habit Hacker                │
-├─────────────────────┼─────────────────────────────────┼─────────────────────────────────────┤
-│ 🎨 Frontend         │ React 18, Vite 5, Tailwind CSS  │ Ultra-fast UI, responsive layouts   │
-│ 📱 Mobile & PWA     │ Workbox Service Worker          │ Offline caching, home-screen install│
-│ ⚙️ Backend API      │ Spring Boot 3.2, Java 17        │ REST services, heavy analytical jobs│
-│ 🧠 AI Engine        │ Spring AI, Gemini / OpenAI API  │ Context-aware discipline coaching   │
-│ 🗄️ Database         │ Supabase PostgreSQL 15, GoTrue  │ Relational tables, secure RLS, Auth │
-│ ☁️ Cloud Hosting    │ Vercel (Web), Render (Backend)  │ Global edge CDN, container hosting  │
-└─────────────────────┴─────────────────────────────────┴─────────────────────────────────────┘
-```
-
----
-
 ## 🚀 How to Clone and Run Locally
 
 Follow these quick steps to get Habit Hacker running on your machine:
@@ -506,33 +458,6 @@ The Spring Boot backend will run on **`http://localhost:8080`**.
 In your Supabase project's **SQL Editor**, run the script:
 - `project/sql/01_CREATE_TABLES.sql` (Creates all tables)
 - `project/sql/22_ENABLE_RLS_AND_SECURITY_ADVISOR_FIX.sql` (Secures tables with Row Level Security)
-
----
-
-## 📖 How to Use Habit Hacker: Quick-Start Guide
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                            QUICK-START GUIDE                                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  Step 1: Sign in with your email to create your private workspace.          │
-│                                                                             │
-│  Step 2: Click "New Habit" and choose your goal type:                       │
-│          • Date Range (e.g. 14-day study plan)                              │
-│          • Count of Days (e.g. 30 workout days)                             │
-│          • Repetition Cycle (e.g. 100 practice problems)                    │
-│                                                                             │
-│  Step 3: Add subhabits for complex goals. Parent habits will lock and       │
-│          auto-complete when all mandatory steps are finished.               │
-│                                                                             │
-│  Step 4: Check off habits on the Today screen or tap "+1" to log measures.  │
-│                                                                             │
-│  Step 5: Write your reflections in the Diary Vault and watch your           │
-│          Productivity Score grow on your Dashboard!                         │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
 
 ---
 
