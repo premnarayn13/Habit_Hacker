@@ -136,15 +136,18 @@ sequenceDiagram
 
 ## 🗺️ Application Tour: 10 Dedicated Pages
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                   HABIT HACKER PAGE SUITE                                   │
-├───────────────────────┬───────────────────────┬───────────────────────┬─────────────────────┤
-│ 1. ⚡ Home Dashboard  │ 2. 📅 Today Hub       │ 3. 🌳 Habits Tree     │ 4. 🔍 Habit Details │
-│ 5. 📆 Multi Calendar  │ 6. 🟩 Heatmaps Hub    │ 7. 🤖 AI Coach        │ 8. 📖 Diary & Notes │
-│ 9. ⚖️ Capacity Plan   │ 10. ⚙️ Settings & Sync│                       │                     │
-└───────────────────────┴───────────────────────┴───────────────────────┴─────────────────────┘
-```
+| # | Workspace View | Core Architectural Purpose | Primary Controls & Indicators |
+| :-: | :--- | :--- | :--- |
+| **1** | **⚡ Home Dashboard** | Executive summary of daily momentum & discipline | $0 - 100$ Radial Score, Streak Badges, Category Matrix |
+| **2** | **📅 Today Command Center** | Focused tactical checklist for today's active habits | One-tap fast toggles, subtask drawers, inline `+1` step counters |
+| **3** | **🌳 Habits Tree Directory** | Complete hierarchy manager for all routines & subtasks | Nested tree view, priority filters, subtask decoupling (Unmap) |
+| **4** | **🔍 Dedicated Habit Info** | Deep-dive analytical view for an individual habit | Chronological logs, collaborator ledger, target progress gauges |
+| **5** | **📆 Multi-View Calendar** | Temporal matrix across day, week, and month scales | Green/amber/red status dots, retrospective historical date picker |
+| **6** | **🟩 Heatmaps Hub** | Activity density grid inspired by developer commit maps | $52 \times 7$ contribution grid, 4-tier intensity, streak analytics |
+| **7** | **🤖 AI Discipline Coach** | Personalized behavioral intelligence & trajectory curves | Rolling 7d/30d performance charts, Spring AI tailored advice |
+| **8** | **📖 Diary Vault & Notes** | Dual-tier reflective journaling with mood tagging | Markdown editor, emotional tags (`Flow`, `Fatigued`), scratchpad |
+| **9** | **⚖️ Capacity Planner** | Forward-looking cognitive allocation & overdue resolution | Weekly workload distribution, one-click deadline extensions |
+| **10** | **⚙️ Settings & Sync** | System preferences, themes, and cloud health monitoring | Live Supabase sync monitor, dark/light toggle, JSON export |
 
 ### 1. ⚡ Home Dashboard
 The daily overview that gives you an immediate picture of your momentum:
