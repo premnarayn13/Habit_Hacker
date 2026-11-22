@@ -249,31 +249,6 @@ In your Supabase project's **SQL Editor**, run the script:
 
 ---
 
-## ☁️ Cloud Deployment Architecture
-
-Habit Hacker is architected for zero-maintenance serverless edge hosting:
-
-```text
-+-------------------------+            +-------------------------+
-|   Vercel Edge Network   |            |   Render Cloud Engine   |
-|  (Frontend PWA Bundle)  |            |  (Spring Boot REST API) |
-+------------+------------+            +------------+------------+
-             |                                      |
-             +------------------+-------------------+
-                                |
-                                v
-               +----------------------------------+
-               |      Supabase Managed Cloud      |
-               |   PostgreSQL 15 + RLS + GoTrue   |
-               +----------------------------------+
-```
-
-- **Frontend (Vercel)**: Global Edge Network distribution with sub-second cold starts.
-- **Backend (Render)**: Containerized Spring Boot Java environment.
-- **Database (Supabase)**: Multi-region PostgreSQL 15 with automated daily snapshots.
-
----
-
 ## 📁 Project Directory Layout
 
 ```
