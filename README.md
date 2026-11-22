@@ -276,35 +276,6 @@ erDiagram
 
 ---
 
-## 🔒 Security & Supabase Row Level Security (RLS)
-
-Habit Hacker enforces zero-trust tenant data segregation directly at the PostgreSQL layer:
-
-```text
-+-----------------------------------------------------------------------+
-|                   DATABASE ROW LEVEL SECURITY (RLS)                   |
-+-----------------------------------------------------------------------+
-|  [Authenticated User]  -->  JWT Bearer Token  -->  Permitted (Own DB) |
-|  [Unauthorized User]   -->  Missing / Invalid -->  Denied (HTTP 403)  |
-+-----------------------------------------------------------------------+
-```
-
-| Security Dimension | Technical Rule | Policy Enforcement |
-| :--- | :--- | :--- |
-| **Tenant Isolation** | `auth.uid() = user_id` | Users can only `SELECT`, `INSERT`, `UPDATE`, or `DELETE` their own records. |
-| **Peer Collaboration** | Array membership lookup | Users in `collaborator_emails` receive read-only permissions on shared habits. |
-| **Table Hardening** | Explicit `ENABLE ROW LEVEL SECURITY` | All 11 public tables block anonymous access (`22_ENABLE_RLS.sql`). |
-| **JWT Verification** | Supabase GoTrue Auth token validation | Authenticated headers required for all direct database communication. |
-
-```sql
-CREATE POLICY "user_data_isolation" ON public.tasks
-FOR ALL TO authenticated
-USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
-```
-
----
-
 ## 🚀 How to Clone and Run Locally
 
 Follow these quick steps to get Habit Hacker running on your machine:
