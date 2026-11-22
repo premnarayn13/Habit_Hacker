@@ -97,7 +97,7 @@ Habit Hacker is engineered as a **Progressive Web App (PWA)** for instant cross-
 |                             |                                         |
 |  [Local Store]   -->  IndexedDB + LocalStorage (Autonomous Engine)    |
 |                             |                                         |
-|  [Sync Engine]   -->  Bidirectional Supabase REST Sync on Reconnect  |
+|  [Sync Engine]   -->  Bidirectional Supabase REST Sync on Reconnect   |
 +-----------------------------------------------------------------------+
 ```
 
@@ -394,21 +394,29 @@ erDiagram
 
 ## 🔒 Security & Supabase Row Level Security (RLS)
 
-Habit Hacker protects all user data with database-level isolation:
+Habit Hacker enforces zero-trust tenant data segregation directly at the PostgreSQL layer:
 
+```text
++-----------------------------------------------------------------------+
+|                   DATABASE ROW LEVEL SECURITY (RLS)                   |
++-----------------------------------------------------------------------+
+|  [Authenticated User]  -->  JWT Bearer Token  -->  Permitted (Own DB) |
+|  [Unauthorized User]   -->  Missing / Invalid -->  Denied (HTTP 403)  |
++-----------------------------------------------------------------------+
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      DATABASE ROW LEVEL SECURITY (RLS)                      │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   [Your Account]   ──▶  JWT Token  ──▶  PostgreSQL Database (Your Rows)     │
-│   [Other Account]  ──▶  JWT Token  ──▶  Access Denied (HTTP 403 Forbidden)  │
-│                                                                             │
-│   • Every table (tasks, subtasks, logs, diary) has RLS strictly enabled.   │
-│   • Users can only read and write their own records (auth.uid() = user_id). │
-│   • Peer collaborators only receive read permissions on shared tasks.       │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+
+| Security Dimension | Technical Rule | Policy Enforcement |
+| :--- | :--- | :--- |
+| **Tenant Isolation** | `auth.uid() = user_id` | Users can only `SELECT`, `INSERT`, `UPDATE`, or `DELETE` their own records. |
+| **Peer Collaboration** | Array membership lookup | Users in `collaborator_emails` receive read-only permissions on shared habits. |
+| **Table Hardening** | Explicit `ENABLE ROW LEVEL SECURITY` | All 11 public tables block anonymous access (`22_ENABLE_RLS.sql`). |
+| **JWT Verification** | Supabase GoTrue Auth token validation | Authenticated headers required for all direct database communication. |
+
+```sql
+CREATE POLICY "user_data_isolation" ON public.tasks
+FOR ALL TO authenticated
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
 ```
 
 ---
@@ -463,19 +471,19 @@ In your Supabase project's **SQL Editor**, run the script:
 
 Habit Hacker is architected for zero-maintenance serverless edge hosting:
 
-```
-┌─────────────────────────┐            ┌─────────────────────────┐
-│   Vercel Edge Network   │            │   Render Cloud Engine   │
-│  (Frontend PWA Bundle)  │            │  (Spring Boot REST API) │
-└────────────┬────────────┘            └────────────┬────────────┘
-             │                                      │
-             └──────────────────┬───────────────────┘
-                                │
-                                ▼
-               ┌──────────────────────────────────┐
-               │     Supabase Managed Cloud       │
-               │  PostgreSQL 15 + RLS + GoTrue    │
-               └──────────────────────────────────┘
+```text
++-------------------------+            +-------------------------+
+|   Vercel Edge Network   |            |   Render Cloud Engine   |
+|  (Frontend PWA Bundle)  |            |  (Spring Boot REST API) |
++------------+------------+            +------------+------------+
+             |                                      |
+             +------------------+-------------------+
+                                |
+                                v
+               +----------------------------------+
+               |      Supabase Managed Cloud      |
+               |   PostgreSQL 15 + RLS + GoTrue   |
+               +----------------------------------+
 ```
 
 - **Frontend (Vercel)**: Global Edge Network distribution with sub-second cold starts.
