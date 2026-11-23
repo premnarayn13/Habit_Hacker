@@ -48,7 +48,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { computeAnalyticsIntelligenceData } from '../lib/analyticsEngine';
-import { getApiBaseUrl } from '../lib/apiConfig';
+import { getApiBaseUrl, safeApiFetch } from '../lib/apiConfig';
 
 export default function AnalyticsIntelligenceView({
   tasks = [],
@@ -126,22 +126,24 @@ export default function AnalyticsIntelligenceView({
     setAiState(prev => ({ ...prev, loading: true, error: null }));
     const baseUrl = getApiBaseUrl();
     try {
-      const currentUserId = (currentUser?.email || currentUser?.id || 'example@gmail.com').toLowerCase();
-      const compTasks = intel.completedTaskLogsCount || intel.completedTasksCount || tasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
-      const compRate = intel.overallCompletionRate ?? 0;
-      const maxStrk = intel.maxActiveStreak ?? 1;
-      const plannedMins = intel.totalPlannedWorkloadMinutes ?? 360;
-      const missedCount = intel.totalParentMissedDaysCount || Math.max(0, tasks.length - compTasks);
+      if (baseUrl) {
+        const currentUserId = (currentUser?.email || currentUser?.id || 'example@gmail.com').toLowerCase();
+        const compTasks = intel.completedTaskLogsCount || intel.completedTasksCount || tasks.filter(t => t.isDoneToday || t.progressPercent >= 100).length;
+        const compRate = intel.overallCompletionRate ?? 0;
+        const maxStrk = intel.maxActiveStreak ?? 1;
+        const plannedMins = intel.totalPlannedWorkloadMinutes ?? 360;
+        const missedCount = intel.totalParentMissedDaysCount || Math.max(0, tasks.length - compTasks);
 
-      const url = `${baseUrl}/api/v1/analytics/ai-insights?userId=${encodeURIComponent(currentUserId)}&totalTasks=${tasks.length}&completedTasks=${compTasks}&missedTasks=${missedCount}&completionRate=${compRate}&maxStreak=${maxStrk}&plannedMinutes=${plannedMins}`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setAiState({ loading: false, data, error: null, isOfflineCached: false, cachedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-        try {
-          localStorage.setItem('habit_hacker_cached_ai_insight', JSON.stringify({ data, cachedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
-        } catch (e) {}
-        return;
+        const url = `${baseUrl}/api/v1/analytics/ai-insights?userId=${encodeURIComponent(currentUserId)}&totalTasks=${tasks.length}&completedTasks=${compTasks}&missedTasks=${missedCount}&completionRate=${compRate}&maxStreak=${maxStrk}&plannedMinutes=${plannedMins}`;
+        const res = await safeApiFetch(url, {}, 1200);
+        if (res && res.ok) {
+          const data = await res.json();
+          setAiState({ loading: false, data, error: null, isOfflineCached: false, cachedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+          try {
+            localStorage.setItem('habit_hacker_cached_ai_insight', JSON.stringify({ data, cachedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
+          } catch (e) {}
+          return;
+        }
       }
     } catch (err) {
       console.warn("AI insights API call notice:", err);

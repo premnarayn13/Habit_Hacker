@@ -26,7 +26,7 @@ import AuthLandingPage from './components/AuthLandingPage';
 import { supabase } from './lib/supabaseClient';
 import { collaborationService } from './lib/collaborationService';
 import { habitHistoryService } from './lib/habitHistoryService';
-import { getApiBaseUrl } from './lib/apiConfig';
+import { getApiBaseUrl, safeApiFetch } from './lib/apiConfig';
 import { 
   isParentTaskWithChildren, 
   canManuallyCompleteTask, 
@@ -807,20 +807,15 @@ export default function App() {
         }
       }
 
-      // Fetch fresh tasks from Spring Boot REST backend if available
-      let bootItems = [];
-      try {
-        const baseUrl = getApiBaseUrl();
-        if (baseUrl) {
-          const res1 = await fetch(`${baseUrl}/api/tasks?userId=${encodeURIComponent(userId)}`);
-          if (res1.ok) {
-            const list1 = await res1.json();
-            if (Array.isArray(list1)) bootItems.push(...list1);
-          }
-        }
-      } catch (e) {}
+      // Fetch fresh tasks from Spring Boot REST backend concurrently (non-blocking, 1000ms timeout)
+      const baseUrl = getApiBaseUrl();
+      const bootPromise = baseUrl
+        ? safeApiFetch(`${baseUrl}/api/tasks?userId=${encodeURIComponent(userId)}`, {}, 1000)
+            .then(res => (res && res.ok ? res.json() : []))
+            .catch(() => [])
+        : Promise.resolve([]);
 
-      // Fetch fresh tasks from Supabase — user_id column = user's email address
+      // Fetch fresh tasks from Supabase immediately without waiting — user_id column = user's email address
       let dbTasks = null;
       let taskError = null;
 
@@ -953,6 +948,7 @@ export default function App() {
       } catch (e) {}
 
       let fetchedItems = [];
+      const bootItems = (await bootPromise) || [];
 
       if (bootItems && bootItems.length > 0) {
         const mappedBoot = bootItems.map(t => ({
@@ -1133,9 +1129,30 @@ export default function App() {
         // Event-based tasks do NOT reset daily
         if (isEventTask) return item;
 
-        // A task is from a previous day ONLY if it has an explicit completedDate/completedAt that is strictly before today
+        // Check if there is an explicit completion log recorded today for this task or subtask
+        const hasTodayLog = (dbTaskLogs || []).some(l => 
+          (l.task_id === item.id || l.taskId === item.id) &&
+          (l.logged_date === todayDateStr || l.log_date === todayDateStr || (l.logged_at && getLocalDateString(l.logged_at) === todayDateStr)) &&
+          (l.is_completed !== false && l.is_successful !== false)
+        ) || (dbSubtaskLogs || []).some(sl =>
+          (sl.subtask_id === item.id || sl.subtaskId === item.id) &&
+          (sl.log_date === todayDateStr || sl.logged_date === todayDateStr || (sl.created_at && getLocalDateString(sl.created_at) === todayDateStr)) &&
+          (sl.is_completed !== false)
+        );
+
         const compDate = item.completedDate || (item.completedAt ? getLocalDateString(item.completedAt) : null);
-        const isFromPreviousDay = compDate && compDate < todayDateStr;
+
+        // If completed today or logged today, keep completion strictly intact across refreshes
+        if (hasTodayLog || compDate === todayDateStr) {
+          return {
+            ...item,
+            isDoneToday: true,
+            completedDate: todayDateStr
+          };
+        }
+
+        // A task is from a previous day ONLY if it has an explicit completedDate/completedAt strictly before today, AND no today log
+        const isFromPreviousDay = compDate && compDate < todayDateStr && !hasTodayLog;
 
         // Reset ONLY tasks that were completed on an earlier calendar day (not today)
         if (isFromPreviousDay && (item.isDoneToday || Number(item.loggedMeasureVal || 0) > 0)) {
@@ -1455,11 +1472,11 @@ export default function App() {
       }
     }
 
-    // 3. Spring Boot REST backend deletion if connected
+    // 3. Spring Boot REST backend deletion if connected (non-blocking)
     try {
       const baseUrl = getApiBaseUrl();
       if (baseUrl) {
-        await fetch(`${baseUrl}/api/tasks/${encodeURIComponent(idStr)}`, { method: 'DELETE' });
+        safeApiFetch(`${baseUrl}/api/tasks/${encodeURIComponent(idStr)}`, { method: 'DELETE' }, 1200);
       }
     } catch (e) {}
   };
@@ -1822,9 +1839,10 @@ export default function App() {
             current_count: completedEventParent.currentCount,
             progress_percent: completedEventParent.progressPercent,
             is_done_today: completedEventParent.isDoneToday,
+            completed_date: completedEventParent.isDoneToday ? todayStr : null,
+            completed_at: completedEventParent.isDoneToday ? nowIso : null,
             logged_measure_val: completedEventParent.loggedMeasureVal,
             last_measured_value: completedEventParent.lastMeasuredValue,
-            completed_at: completedEventParent.isDoneToday ? nowIso : null,
             status: completedEventParent.isDoneToday ? 'COMPLETED' : 'INBOX'
           }).eq('id', completedEventParent.id);
 
@@ -1873,11 +1891,15 @@ export default function App() {
         for (const st of resetSiblings) {
           try {
             await supabase.from('tasks').update({
-              is_done_today: true
+              is_done_today: true,
+              completed_date: todayStr,
+              completed_at: nowIso
             }).eq('id', st.id);
 
             await supabase.from('subtasks').update({
-              is_done_today: true
+              is_done_today: true,
+              completed_date: todayStr,
+              completed_at: nowIso
             }).eq('id', st.id);
           } catch (e) {}
         }
@@ -1888,7 +1910,8 @@ export default function App() {
             current_count: updatedTask.currentCount,
             progress_percent: updatedTask.progressPercent,
             is_done_today: updatedTask.isDoneToday,
-            completed_at: updatedTask.isDoneToday ? (updatedTask.completedAt || nowIso) : null,
+            completed_date: updatedTask.isDoneToday ? todayStr : null,
+            completed_at: updatedTask.isDoneToday ? nowIso : null,
             status: updatedTask.isDoneToday ? 'COMPLETED' : 'INBOX'
           };
           if (updatedTask.loggedMeasureVal !== undefined) {
@@ -1909,7 +1932,8 @@ export default function App() {
             current_count: updatedTask.currentCount,
             progress_percent: updatedTask.progressPercent,
             is_done_today: updatedTask.isDoneToday,
-            completed_at: updatedTask.isDoneToday ? (updatedTask.completedAt || nowIso) : null,
+            completed_date: updatedTask.isDoneToday ? todayStr : null,
+            completed_at: updatedTask.isDoneToday ? nowIso : null,
             status: updatedTask.isDoneToday ? 'COMPLETED' : 'PLANNED'
           };
           if (updatedTask.loggedMeasureVal !== undefined) {
@@ -1927,7 +1951,8 @@ export default function App() {
                 current_count: parent.currentCount,
                 progress_percent: parent.progressPercent,
                 is_done_today: parent.isDoneToday,
-                completed_at: parent.isDoneToday ? (parent.completedAt || nowIso) : null,
+                completed_date: parent.isDoneToday ? todayStr : null,
+                completed_at: parent.isDoneToday ? nowIso : null,
                 status: parent.isDoneToday ? 'COMPLETED' : 'INBOX'
               };
               if (parent.loggedMeasureVal !== undefined) {
@@ -2015,14 +2040,14 @@ export default function App() {
             } catch (e) {}
           }
 
-          // Sync to Spring Boot REST backend
+          // Sync to Spring Boot REST backend (non-blocking)
           try {
             const baseUrl = getApiBaseUrl();
             if (baseUrl) {
               const measureParam = updatedTask.loggedMeasureVal !== undefined ? `&measuredValue=${encodeURIComponent(updatedTask.loggedMeasureVal)}` : '';
-              await fetch(`${baseUrl}/api/tasks/${encodeURIComponent(taskId)}/toggle?userId=${encodeURIComponent(currentUserId)}${measureParam}`, {
+              safeApiFetch(`${baseUrl}/api/tasks/${encodeURIComponent(taskId)}/toggle?userId=${encodeURIComponent(currentUserId)}${measureParam}`, {
                 method: 'POST'
-              });
+              }, 1200);
             }
           } catch (e) {}
 
@@ -2080,9 +2105,9 @@ export default function App() {
           try {
             const baseUrl = getApiBaseUrl();
             if (baseUrl) {
-              await fetch(`${baseUrl}/api/tasks/${encodeURIComponent(taskId)}/undo?userId=${encodeURIComponent(currentUserId)}`, {
+              safeApiFetch(`${baseUrl}/api/tasks/${encodeURIComponent(taskId)}/undo?userId=${encodeURIComponent(currentUserId)}`, {
                 method: 'POST'
-              });
+              }, 1200);
             }
           } catch (e) {}
         }
@@ -2108,7 +2133,8 @@ export default function App() {
           currentEventCount: prevCount,
           progressPercent: prevProg,
           isDoneToday: false,
-          completedAt: null
+          completedAt: null,
+          completedDate: null
         };
         return updatedTask;
       }
@@ -2118,7 +2144,8 @@ export default function App() {
         return {
           ...t,
           isDoneToday: false,
-          completedAt: null
+          completedAt: null,
+          completedDate: null
         };
       }
       return t;
@@ -2133,6 +2160,8 @@ export default function App() {
           current_count: updatedTask.currentCount,
           progress_percent: updatedTask.progressPercent,
           is_done_today: false,
+          completed_date: null,
+          completed_at: null,
           status: 'INBOX'
         }).eq('id', taskId);
       } catch (e) {}
@@ -2142,6 +2171,8 @@ export default function App() {
           current_count: updatedTask.currentCount,
           progress_percent: updatedTask.progressPercent,
           is_done_today: false,
+          completed_date: null,
+          completed_at: null,
           status: 'PLANNED'
         }).eq('id', taskId);
       } catch (e) {}
@@ -2149,8 +2180,8 @@ export default function App() {
       // 2. Unmark child subtasks if any
       for (const cId of childIdsToUndo) {
         try {
-          await supabase.from('tasks').update({ is_done_today: false, status: 'INBOX' }).eq('id', cId);
-          await supabase.from('subtasks').update({ is_done_today: false, status: 'PLANNED' }).eq('id', cId);
+          await supabase.from('tasks').update({ is_done_today: false, completed_date: null, completed_at: null, status: 'INBOX' }).eq('id', cId);
+          await supabase.from('subtasks').update({ is_done_today: false, completed_date: null, completed_at: null, status: 'PLANNED' }).eq('id', cId);
           const { data: cLogs } = await supabase.from('task_logs').select('id').eq('task_id', cId).order('logged_at', { ascending: false }).limit(1);
           if (cLogs && cLogs.length > 0) {
             await supabase.from('task_logs').delete().eq('id', cLogs[0].id);
@@ -2182,13 +2213,13 @@ export default function App() {
         console.warn('Supabase task_logs delete catch:', e);
       }
 
-      // 4. Call Spring Boot REST API undo endpoint
+      // 4. Call Spring Boot REST API undo endpoint (non-blocking)
       try {
         const baseUrl = getApiBaseUrl();
         if (baseUrl) {
-          await fetch(`${baseUrl}/api/tasks/${encodeURIComponent(taskId)}/undo?userId=${encodeURIComponent(currentUserId)}`, {
+          safeApiFetch(`${baseUrl}/api/tasks/${encodeURIComponent(taskId)}/undo?userId=${encodeURIComponent(currentUserId)}`, {
             method: 'POST'
-          });
+          }, 1200);
         }
       } catch (e) {}
     }
@@ -2340,6 +2371,8 @@ export default function App() {
           logged_measure_val: updatedTask.loggedMeasureVal,
           last_measured_value: updatedTask.lastMeasuredValue,
           is_done_today: true,
+          completed_date: todayStr,
+          completed_at: nowIso,
           status: 'INBOX'
         }).eq('id', taskId);
       } catch (e) {
@@ -2354,6 +2387,8 @@ export default function App() {
           logged_measure_val: updatedTask.loggedMeasureVal,
           last_measured_value: updatedTask.lastMeasuredValue,
           is_done_today: true,
+          completed_date: todayStr,
+          completed_at: nowIso,
           status: 'IN_PROGRESS'
         }).eq('id', taskId);
       } catch (e) {}
@@ -2445,6 +2480,8 @@ export default function App() {
             logged_measure_val: completedParent.loggedMeasureVal,
             last_measured_value: completedParent.lastMeasuredValue,
             is_done_today: true,
+            completed_date: todayStr,
+            completed_at: nowIso,
             status: completedParent.progressPercent >= 100 ? 'COMPLETED' : 'INBOX'
           }).eq('id', completedParent.id);
 
@@ -2492,8 +2529,8 @@ export default function App() {
           for (const s of siblings) {
             const sCount = s.id === taskId ? updatedTask.currentCount : (s.currentCount || 1);
             const sMeasure = s.id === taskId ? updatedTask.loggedMeasureVal : (s.loggedMeasureVal || 0);
-            await supabase.from('tasks').update({ is_done_today: true, current_count: sCount, logged_measure_val: sMeasure }).eq('id', s.id);
-            await supabase.from('subtasks').update({ is_done_today: true, current_count: sCount, completed_value: sCount, logged_measure_val: sMeasure }).eq('id', s.id);
+            await supabase.from('tasks').update({ is_done_today: true, completed_date: todayStr, completed_at: nowIso, current_count: sCount, logged_measure_val: sMeasure }).eq('id', s.id);
+            await supabase.from('subtasks').update({ is_done_today: true, completed_date: todayStr, completed_at: nowIso, current_count: sCount, completed_value: sCount, logged_measure_val: sMeasure }).eq('id', s.id);
           }
         } catch (e) {}
       } else if (completedParent) {
@@ -2630,11 +2667,24 @@ export default function App() {
         attachment_name: newTask.attachmentName
       };
 
-      // Persist to Spring Boot REST API (PostgreSQL database)
+      // Persist to Supabase PostgreSQL database FIRST
+      const { error: insertErr } = await supabase.from('tasks').insert([{ id: parentId, ...taskPayload }]);
+      if (insertErr) {
+        console.warn('Task insert with explicit ID notice:', insertErr.message);
+        const { data: retryData, error: retryErr } = await supabase.from('tasks').insert([taskPayload]).select();
+        if (retryErr) {
+          console.error('Supabase task creation error:', retryErr.message);
+        } else if (retryData && retryData[0]) {
+          const dbId = retryData[0].id;
+          updateTasksState(newTasks.map(t => t.id === parentId ? { ...t, id: dbId } : t));
+        }
+      }
+
+      // Persist to Spring Boot REST API in background if available (non-blocking)
       try {
         const baseUrl = getApiBaseUrl();
         if (baseUrl) {
-          await fetch(`${baseUrl}/api/tasks`, {
+          safeApiFetch(`${baseUrl}/api/tasks`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2661,22 +2711,9 @@ export default function App() {
               parentTaskId: newTask.parentTaskId,
               attachmentName: newTask.attachmentName
             })
-          });
+          }, 1500);
         }
       } catch (e) {}
-
-      // Persist to Supabase PostgreSQL database
-      const { error: insertErr } = await supabase.from('tasks').insert([{ id: parentId, ...taskPayload }]);
-      if (insertErr) {
-        console.warn('Task insert with explicit ID notice:', insertErr.message);
-        const { data: retryData, error: retryErr } = await supabase.from('tasks').insert([taskPayload]).select();
-        if (retryErr) {
-          console.error('Supabase task creation error:', retryErr.message);
-        } else if (retryData && retryData[0]) {
-          const dbId = retryData[0].id;
-          updateTasksState(newTasks.map(t => t.id === parentId ? { ...t, id: dbId } : t));
-        }
-      }
 
       // Record to habit audit history if this is a subhabit added to a parent habit
       if (newTask.parentTaskId) {
@@ -2742,7 +2779,7 @@ export default function App() {
       try {
         const baseUrl = getApiBaseUrl();
         if (baseUrl) {
-          await fetch(`${baseUrl}/api/tasks/${encodeURIComponent(taskId)}`, {
+          safeApiFetch(`${baseUrl}/api/tasks/${encodeURIComponent(taskId)}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2764,7 +2801,7 @@ export default function App() {
               customIntervalDays: updatedData.customIntervalDays,
               attachmentName: updatedData.attachmentName
             })
-          });
+          }, 1500);
         }
       } catch (e) {}
 

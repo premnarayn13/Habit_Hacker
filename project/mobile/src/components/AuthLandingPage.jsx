@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
 import { Flame, Eye, EyeOff, CheckCircle2, Mail, Lock, User } from 'lucide-react';
-import { getApiBaseUrl } from '../lib/apiConfig';
+import { getApiBaseUrl, safeApiFetch } from '../lib/apiConfig';
+import { supabase } from '../lib/supabaseClient';
+
+const sha256 = async (str) => {
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) {
+    return str;
+  }
+};
 
 /**
  * AuthLandingPage — Clean authentication component.
@@ -35,31 +45,60 @@ export default function AuthLandingPage({ onAuthSuccess }) {
     try {
       if (authMode === 'REGISTER') {
         // ── REGISTER ────────────────────────────────────────────────────────
-        let res;
-        try {
-          res = await fetch(`${apiBase}/api/v1/auth/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: cleanEmail, password, displayName: nameToUse })
-          });
-        } catch (netErr) {
-          setErrorMessage('Cannot connect to server. Make sure the backend is running on ' + apiBase);
-          setLoading(false);
-          return;
+        let registeredViaBackend = false;
+        if (apiBase) {
+          try {
+            const res = await safeApiFetch(`${apiBase}/api/v1/auth/register`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: cleanEmail, password, displayName: nameToUse })
+            }, 1500);
+
+            if (res) {
+              const data = await res.json();
+              if (res.status === 409) {
+                setErrorMessage(data.error || `An account for ${cleanEmail} already exists. Please sign in.`);
+                setLoading(false);
+                return;
+              }
+              if (!res.ok) {
+                setErrorMessage(data.error || 'Registration failed. Please try again.');
+                setLoading(false);
+                return;
+              }
+              registeredViaBackend = true;
+            }
+          } catch (netErr) {}
         }
 
-        const data = await res.json();
+        // Supabase direct fallback if backend not available
+        if (!registeredViaBackend) {
+          const { data: existing } = await supabase
+            .from('app_users')
+            .select('id')
+            .eq('email', cleanEmail)
+            .maybeSingle();
 
-        if (res.status === 409) {
-          setErrorMessage(data.error || `An account for ${cleanEmail} already exists. Please sign in.`);
-          setLoading(false);
-          return;
-        }
+          if (existing) {
+            setErrorMessage(`An account for ${cleanEmail} already exists. Please sign in.`);
+            setLoading(false);
+            return;
+          }
 
-        if (!res.ok) {
-          setErrorMessage(data.error || 'Registration failed. Please try again.');
-          setLoading(false);
-          return;
+          const passwordHash = await sha256(password);
+          const { error: insErr } = await supabase
+            .from('app_users')
+            .insert([{
+              email: cleanEmail,
+              password_hash: passwordHash,
+              display_name: nameToUse
+            }]);
+
+          if (insErr) {
+            setErrorMessage('Registration notice: ' + insErr.message);
+            setLoading(false);
+            return;
+          }
         }
 
         setSuccessMessage(`Account created for ${cleanEmail}! Please click "Sign In" to access your dashboard.`);
@@ -69,50 +108,81 @@ export default function AuthLandingPage({ onAuthSuccess }) {
 
       } else {
         // ── LOGIN ────────────────────────────────────────────────────────────
-        let res;
-        try {
-          res = await fetch(`${apiBase}/api/v1/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: cleanEmail, password })
-          });
-        } catch (netErr) {
-          setErrorMessage('Cannot connect to server. Make sure the backend is running on ' + apiBase);
-          setLoading(false);
-          return;
+        let loggedInUser = null;
+        if (apiBase) {
+          try {
+            const res = await safeApiFetch(`${apiBase}/api/v1/auth/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: cleanEmail, password })
+            }, 1500);
+
+            if (res) {
+              const data = await res.json();
+              if (res.status === 404) {
+                setErrorMessage(data.error || `No account found for "${cleanEmail}". Please register first.`);
+                setLoading(false);
+                return;
+              }
+              if (res.status === 401) {
+                setErrorMessage(data.error || `Incorrect password for "${cleanEmail}". Please try again.`);
+                setLoading(false);
+                return;
+              }
+              if (res.ok) {
+                const chosenDisplayName = data.user?.displayName || nameToUse;
+                loggedInUser = {
+                  id: cleanEmail,
+                  email: cleanEmail,
+                  displayName: chosenDisplayName,
+                  user_metadata: { 
+                    display_name: chosenDisplayName,
+                    full_name: chosenDisplayName
+                  }
+                };
+              }
+            }
+          } catch (netErr) {}
         }
 
-        const data = await res.json();
+        // Supabase direct fallback if backend is offline/sleeping
+        if (!loggedInUser) {
+          const { data: userRecord, error: userErr } = await supabase
+            .from('app_users')
+            .select('*')
+            .eq('email', cleanEmail)
+            .maybeSingle();
 
-        if (res.status === 404) {
-          setErrorMessage(data.error || `No account found for "${cleanEmail}". Please register first.`);
-          setLoading(false);
-          return;
-        }
-
-        if (res.status === 401) {
-          setErrorMessage(data.error || `Incorrect password for "${cleanEmail}". Please try again.`);
-          setLoading(false);
-          return;
-        }
-
-        if (!res.ok) {
-          setErrorMessage(data.error || 'Login failed. Please try again.');
-          setLoading(false);
-          return;
-        }
-
-        // Build user object — id = email (used as user_id in all tables)
-        const chosenDisplayName = data.user?.displayName || nameToUse;
-        const loggedInUser = {
-          id: cleanEmail,          // user_id = email — consistent across all devices
-          email: cleanEmail,
-          displayName: chosenDisplayName,
-          user_metadata: { 
-            display_name: chosenDisplayName,
-            full_name: chosenDisplayName
+          if (userErr) {
+            setErrorMessage('Unable to connect to database. Please check your internet connection.');
+            setLoading(false);
+            return;
           }
-        };
+
+          if (!userRecord) {
+            setErrorMessage(`No account found for "${cleanEmail}". Please register first.`);
+            setLoading(false);
+            return;
+          }
+
+          const inputHash = await sha256(password);
+          if (userRecord.password_hash && userRecord.password_hash !== inputHash && userRecord.password_hash !== password) {
+            setErrorMessage(`Incorrect password for "${cleanEmail}". Please try again.`);
+            setLoading(false);
+            return;
+          }
+
+          const chosenDisplayName = userRecord.display_name || nameToUse;
+          loggedInUser = {
+            id: cleanEmail,
+            email: cleanEmail,
+            displayName: chosenDisplayName,
+            user_metadata: { 
+              display_name: chosenDisplayName,
+              full_name: chosenDisplayName
+            }
+          };
+        }
 
         // Persist session to localStorage
         localStorage.setItem('hh_auth_user', JSON.stringify(loggedInUser));

@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from './apiConfig';
+import { getApiBaseUrl, safeApiFetch } from './apiConfig';
 import { supabase } from './supabaseClient';
 
 const LOCAL_COLLAB_KEY = 'hh_task_collaborations';
@@ -78,14 +78,16 @@ export const collaborationService = {
         } catch (e) {}
       }
 
-      // Try posting to Spring Boot REST backend
+      // Try posting to Spring Boot REST backend (non-blocking)
       try {
         const baseUrl = getApiBaseUrl();
-        await fetch(`${baseUrl}/api/v1/collaborations/invite`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(inviteData)
-        });
+        if (baseUrl) {
+          safeApiFetch(`${baseUrl}/api/v1/collaborations/invite`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(inviteData)
+          }, 1200);
+        }
       } catch (e) {}
 
       createdInvites.push(inviteData);
@@ -162,10 +164,12 @@ export const collaborationService = {
     // Try Spring Boot REST API
     try {
       const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/v1/collaborations/received?email=${encodeURIComponent(cleanEmail)}`);
-      if (res.ok) {
-        const bootInvites = await res.json();
-        remoteInvites.push(...bootInvites);
+      if (baseUrl) {
+        const res = await safeApiFetch(`${baseUrl}/api/v1/collaborations/received?email=${encodeURIComponent(cleanEmail)}`, {}, 1200);
+        if (res && res.ok) {
+          const bootInvites = await res.json();
+          remoteInvites.push(...bootInvites);
+        }
       }
     } catch (e) {}
 
@@ -211,10 +215,12 @@ export const collaborationService = {
     // Try Spring Boot REST API
     try {
       const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/v1/collaborations/sent?email=${encodeURIComponent(cleanEmail)}`);
-      if (res.ok) {
-        const bootSent = await res.json();
-        remoteSent.push(...bootSent);
+      if (baseUrl) {
+        const res = await safeApiFetch(`${baseUrl}/api/v1/collaborations/sent?email=${encodeURIComponent(cleanEmail)}`, {}, 1200);
+        if (res && res.ok) {
+          const bootSent = await res.json();
+          remoteSent.push(...bootSent);
+        }
       }
     } catch (e) {}
 
@@ -249,14 +255,16 @@ export const collaborationService = {
       } catch (e) {}
     }
 
-    // Attempt updating Spring Boot backend
+    // Attempt updating Spring Boot backend (non-blocking)
     try {
       const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/v1/collaborations/${inviteId}/respond?action=${normalizedAction}`, {
-        method: 'POST'
-      });
-      if (res.ok) {
-        updatedItem = await res.json();
+      if (baseUrl) {
+        const res = await safeApiFetch(`${baseUrl}/api/v1/collaborations/${inviteId}/respond?action=${normalizedAction}`, {
+          method: 'POST'
+        }, 1200);
+        if (res && res.ok) {
+          updatedItem = await res.json();
+        }
       }
     } catch (e) {
       console.log('Responded to invitation locally offline.');

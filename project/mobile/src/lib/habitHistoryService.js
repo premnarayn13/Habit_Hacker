@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { getApiBaseUrl } from './apiConfig';
+import { getApiBaseUrl, safeApiFetch } from './apiConfig';
 
 const LOCAL_COMPLETION_HIST_KEY = 'hh_habit_completion_history';
 const LOCAL_UPDATE_HIST_KEY = 'hh_habit_update_history';
@@ -60,14 +60,16 @@ export const habitHistoryService = {
       console.warn('Supabase habit completion history insert notice:', e.message);
     }
 
-    // 3. Sync to Spring Boot backend
+    // 3. Sync to Spring Boot backend (non-blocking)
     try {
       const baseUrl = getApiBaseUrl();
-      await fetch(`${baseUrl}/api/v1/habits/${taskId}/completion-history`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(record)
-      });
+      if (baseUrl) {
+        safeApiFetch(`${baseUrl}/api/v1/habits/${taskId}/completion-history`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record)
+        }, 1200);
+      }
     } catch (e) {}
 
     return record;
@@ -115,14 +117,16 @@ export const habitHistoryService = {
       console.warn('Supabase habit update history insert notice:', e.message);
     }
 
-    // 3. Sync to Spring Boot backend
+    // 3. Sync to Spring Boot backend (non-blocking)
     try {
       const baseUrl = getApiBaseUrl();
-      await fetch(`${baseUrl}/api/v1/habits/${taskId}/update-history`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(record)
-      });
+      if (baseUrl) {
+        safeApiFetch(`${baseUrl}/api/v1/habits/${taskId}/update-history`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record)
+        }, 1200);
+      }
     } catch (e) {}
 
     return record;

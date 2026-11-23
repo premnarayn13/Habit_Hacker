@@ -34,7 +34,7 @@ import {
   XCircle
 } from 'lucide-react';
 
-import { getApiBaseUrl } from '../lib/apiConfig';
+import { getApiBaseUrl, safeApiFetch } from '../lib/apiConfig';
 import { collaborationService } from '../lib/collaborationService';
 
 export default function SettingsProfileView({ 
@@ -109,9 +109,9 @@ export default function SettingsProfileView({
     const userId = currentUser?.id;
     const baseUrl = getApiBaseUrl();
     // Fetch backend settings if available and user is logged in
-    if (userId) {
-      fetch(`${baseUrl}/api/v1/settings?userId=${encodeURIComponent(userId)}`)
-        .then(res => res.ok ? res.json() : null)
+    if (userId && baseUrl) {
+      safeApiFetch(`${baseUrl}/api/v1/settings?userId=${encodeURIComponent(userId)}`, {}, 1200)
+        .then(res => (res && res.ok ? res.json() : null))
         .then(data => {
           if (data) {
             setProfileData(prev => ({
@@ -188,13 +188,13 @@ export default function SettingsProfileView({
     // Persist to Spring Boot REST backend
     try {
       const userId = currentUser?.id;
-      if (userId) {
-        const baseUrl = getApiBaseUrl();
-        await fetch(`${baseUrl}/api/v1/settings?userId=${encodeURIComponent(userId)}`, {
+      const baseUrl = getApiBaseUrl();
+      if (userId && baseUrl) {
+        await safeApiFetch(`${baseUrl}/api/v1/settings?userId=${encodeURIComponent(userId)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(profileData)
-        });
+        }, 1200);
       }
     } catch (err) {
       console.log('Saved settings locally offline');
